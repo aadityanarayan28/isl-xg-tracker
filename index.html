@@ -320,7 +320,7 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: 13.5px; }
 if (!window.React || !window.ReactDOM) document.querySelector("#app .empty").innerHTML = "<strong>The page could not finish loading</strong>Check your connection and reload.";
 </script>
 <script>
-window.__READER__ = {"v":1,"generated":"2026-10-09T14:50:30.663Z","teams":{"bfc":{"name":"Bengaluru FC","short":"BFC","players":[]},"cbfc":{"name":"Churchill Brothers FC","short":"CB","players":[]},"cfc":{"name":"Chennaiyin FC","short":"CFC","players":[]},"ebfc":{"name":"East Bengal FC","short":"EB","players":[]},"fcg":{"name":"FC Goa","short":"FCG","players":[]},"ikfc":{"name":"Inter Kashi FC","short":"IK","players":[]},"kbfc":{"name":"Kerala Blasters FC","short":"KBFC","players":[]},"mbsg":{"name":"Mohun Bagan Super Giant","short":"MBSG","players":[]},"mcfc":{"name":"Mumbai City FC","short":"MCFC","players":[]},"neufc":{"name":"NorthEast United FC","short":"NEU","players":[]},"ofc":{"name":"Odisha FC","short":"OFC","players":[]},"pfc":{"name":"Punjab FC","short":"PFC","players":[]},"scd":{"name":"Sporting Club Delhi","short":"SCD","players":[]}},"matches":{}};
+window.__READER__ = {"v":1,"generated":"2026-10-09T14:55:59.685Z","teams":{"bfc":{"name":"Bengaluru FC","short":"BFC","players":[]},"cbfc":{"name":"Churchill Brothers FC","short":"CB","players":[]},"cfc":{"name":"Chennaiyin FC","short":"CFC","players":[]},"ebfc":{"name":"East Bengal FC","short":"EB","players":[]},"fcg":{"name":"FC Goa","short":"FCG","players":[]},"ikfc":{"name":"Inter Kashi FC","short":"IK","players":[]},"kbfc":{"name":"Kerala Blasters FC","short":"KBFC","players":[]},"mbsg":{"name":"Mohun Bagan Super Giant","short":"MBSG","players":[]},"mcfc":{"name":"Mumbai City FC","short":"MCFC","players":[]},"neufc":{"name":"NorthEast United FC","short":"NEU","players":[]},"ofc":{"name":"Odisha FC","short":"OFC","players":[]},"pfc":{"name":"Punjab FC","short":"PFC","players":[]},"scd":{"name":"Sporting Club Delhi","short":"SCD","players":[]}},"matches":{}};
 </script>
 <script>
 "use strict";
@@ -1338,7 +1338,7 @@ function MatchesView({ s, agg, open }) {
       [h("option", { key: "", value: "" }, "All clubs")].concat(clubs.map((id) => h("option", { key: id, value: id }, s.teams[id].name)))));
 
   return h("div", { className: "stack" },
-    h("div", { className: "summary" },
+    reader && !all.length ? null : h("div", { className: "summary" },
       reader ? h("span", null, h("b", null, all.length), all.length === 1 ? " finished match" : " finished matches") :
         h("span", null, h("b", null, tagged), " of ", h("b", null, all.length), " matches tagged"),
       h("span", null, h("b", null, agg.totals.shots), " shots"),
