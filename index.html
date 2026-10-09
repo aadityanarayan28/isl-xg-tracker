@@ -1,0 +1,2378 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ISL xG Tracker</title>
+<meta name="description" content="Shot-by-shot expected goals for the Indian Super League 2026-27: match timelines, and xG, xA and goalkeeper numbers for every player and club.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="ISL xG Tracker 2026-27">
+<meta property="og:description" content="Shot-by-shot expected goals for the Indian Super League 2026-27: match timelines, and xG, xA and goalkeeper numbers for every player and club.">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23111714'/%3E%3Cpath d='M5 25h7v-7h7v-8h8' fill='none' stroke='%233987e5' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M5 26h13v-4h9' fill='none' stroke='%23eb6834' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' opacity='.95'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* layout: one working column up to 1180px; the tagging screen splits into pitch | form and stacks on a phone */
+:root {
+  color-scheme: light;
+  --bg: #f3f5f1;
+  --surface: #fdfdfb;
+  --sunken: #eceee9;
+  --ink: #111714;
+  --ink-2: #4a514c;
+  --muted: #6d746e;
+  --line: #dde1da;
+  --line-2: #bfc6be;
+  --accent: #0f6a45;
+  --on-accent: #ffffff;
+  --accent-soft: #e2f0e8;
+  --home: #2a78d6;
+  --away: #eb6834;
+  --ok-text: #006300;
+  --danger-text: #b42318;
+  --danger-soft: #fdecea;
+  --warn-soft: #fff4d6;
+  --shadow: 0 1px 2px rgba(17, 23, 20, 0.06), 0 6px 20px rgba(17, 23, 20, 0.08);
+  --font-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1210; --surface: #181d1a; --sunken: #121614; --ink: #f2f5f1; --ink-2: #c2c8c1; --muted: #949b94;
+    --line: #2a312c; --line-2: #414a43; --accent: #43b987; --on-accent: #06140d; --accent-soft: #17302a;
+    --home: #3987e5; --away: #d95926; --ok-text: #4cc46f; --danger-text: #ff9a8f; --danger-soft: #3a1c19; --warn-soft: #3a3115;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.45);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1210; --surface: #181d1a; --sunken: #121614; --ink: #f2f5f1; --ink-2: #c2c8c1; --muted: #949b94;
+  --line: #2a312c; --line-2: #414a43; --accent: #43b987; --on-accent: #06140d; --accent-soft: #17302a;
+  --home: #3987e5; --away: #d95926; --ok-text: #4cc46f; --danger-text: #ff9a8f; --danger-soft: #3a1c19; --warn-soft: #3a3115;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.45);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+/* the public page stands alone, without the frame Claude wraps around the tracker, so the basics are set here too */
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 14px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+button, input, select, textarea { font: inherit; color: inherit; }
+h1, h2, h3, p { margin: 0; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 16px; padding-block: 18px 56px; display: flex; flex-direction: column; gap: 18px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+/* ---------- masthead ---------- */
+.mast { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+.brand { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.brand h1 { font-family: var(--font-display); font-weight: 700; font-size: 30px; line-height: 1; letter-spacing: 0.01em; text-transform: uppercase; }
+.brand .season { font-family: var(--font-display); font-weight: 500; font-size: 18px; color: var(--muted); letter-spacing: 0.04em; }
+.sync { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); }
+.sync svg { width: 14px; height: 14px; flex: none; }
+.sync.ok { color: var(--ok-text); }
+.sync.bad { color: var(--danger-text); }
+
+.tabs { display: flex; gap: 2px 22px; flex-wrap: wrap; border-bottom: 1px solid var(--line-2); }
+.tab { appearance: none; background: none; border: 0; padding: 8px 0 9px; margin-bottom: -1px; cursor: pointer; font-family: var(--font-display); font-weight: 600; font-size: 17px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); border-bottom: 3px solid transparent; }
+.tab:hover { color: var(--ink); }
+.tab.on { color: var(--ink); border-bottom-color: var(--ink); }
+
+/* ---------- notices ---------- */
+.note { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; padding: 10px 12px; border-radius: 8px; background: var(--sunken); color: var(--ink-2); font-size: 13.5px; }
+.note > span { flex: 1 1 240px; min-width: 0; }
+.note.warn { background: var(--warn-soft); color: var(--ink); }
+.note.bad { background: var(--danger-soft); color: var(--ink); }
+.note svg { width: 16px; height: 16px; flex: none; margin-top: 2px; }
+.empty { padding: 28px 16px; text-align: center; color: var(--ink-2); border: 1px dashed var(--line-2); border-radius: 10px; }
+.empty strong { display: block; font-family: var(--font-display); font-size: 20px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; color: var(--ink); margin-bottom: 4px; }
+
+/* ---------- controls ---------- */
+.btn { appearance: none; cursor: pointer; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink); border-radius: 7px; padding: 6px 12px; font-weight: 500; line-height: 1.3; }
+.btn:hover { border-color: var(--ink-2); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.07); }
+.btn.quiet { border-color: transparent; background: none; color: var(--ink-2); padding-inline: 6px; }
+.btn.quiet:hover { color: var(--ink); text-decoration: underline; }
+.btn.danger { color: var(--danger-text); }
+.btn.big { padding: 10px 20px; font-size: 15px; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.label { display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+.field { min-width: 0; }
+.input, select.input, textarea.input { width: 100%; border: 1px solid var(--line-2); background: var(--surface); border-radius: 7px; padding: 6px 9px; min-height: 34px; }
+textarea.input { min-height: 110px; resize: vertical; }
+.input::placeholder { color: var(--muted); }
+.seg { display: flex; flex-wrap: wrap; gap: 4px; }
+.seg-btn { appearance: none; cursor: pointer; border: 1px solid var(--line-2); background: var(--surface); border-radius: 7px; padding: 6px 11px; min-height: 34px; display: inline-flex; align-items: center; gap: 6px; font-weight: 500; }
+.seg-btn:hover { border-color: var(--ink-2); }
+.seg-btn.on { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.seg-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+.dot.home { background: var(--home); }
+.dot.away { background: var(--away); }
+.dot.hollow { background: transparent; box-shadow: inset 0 0 0 2px var(--muted); }
+.dot.solid { background: var(--muted); }
+.dot.soft { background: color-mix(in srgb, var(--home) 24%, transparent); box-shadow: inset 0 0 0 1.5px var(--home); }
+.row { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; }
+.row > .grow { flex: 1 1 180px; min-width: 0; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; justify-content: space-between; }
+
+/* player picker */
+.pick { position: relative; }
+.pick .input { padding-right: 30px; }
+.pick-clear { position: absolute; right: 4px; top: 4px; width: 26px; height: 26px; border: 0; background: none; color: var(--muted); cursor: pointer; border-radius: 5px; font-size: 16px; line-height: 1; }
+.pick-clear:hover { color: var(--ink); background: var(--sunken); }
+.pick-list { position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 4px); max-height: 260px; overflow-y: auto; margin: 0; padding: 4px; list-style: none; background: var(--surface); border: 1px solid var(--line-2); border-radius: 8px; box-shadow: var(--shadow); }
+.pick-opt { padding: 6px 8px; border-radius: 5px; cursor: pointer; display: flex; gap: 8px; align-items: baseline; }
+.pick-opt .num { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 1.6em; text-align: right; }
+.pick-opt.hi { background: var(--accent-soft); }
+.pick-opt.add { color: var(--ink); font-weight: 500; border-top: 1px solid var(--line); border-radius: 0 0 5px 5px; margin-top: 2px; }
+.pick-none { padding: 8px; color: var(--muted); }
+
+/* ---------- cards & headings ---------- */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; min-width: 0; }
+.h2 { font-family: var(--font-display); font-weight: 600; font-size: 20px; letter-spacing: 0.04em; text-transform: uppercase; line-height: 1.1; text-wrap: balance; }
+.sub { color: var(--ink-2); font-size: 13.5px; }
+.stack { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.stack.tight { gap: 8px; }
+.prose { max-width: 68ch; display: flex; flex-direction: column; gap: 10px; color: var(--ink-2); }
+.prose strong { color: var(--ink); font-weight: 600; }
+.deflist { display: grid; grid-template-columns: minmax(110px, max-content) minmax(0, 1fr); gap: 6px 16px; margin: 0; max-width: 78ch; }
+.deflist dt { font-weight: 600; }
+.deflist dd { margin: 0; color: var(--ink-2); }
+@media (max-width: 520px) { .deflist { grid-template-columns: minmax(0, 1fr); gap: 2px; } .deflist dd { margin-bottom: 8px; } }
+
+/* ---------- fixtures ---------- */
+.summary { display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: 13.5px; color: var(--ink-2); }
+.summary b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.day { display: flex; flex-direction: column; }
+.day-h { font-family: var(--font-display); font-weight: 600; font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding: 14px 0 6px; display: flex; align-items: center; gap: 10px; }
+.day-h .today { background: var(--accent); color: var(--on-accent); border-radius: 4px; padding: 1px 7px; font-size: 13px; }
+.fx { display: grid; grid-template-columns: 74px minmax(0, 1fr) 64px minmax(0, 1fr) minmax(110px, auto) 70px; align-items: center; gap: 8px 12px; padding: 9px 12px; border-top: 1px solid var(--line); background: var(--surface); cursor: pointer; text-align: left; width: 100%; border-left: 0; border-right: 0; border-bottom: 0; }
+.day .fx:first-of-type { border-top-left-radius: 10px; border-top-right-radius: 10px; }
+.day .fx:last-of-type { border-bottom-left-radius: 10px; border-bottom-right-radius: 10px; border-bottom: 1px solid var(--line); }
+.fx:hover { background: var(--accent-soft); }
+.fx .ko { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 13px; }
+.fx .tm { font-weight: 600; overflow-wrap: anywhere; }
+.fx .tm.h { text-align: right; }
+.fx .sc { font-family: var(--font-display); font-weight: 700; font-size: 20px; text-align: center; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+.fx .sc.v { font-weight: 500; font-size: 15px; color: var(--muted); }
+.fx .stt { font-size: 12.5px; color: var(--ink-2); display: inline-flex; gap: 5px; align-items: center; }
+.fx .stt svg { width: 13px; height: 13px; color: var(--ok-text); }
+.fx .go { justify-self: end; font-weight: 600; font-size: 13px; color: var(--accent); }
+@media (max-width: 720px) {
+  .fx { grid-template-columns: minmax(0, 1fr) 54px minmax(0, 1fr); row-gap: 4px; }
+  .fx .ko { grid-column: 1 / 3; grid-row: 2; }
+  .fx .stt { grid-column: 3; grid-row: 2; justify-self: end; }
+  .fx .go { display: none; }
+}
+
+/* ---------- match screen ---------- */
+.back { align-self: flex-start; }
+.board { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 4px 18px; align-items: center; }
+.board .side { font-family: var(--font-display); font-weight: 600; font-size: clamp(20px, 4.4vw, 34px); line-height: 1.02; text-transform: uppercase; letter-spacing: 0.01em; display: flex; align-items: center; gap: 10px; overflow-wrap: anywhere; min-width: 0; }
+.board .side.h { justify-content: flex-end; text-align: right; }
+.board .score { font-family: var(--font-display); font-weight: 700; font-size: clamp(40px, 9vw, 68px); line-height: 0.95; letter-spacing: 0.02em; white-space: nowrap; }
+.board .xgl { font-variant-numeric: tabular-nums; color: var(--ink-2); font-size: 13.5px; }
+.board .xgl.h { text-align: right; }
+.board .mid { text-align: center; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; justify-content: center; color: var(--ink-2); font-size: 13px; }
+.keepers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; }
+@media (max-width: 560px) { .keepers { grid-template-columns: minmax(0, 1fr); } }
+.tag-grid { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 880px) { .tag-grid { grid-template-columns: minmax(0, 1fr); } }
+.step { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.step .hint { color: var(--muted); font-size: 12.5px; }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; }
+.form-grid .wide { grid-column: 1 / -1; }
+@media (max-width: 420px) { .form-grid { grid-template-columns: minmax(0, 1fr); } }
+.readout { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; border-top: 1px solid var(--line); padding-top: 14px; }
+.readout .xg { display: flex; align-items: baseline; gap: 8px 16px; flex-wrap: wrap; }
+.readout .figure { font-family: var(--font-display); font-weight: 700; font-size: 34px; line-height: 1; }
+.readout .unit { font-size: 11px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+.errs { margin: 0; padding: 8px 12px 8px 28px; border-radius: 8px; background: var(--danger-soft); color: var(--ink); font-size: 13.5px; }
+.flash { color: var(--ok-text); font-size: 13.5px; display: inline-flex; gap: 6px; align-items: center; }
+.flash svg { width: 14px; height: 14px; }
+
+/* pitch and goal drawings */
+.viz { position: relative; width: 100%; max-width: 560px; margin-inline: auto; }
+.viz svg { display: block; width: 100%; height: auto; touch-action: manipulation; }
+.viz.pickable svg { cursor: crosshair; }
+.turf { fill: var(--surface); }
+.pl { fill: none; stroke: var(--line-2); stroke-width: 1.4px; vector-effect: non-scaling-stroke; }
+.pl-dot { fill: var(--line-2); }
+.frame { fill: none; stroke: var(--ink); stroke-width: 4px; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
+.net { fill: none; stroke: var(--line); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.ground { fill: none; stroke: var(--line-2); stroke-width: 1.4px; vector-effect: non-scaling-stroke; }
+.mk-ring { fill: var(--surface); }
+.mk-dot { fill: var(--home); fill-opacity: 0.24; stroke: var(--home); stroke-width: 1.6px; vector-effect: non-scaling-stroke; }
+.mk.away .mk-dot { fill: var(--away); stroke: var(--away); }
+.mk.goal .mk-dot { fill-opacity: 1; stroke: none; }
+.mk-hit { fill: transparent; stroke: none; cursor: default; outline: none; }
+.viz.linked .mk-hit { cursor: pointer; }
+.mk:hover .mk-dot, .mk.focus .mk-dot { fill-opacity: 0.55; }
+.mk.goal:hover .mk-dot, .mk.goal.focus .mk-dot { fill-opacity: 0.8; }
+.mk.focus .mk-ring, .mk.active .mk-ring { fill: var(--ink); }
+.draft-ring { fill: none; stroke: var(--ink); stroke-width: 2.4px; vector-effect: non-scaling-stroke; }
+.draft-dot { fill: var(--ink); }
+.tip { position: absolute; z-index: 20; pointer-events: none; min-width: 130px; max-width: 220px; padding: 7px 10px; border-radius: 8px; background: var(--ink); color: var(--bg); font-size: 12.5px; line-height: 1.35; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 1px; }
+.tip strong { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.tip span { opacity: 0.85; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; justify-content: center; font-size: 12.5px; color: var(--ink-2); margin-top: 8px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+/* ---------- match timeline: the xG worm ---------- */
+.worm { position: relative; width: 100%; }
+.worm svg { display: block; width: 100%; touch-action: pan-y; cursor: crosshair; outline: none; }
+.worm svg:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+.wg { fill: none; stroke: var(--line); stroke-width: 1px; shape-rendering: crispEdges; }
+.wg.base, .wg.ht { stroke: var(--line-2); }
+.wt { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.wl { fill: none; stroke-width: 2px; stroke-linejoin: round; stroke-linecap: round; }
+.wl.home { stroke: var(--home); }
+.wl.away { stroke: var(--away); }
+.wm { stroke: var(--surface); stroke-width: 2px; paint-order: stroke; }
+.wm.home { fill: var(--home); }
+.wm.away { fill: var(--away); }
+.wm-back { fill: var(--surface); }
+.wm-open { fill: var(--surface); stroke-width: 2px; }
+.wm-open.home { stroke: var(--home); }
+.wm-open.away { stroke: var(--away); }
+.wn { fill: var(--ink-2); font-size: 11.5px; font-weight: 500; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round; paint-order: stroke; }
+.we { fill: var(--ink-2); font-size: 12px; }
+.we .v { fill: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.wc { fill: none; stroke: var(--ink-2); stroke-width: 1px; shape-rendering: crispEdges; }
+.tip.rows { gap: 3px; min-width: 130px; }
+.tip .tr { display: flex; align-items: center; gap: 7px; opacity: 1; }
+.tip .tr b { font-weight: 600; font-variant-numeric: tabular-nums; min-width: 2.5em; }
+.tip .ev { border-top: 1px solid color-mix(in srgb, var(--bg) 28%, transparent); padding-top: 4px; margin-top: 2px; }
+.tip .ev + .ev { border-top: 0; padding-top: 0; margin-top: 0; }
+.key { display: inline-block; flex: none; width: 16px; height: 0; border-top: 2px solid var(--home); border-radius: 1px; }
+.key.away { border-top-color: var(--away); }
+.legend.start { justify-content: flex-start; margin-top: 0; }
+.tchip { display: inline-flex; gap: 6px; align-items: center; }
+.tbl tr.goal td.what { font-weight: 600; }
+.tbl .faint { color: var(--muted); }
+/* the shot-by-shot list folds up on a phone: team, outcome and score move under the player's name */
+.tl .tl-dot, .tl .tl-og, .tl .tl-sub { display: none; }
+@media (max-width: 640px) {
+  .tl .c-team, .tl .c-what, .tl .c-score { display: none; }
+  .tl .c-run { position: absolute; width: 1px; height: 1px; padding: 0; border: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .tl td.who { white-space: normal; width: 100%; padding-left: 26px; text-indent: -16px; overflow-wrap: anywhere; }
+  .tl th:nth-child(3) { padding-left: 26px; }
+  .tl .tl-dot { display: inline-block; margin-right: 6px; }
+  .tl .tl-og { display: inline; }
+  .tl .tl-sub { display: block; text-indent: 0; font-weight: 400; color: var(--ink-2); }
+  .tl tr.goal .tl-sub { font-weight: 600; color: var(--ink); }
+}
+
+/* ---------- tables ---------- */
+.tbl-wrap { position: relative; overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.tbl-wrap.tall { max-height: 452px; overflow-y: auto; }
+.tbl-wrap.tall thead th { position: sticky; top: 0; z-index: 1; box-shadow: 0 1px 0 var(--line); }
+table.tbl { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+.tbl th, .tbl td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.tbl tbody tr:last-child td { border-bottom: 0; }
+.tbl th { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); background: var(--surface); vertical-align: bottom; }
+.tbl th.num, .tbl td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.tbl td.strong { font-weight: 600; }
+.tbl td.soft { white-space: normal; min-width: 150px; }
+.tbl .sortb { appearance: none; background: none; border: 0; padding: 0; cursor: pointer; font: inherit; color: inherit; letter-spacing: inherit; text-transform: inherit; display: inline-flex; gap: 4px; align-items: center; }
+.tbl .sortb:hover { color: var(--ink); }
+.tbl th[aria-sort="ascending"], .tbl th[aria-sort="descending"] { color: var(--ink); }
+.tbl tbody tr.click { cursor: pointer; }
+.tbl tbody tr.click:hover td { background: var(--accent-soft); }
+.tbl tbody tr.sel td { background: var(--accent-soft); }
+.tbl .acts { display: flex; gap: 2px; justify-content: flex-end; }
+.tbl td .input { min-height: 30px; padding: 3px 7px; }
+.pos { color: var(--ok-text); }
+.neg { color: var(--danger-text); }
+.cmp { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+.cmp td { padding: 5px 8px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.cmp tr:last-child td { border-bottom: 0; }
+.cmp td:first-child { text-align: right; font-weight: 600; width: 34%; }
+.cmp td:nth-child(2) { text-align: center; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; }
+.cmp td:last-child { font-weight: 600; width: 34%; }
+.detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 18px; align-items: start; }
+@media (max-width: 880px) { .detail-grid { grid-template-columns: minmax(0, 1fr); } }
+.kpis { display: flex; flex-wrap: wrap; gap: 8px 26px; }
+.kpi .v { font-family: var(--font-display); font-weight: 700; font-size: 30px; line-height: 1; }
+.kpi .k { font-size: 11px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); margin-top: 3px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.foot { color: var(--muted); font-size: 12.5px; max-width: 80ch; }
+.foot a { color: inherit; }
+.credit { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.credit .foot { flex: 1 1 280px; min-width: 0; }
+.sb { flex: none; display: inline-flex; padding: 7px 10px; border-radius: 8px; background: #ffffff; border: 1px solid var(--line); line-height: 0; }
+.sb img { display: block; height: 20px; width: auto; }
+.prose a { color: var(--accent); }
+@media (prefers-reduced-motion: no-preference) { .btn, .seg-btn, .fx, .tab { transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease; } }
+</style>
+</head>
+<body>
+<div id="app"><div class="wrap"><header class="mast"><div class="brand"><h1>ISL xG Tracker</h1><span class="season">2026-27</span></div></header><div class="empty"><strong>Loading the season</strong>One moment.</div></div></div>
+<noscript><div class="wrap"><div class="empty"><strong>This page needs JavaScript</strong>Turn it on in your browser and reload.</div></div></noscript>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script>
+if (!window.React || !window.ReactDOM) document.querySelector("#app .empty").innerHTML = "<strong>The page could not finish loading</strong>Check your connection and reload.";
+</script>
+<script>
+window.__READER__ = {"v":1,"generated":"2026-10-09T14:50:30.663Z","teams":{"bfc":{"name":"Bengaluru FC","short":"BFC","players":[]},"cbfc":{"name":"Churchill Brothers FC","short":"CB","players":[]},"cfc":{"name":"Chennaiyin FC","short":"CFC","players":[]},"ebfc":{"name":"East Bengal FC","short":"EB","players":[]},"fcg":{"name":"FC Goa","short":"FCG","players":[]},"ikfc":{"name":"Inter Kashi FC","short":"IK","players":[]},"kbfc":{"name":"Kerala Blasters FC","short":"KBFC","players":[]},"mbsg":{"name":"Mohun Bagan Super Giant","short":"MBSG","players":[]},"mcfc":{"name":"Mumbai City FC","short":"MCFC","players":[]},"neufc":{"name":"NorthEast United FC","short":"NEU","players":[]},"ofc":{"name":"Odisha FC","short":"OFC","players":[]},"pfc":{"name":"Punjab FC","short":"PFC","players":[]},"scd":{"name":"Sporting Club Delhi","short":"SCD","players":[]}},"matches":{}};
+</script>
+<script>
+"use strict";
+/* The numbers behind the model. Fitted on StatsBomb Open Data, tuned to ISL 2021-22. */
+const MODEL = {"version": "2026-10-09", "xg": {"b": {"const": -6.402248, "dist": -0.235666, "log_dist": 2.515817, "angle": 2.617019, "head": -0.430032, "other_body": -0.775795, "head_dist": -0.059847, "is_fk": -1.185621, "fk_dist": 0.087061, "one_on_one": 0.616181, "open_goal": 1.388238, "a_cross": -0.229773, "a_through": 1.008587, "a_corner": -0.745249, "a_freekick": -0.234179}, "lo": 3.0, "cap": 35.0, "islA": -0.29162, "islB": 0.777577, "pen": 0.76}, "ps": {"g": {"const": 2.188921, "xg_lg": 0.865018, "ay2": 0.078002, "ay4": -0.012621, "gz": -0.815903, "gz2": 0.4592, "dc": -0.034677, "logd": -0.796762, "is_pen": -1.030174, "one_on_one": -0.572396, "open_goal": 2.032212, "ay2_logd": 0.121898}, "islA": 0.144392, "islB": 0.781716, "goalH": 2.67}, "n": {"pool": 45827, "isl": 3053, "psPool": 15512, "psIsl": 952}};
+
+/* The public page, ready for its data. Only the private tracker carries it. */
+const READER_TEMPLATE = null;
+
+/* ============================================================
+   THE MODEL
+   Pitch coordinates follow the StatsBomb convention: the attacking
+   goal is at x = 120, the pitch is 80 wide, goal centre at y = 40,
+   posts at y = 36 and 44. One unit is one yard inside the box.
+   ============================================================ */
+const Model = (() => {
+  const PEN_SPOT = { x: 108, y: 40 };
+  const sigmoid = (v) => 1 / (1 + Math.exp(-v));
+  const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
+
+  /* distance to the centre of the goal (yards) and the angle the goal mouth covers (radians) */
+  function geom(x, y) {
+    const dx = Math.max(120 - x, 0);
+    const dist = Math.hypot(dx, y - 40);
+    const angle = Math.abs(Math.atan2(44 - y, dx) - Math.atan2(36 - y, dx));
+    return { dist, angle };
+  }
+
+  /* the inputs the model actually uses for a shot: penalties and direct free kicks ignore the open-play details */
+  function norm(s) {
+    const sit = s.sit || "open";
+    if (sit === "pen") return { x: PEN_SPOT.x, y: PEN_SPOT.y, head: 0, other: 0, fk: 0, pen: 1, oo: 0, og: 0, ast: "none" };
+    if (sit === "fk") return { x: s.x, y: s.y, head: 0, other: 0, fk: 1, pen: 0, oo: 0, og: 0, ast: "none" };
+    return {
+      x: s.x, y: s.y,
+      head: s.body === "head" ? 1 : 0,
+      other: s.body === "other" ? 1 : 0,
+      fk: 0, pen: 0,
+      oo: s.oo ? 1 : 0,
+      og: s.og ? 1 : 0,
+      ast: s.ast || "none",
+    };
+  }
+
+  /* chance quality on the model's raw scale, before the ISL adjustment */
+  function xgLin(s) {
+    const m = MODEL.xg, b = m.b, n = norm(s);
+    if (n.pen) return Math.log(m.pen / (1 - m.pen));
+    const g = geom(n.x, n.y);
+    const dc = clamp(g.dist, m.lo, m.cap);
+    return b.const + b.dist * dc + b.log_dist * Math.log(dc) + b.angle * g.angle
+      + b.head * n.head + b.other_body * n.other + b.head_dist * n.head * dc
+      + b.is_fk * n.fk + b.fk_dist * n.fk * dc
+      + b.one_on_one * n.oo + b.open_goal * n.og
+      + (n.ast === "cross" ? b.a_cross : 0) + (n.ast === "through" ? b.a_through : 0)
+      + (n.ast === "corner" ? b.a_corner : 0) + (n.ast === "fk" ? b.a_freekick : 0);
+  }
+
+  /* expected goals: the chance of scoring before the shot is struck */
+  function xg(s) {
+    const m = MODEL.xg;
+    if (s.sit === "pen") return m.pen;
+    return sigmoid(m.islA + m.islB * xgLin(s));
+  }
+
+  const onTarget = (s) => s.out === "goal" || s.out === "saved";
+
+  /* expected goals on target: the chance of scoring given where the shot was placed.
+     0 for shots that miss or are blocked, null if an on-target shot has no placement recorded. */
+  function xgot(s) {
+    if (!onTarget(s)) return 0;
+    if (s.gy == null || s.gz == null) return null;
+    const m = MODEL.ps, g = m.g, n = norm(s);
+    const dc = clamp(geom(n.x, n.y).dist, 3, 35);
+    const ay = Math.min(Math.abs(s.gy), 4);
+    const gz = clamp(s.gz, 0, m.goalH);
+    const lin = g.const + g.xg_lg * xgLin(s) + g.ay2 * ay * ay + g.ay4 * Math.pow(ay, 4) + g.gz * gz + g.gz2 * gz * gz
+      + g.dc * dc + g.logd * Math.log(dc) + g.is_pen * n.pen + g.one_on_one * n.oo + g.open_goal * n.og
+      + g.ay2_logd * ay * ay * Math.log(dc);
+    return sigmoid(m.islA + m.islB * lin);
+  }
+
+  const inBox = (x, y) => x >= 102 && y >= 18 && y <= 62;
+
+  return { PEN_SPOT, GOAL_H: MODEL.ps.goalH, geom, xgLin, xg, xgot, onTarget, inBox, clamp };
+})();
+
+/* ============================================================
+   SEASON TOTALS
+   Everything on the Players, Keepers, Teams and Method tabs is
+   worked out here from the tagged shots. Nothing is stored
+   pre-calculated, so changing a tag updates every number.
+   ============================================================ */
+const Stats = (() => {
+  const other = (side) => (side === "h" ? "a" : "h");
+
+  /* the real scoreline of one match: goals from tagged shots plus own goals */
+  function score(match) {
+    const sc = { h: 0, a: 0 };
+    for (const s of match.shots || []) if (s.out === "goal") sc[s.t] += 1;
+    for (const o of match.og || []) sc[o.t] += 1;
+    return sc;
+  }
+
+  /* shots, on target, goals and xG for each side of one match */
+  function matchSummary(match) {
+    const mk = () => ({ sh: 0, sot: 0, g: 0, xg: 0, xgot: 0, og: 0 });
+    const out = { h: mk(), a: mk() };
+    for (const s of match.shots || []) {
+      const t = out[s.t];
+      t.sh += 1;
+      if (Model.onTarget(s)) t.sot += 1;
+      if (s.out === "goal") t.g += 1;
+      t.xg += Model.xg(s);
+      t.xgot += Model.xgot(s) || 0;
+    }
+    for (const o of match.og || []) out[o.t].og += 1;
+    return out;
+  }
+
+  /* one match in the order it happened: every shot and own goal, with each side's running xG and the score after it.
+     A shot or own goal saved without a minute cannot be placed in time, so those come back separately.
+     steps holds, for each side, the running xG after every minute in which that side had a shot. */
+  function timeline(match) {
+    const rows = [];
+    (match.shots || []).forEach((s, i) => rows.push({ kind: "shot", id: s.id, t: s.t, min: s.min == null ? null : s.min, order: i, xg: Model.xg(s), goal: s.out === "goal", shot: s }));
+    (match.og || []).forEach((o, i) => rows.push({ kind: "og", id: o.id, t: o.t, min: o.min == null ? null : o.min, order: i, xg: 0, goal: true, shot: null }));
+    const rank = (r) => (r.kind === "shot" ? 0 : 1);
+    const timed = rows.filter((r) => r.min != null).sort((a, b) => a.min - b.min || rank(a) - rank(b) || a.order - b.order);
+    const untimed = rows.filter((r) => r.min == null);
+    const cum = { h: 0, a: 0 }, sc = { h: 0, a: 0 }, steps = { h: [], a: [] };
+    for (const r of timed) {
+      cum[r.t] += r.xg;
+      if (r.goal) sc[r.t] += 1;
+      r.cum = { h: cum.h, a: cum.a };
+      r.score = { h: sc.h, a: sc.a };
+      if (r.kind === "shot") {
+        const st = steps[r.t], last = st[st.length - 1];
+        if (last && last.min === r.min) last.v = cum[r.t]; else st.push({ min: r.min, v: cum[r.t] });
+      }
+    }
+    const unplaced = { h: 0, a: 0 };
+    for (const r of untimed) unplaced[r.t] += r.xg;
+    return { timed, untimed, steps, placed: { h: cum.h, a: cum.a }, unplaced, last: timed.length ? timed[timed.length - 1].min : null };
+  }
+  /* each side's running xG at the end of a given minute */
+  function timelineAt(tl, minute) {
+    const at = (st) => { let v = 0; for (const p of st) { if (p.min <= minute) v = p.v; else break; } return v; };
+    return { h: at(tl.steps.h), a: at(tl.steps.a) };
+  }
+
+  function aggregate(teams, matches) {
+    const rosterTeam = {};
+    for (const tid of Object.keys(teams)) for (const p of teams[tid].players || []) rosterTeam[p.id] = tid;
+
+    const P = {}, K = {}, T = {};
+    const pl = (pid, tid) => (P[pid] || (P[pid] = {
+      team: rosterTeam[pid] || tid, sh: 0, sot: 0, g: 0, xg: 0, npxg: 0, npsh: 0, pens: 0, pg: 0, xgot: 0, kp: 0, a: 0, xa: 0, _m: new Set(),
+    }));
+    const kp = (kid, tid) => (K[kid] || (K[kid] = { team: rosterTeam[kid] || tid, sotf: 0, ga: 0, xgotf: 0, _m: new Set() }));
+    const tm = (tid) => (T[tid] || (T[tid] = { mp: 0, sh: 0, sot: 0, g: 0, xg: 0, xgot: 0, sha: 0, sota: 0, ga: 0, xga: 0, ogf: 0, oga: 0 }));
+
+    const mk = () => ({ n: 0, g: 0, xg: 0 });
+    const check = { all: mk(), np: mk(), inbox: mk(), outbox: mk(), head: mk(), pen: mk(), ot: mk() };
+    const totals = { matches: 0, shots: 0, goals: 0, xg: 0, unassigned: 0, noplace: 0 };
+
+    for (const mid of Object.keys(matches)) {
+      const mt = matches[mid];
+      const shots = mt.shots || [], ogs = mt.og || [];
+      if (!shots.length && !ogs.length) continue;
+      totals.matches += 1;
+      const side = { h: mt.home, a: mt.away };
+      tm(side.h).mp += 1;
+      tm(side.a).mp += 1;
+      for (const o of ogs) {
+        tm(side[o.t]).ogf += 1;
+        tm(side[other(o.t)]).oga += 1;
+      }
+      for (const s of shots) {
+        const tid = side[s.t], opp = side[other(s.t)];
+        const xg = Model.xg(s);
+        let xgot = Model.xgot(s);
+        const on = Model.onTarget(s), goal = s.out === "goal" ? 1 : 0, pen = s.sit === "pen";
+        if (xgot == null) { totals.noplace += 1; xgot = 0; }
+
+        const p = pl(s.p, tid);
+        p._m.add(mid);
+        p.sh += 1; p.sot += on ? 1 : 0; p.g += goal; p.xg += xg; p.xgot += xgot;
+        if (pen) { p.pens += 1; p.pg += goal; } else { p.npxg += xg; p.npsh += 1; }
+
+        if ((s.sit || "open") === "open" && s.ap) {
+          const a = pl(s.ap, tid);
+          a._m.add(mid);
+          a.kp += 1; a.a += goal; a.xa += xg;
+        }
+
+        if (on) {
+          if (s.k) {
+            const k = kp(s.k, opp);
+            k._m.add(mid);
+            k.sotf += 1; k.ga += goal; k.xgotf += xgot;
+          } else {
+            totals.unassigned += 1;
+          }
+        }
+
+        const t = tm(tid), o = tm(opp);
+        t.sh += 1; t.sot += on ? 1 : 0; t.g += goal; t.xg += xg; t.xgot += xgot;
+        o.sha += 1; o.sota += on ? 1 : 0; o.ga += goal; o.xga += xg;
+
+        totals.shots += 1; totals.goals += goal; totals.xg += xg;
+
+        const keys = pen ? ["all", "pen"] : ["all", "np"];
+        if (!pen) {
+          keys.push(Model.inBox(s.x, s.y) ? "inbox" : "outbox");
+          if ((s.sit || "open") === "open" && s.body === "head") keys.push("head");
+        }
+        for (const k of keys) { check[k].n += 1; check[k].g += goal; check[k].xg += xg; }
+        if (on && s.gy != null && s.gz != null) { check.ot.n += 1; check.ot.g += goal; check.ot.xg += xgot; }
+      }
+    }
+    for (const d of Object.values(P)) { d.m = d._m.size; delete d._m; }
+    for (const d of Object.values(K)) { d.m = d._m.size; delete d._m; }
+    return { players: P, keepers: K, teams: T, check, totals };
+  }
+
+  return { score, matchSummary, timeline, timelineAt, aggregate };
+})();
+
+/* ============================================================
+   THE PUBLIC PAGE
+   The tracker can save a read-only copy of itself: one web page with every finished match baked in,
+   which can be hosted anywhere and needs no sign-in. That copy runs this same code. The only difference
+   is that it starts with window.__READER__ set to the saved data, which switches off everything that
+   edits, hides the tagging screens and the Squads tab, and counts finished matches only.
+   ============================================================ */
+const READER = (typeof window !== "undefined" && window.__READER__ && typeof window.__READER__ === "object") ? window.__READER__ : null;
+
+const Reader = (() => {
+  /* where the data goes in the page template. Written in two halves so this file never contains the marker itself. */
+  const MARK = "/*__READER" + "_DATA__*/null";
+
+  /* what goes public: finished matches only, every club's name, and only the players who appear in those matches */
+  function data(teams, matches, now) {
+    const outM = {}, used = new Set();
+    for (const id of Object.keys(matches)) {
+      const m = matches[id];
+      if (!m || !m.done) continue;
+      const gk = m.gk || {};
+      outM[id] = {
+        date: m.date, ko: m.ko, home: m.home, away: m.away, venue: m.venue, done: true, gk: { h: gk.h || null, a: gk.a || null },
+        shots: (m.shots || []).map((s) => Object.assign({}, s)), og: (m.og || []).map((o) => Object.assign({}, o)),
+      };
+      if (gk.h) used.add(gk.h);
+      if (gk.a) used.add(gk.a);
+      for (const s of m.shots || []) { used.add(s.p); if (s.ap) used.add(s.ap); if (s.k) used.add(s.k); }
+    }
+    const outT = {};
+    for (const id of Object.keys(teams)) {
+      const t = teams[id];
+      outT[id] = { name: t.name, short: t.short, players: (t.players || []).filter((p) => used.has(p.id)).map((p) => ({ id: p.id, name: p.name, num: p.num })) };
+    }
+    return { v: 1, generated: now, teams: outT, matches: outM };
+  }
+
+  /* finished matches, and matches that have shots but are not marked finished (those stay private) */
+  function counts(matches) {
+    let done = 0, open = 0;
+    for (const m of Object.values(matches)) {
+      if (m.done) done += 1;
+      else if ((m.shots || []).length || (m.og || []).length) open += 1;
+    }
+    return { done, open };
+  }
+
+  /* drop the data into the page template. Every "<" is written as an escape, so nothing in a name can end the script early. */
+  function page(template, d) {
+    if (typeof template !== "string") return null;
+    const at = template.indexOf(MARK);
+    if (at < 0 || template.indexOf(MARK, at + MARK.length) >= 0) return null;
+    const json = JSON.stringify(d).replace(/</g, "\\u003c").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
+    return template.slice(0, at) + json + template.slice(at + MARK.length);
+  }
+
+  /* a GitHub repository written as owner/name, and the two addresses that follow from it.
+     branch is the branch GitHub serves the page from: main unless the setting says otherwise. */
+  function site(repo, branch) {
+    const m = /^\s*(?:https?:\/\/github\.com\/)?([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}))\/([A-Za-z0-9._-]{1,100}?)(?:\.git)?\/?\s*$/.exec(String(repo || ""));
+    if (!m) return null;
+    const owner = m[1], name = m[2];
+    const home = name.toLowerCase() === owner.toLowerCase() + ".github.io";
+    const br = typeof branch === "string" && /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(branch) ? branch : "main";
+    return {
+      repo: owner + "/" + name, branch: br,
+      url: "https://" + owner.toLowerCase() + ".github.io/" + (home ? "" : name + "/"),
+      upload: "https://github.com/" + owner + "/" + name + "/upload/" + br,
+    };
+  }
+
+  return { MARK, data, counts, page, site };
+})();
+
+/* ============================================================
+   THE STATSBOMB LOGO
+   StatsBomb ask anyone who publishes work based on their open data to name them as the source and show their logo.
+   This is their own logo file from github.com/statsbomb/open-data (img/SB - Icon Lockup - Colour positive.png),
+   made smaller and set on white, otherwise unchanged. It is the version for light backgrounds, so the page
+   always shows it on a white plate, in the dark theme too.
+   ============================================================ */
+const SB_LOGO = { w: 374, h: 60, src: "data:image/png;base64,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" };
+
+/* ============================================================
+   DATA
+   Clubs live in  teams/<club id>   { name, short, players: [{ id, name, num }] }
+   Matches live in matches/<match id>
+     { date, ko, home, away, venue, done, gk: { h, a }, shots: [...], og: [...] }
+   A shot is
+     { id, t: "h"|"a", p, min, x, y, out, body, sit, ast, ap, oo, og, gy, gz, k }
+   The page keeps a working copy in memory, shows changes at once and
+   writes each changed document back one write at a time.
+   Every document carries rev, the time of its last change in milliseconds.
+   A copy with a lower rev than the one on screen is treated as out of date,
+   so anything that edits a document from outside this page must set rev
+   to the current time as well.
+   One more document, settings/site { repo, branch }, remembers which GitHub repository
+   (and which branch of it) hosts the public page, so the tracker can link straight to it.
+   On the public page itself (READER set) nothing here touches storage: the saved
+   data is loaded once and every change is switched off.
+   ============================================================ */
+const Store = (() => {
+  const clone = (o) => JSON.parse(JSON.stringify(o));
+  /* tidy whatever is in storage into the exact shapes the page expects; anything unusable is left out */
+  const str = (v, max) => (typeof v === "string" ? v.slice(0, max || 200) : "");
+  const numOrNull = (v) => (typeof v === "number" && isFinite(v) ? v : null);
+  const oneOf = (v, allowed, fallback) => (allowed.indexOf(v) >= 0 ? v : fallback);
+  const idOrNull = (v) => (typeof v === "string" && v ? v : null);
+  const uid = (prefix) => prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+  const st = {
+    phase: "loading",          // loading | ready | nodb
+    teams: {}, matches: {}, settings: {},
+    loaded: { teams: false, matches: false },
+    canWrite: null,            // true | false | null (not told)
+    canExport: false,
+    saving: 0,
+    saveError: null,           // { message, denied }
+  };
+  let db = null, downloads = null;
+  const WRITE_WAIT = (window.__waits && window.__waits.write) || 20000;   // ms before a save counts as failed
+  const FIRST_WAIT = (window.__waits && window.__waits.first) || 8000;    // ms to wait for live updates before a one-off read
+  let snap = null;
+  const listeners = new Set();
+  const makeSnap = () => ({
+    phase: st.phase, teams: st.teams, matches: st.matches, canWrite: st.canWrite !== false && st.phase === "ready",
+    canExport: st.canExport, saving: st.saving, saveError: st.saveError,
+    reader: !!READER, generated: READER ? str(READER.generated, 40) : "",
+    site: st.settings.site ? Reader.site(st.settings.site.repo, st.settings.site.branch) : null,
+  });
+  const emit = () => { snap = makeSnap(); listeners.forEach((fn) => fn()); };
+  snap = makeSnap();
+
+  /* ---------- reading ---------- */
+  const rawSeen = { teams: new Map(), matches: new Map() };   // id -> the snapshot's own (frozen) data object
+  const pend = new Map();                                     // "kind/id" -> { dirty, writing, tries }
+  const tomb = new Set();                                     // "kind/id" deleted here, not yet gone from the store
+
+  function applySnapshot(kind, qs) {
+    const next = {}, seen = new Map(), prev = st[kind];
+    for (const d of qs.docs) {
+      const path = kind + "/" + d.id;
+      if (tomb.has(path)) continue;
+      const raw = d.data();
+      if (!raw) continue;
+      seen.set(d.id, raw);
+      const cur = prev[d.id];
+      if (cur && pend.has(path)) next[d.id] = cur;                                  // unsaved edits here win
+      else if (cur && (Number(raw.rev) || 0) < (cur.rev || 0)) next[d.id] = cur;     // an older copy arriving late
+      else if (cur && rawSeen[kind].get(d.id) === raw) next[d.id] = cur;             // unchanged
+      else next[d.id] = normalise(kind, clone(raw));
+    }
+    for (const id of Object.keys(prev)) if (!next[id] && pend.has(kind + "/" + id)) next[id] = prev[id];   // created here, still saving
+    for (const path of [...tomb]) if (path.startsWith(kind + "/") && !seen.has(path.slice(kind.length + 1)) && !pend.has(path)) tomb.delete(path);
+    rawSeen[kind] = seen;
+    st[kind] = next;
+    st.loaded[kind] = true;
+    if (st.loaded.teams && st.loaded.matches) st.phase = "ready";
+    emit();
+  }
+
+  function cleanShot(s) {
+    if (!s || typeof s !== "object" || !idOrNull(s.id) || !idOrNull(s.p)) return null;
+    if (s.t !== "h" && s.t !== "a") return null;
+    const x = numOrNull(s.x), y = numOrNull(s.y), out = oneOf(s.out, ["goal", "saved", "off", "blocked", "post"], null);
+    if (x == null || y == null || !out) return null;
+    return {
+      id: s.id, t: s.t, p: s.p, min: numOrNull(s.min), x, y, out,
+      body: oneOf(s.body, ["foot", "head", "other"], "foot"), sit: oneOf(s.sit, ["open", "fk", "pen"], "open"),
+      ast: oneOf(s.ast, ["none", "pass", "cross", "through", "corner", "fk"], "none"), ap: idOrNull(s.ap),
+      oo: !!s.oo, og: !!s.og, gy: numOrNull(s.gy), gz: numOrNull(s.gz), k: idOrNull(s.k),
+    };
+  }
+  function normalise(kind, d) {
+    const rev = Number(d.rev) || 0;
+    if (kind === "teams") {
+      const name = str(d.name, 60) || "Unnamed club";
+      const players = (Array.isArray(d.players) ? d.players : []).filter((p) => p && idOrNull(p.id))
+        .map((p) => ({ id: p.id, name: str(p.name, 80) || "Unnamed player", num: numOrNull(p.num) }));
+      return { name, short: str(d.short, 6) || name.slice(0, 3).toUpperCase(), players, rev };
+    }
+    const gk = d.gk && typeof d.gk === "object" ? d.gk : {};
+    return {
+      date: str(d.date, 10), ko: str(d.ko, 5), home: str(d.home, 60), away: str(d.away, 60), venue: str(d.venue, 80), done: !!d.done,
+      gk: { h: idOrNull(gk.h), a: idOrNull(gk.a) },
+      shots: (Array.isArray(d.shots) ? d.shots : []).map(cleanShot).filter(Boolean),
+      og: (Array.isArray(d.og) ? d.og : []).filter((o) => o && idOrNull(o.id) && (o.t === "h" || o.t === "a")).map((o) => ({ id: o.id, t: o.t, min: numOrNull(o.min) })),
+      rev,
+    };
+  }
+
+  /* ---------- writing: one write at a time, always the latest copy of a document ---------- */
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  /* never wait forever on storage: after ms, give up with the given error code (or answer null if no code) */
+  const within = (promise, ms, code) => new Promise((resolve, reject) => {
+    const timer = setTimeout(() => (code ? reject({ code }) : resolve(null)), ms);
+    Promise.resolve(promise).then((v) => { clearTimeout(timer); resolve(v); }, (e) => { clearTimeout(timer); reject(e); });
+  });
+  function countSaving() { let n = 0; pend.forEach((p) => { if (p.writing || p.dirty) n += 1; }); st.saving = n; }
+
+  function queue(kind, id) {
+    const path = kind + "/" + id;
+    const p = pend.get(path) || { dirty: false, writing: false, tries: 0, failed: false };
+    p.dirty = true; p.failed = false;
+    pend.set(path, p);
+    countSaving();
+    emit();
+    pump();
+  }
+
+  let pumping = false;
+  async function pump() {
+    if (pumping || !db) return;
+    pumping = true;
+    try {
+      for (;;) {
+        let path = null;
+        for (const [k, p] of pend) { if (p.dirty && !p.failed && !p.writing) { path = k; break; } }
+        if (!path) break;
+        const p = pend.get(path);
+        p.dirty = false; p.writing = true;
+        const cut = path.indexOf("/"), kind = path.slice(0, cut), id = path.slice(cut + 1);
+        const data = st[kind][id];
+        try {
+          if (data === undefined) await within(db.doc(path).delete(), WRITE_WAIT, "unavailable");
+          else await within(db.doc(path).set(clone(data)), WRITE_WAIT, "unavailable");
+          p.writing = false; p.tries = 0;
+          if (!p.dirty) pend.delete(path);
+        } catch (e) {
+          p.writing = false; p.dirty = true;
+          const code = e && e.code;
+          if (code === "unavailable" && p.tries < 1) {
+            p.tries += 1;
+            await sleep(900 + Math.random() * 900);
+          } else {
+            p.failed = true;
+            const refused = code === "invalid_argument" || code === "not_granted" || code === "revoked";
+            if (refused && st.canWrite !== true) {
+              st.canWrite = false;
+              st.saveError = { denied: true, message: "Your last change was not saved. You have view access to this page, so only the owner can add or change data." };
+            } else if (code === "quota_exceeded") {
+              st.saveError = { message: "Your last change was not saved because this page's storage is full." };
+            } else {
+              st.saveError = { message: "Your last change is not saved yet. Check your connection, then press Retry." };
+            }
+          }
+        }
+        countSaving();
+        emit();
+      }
+    } finally { pumping = false; }
+    let anyFailed = false;
+    pend.forEach((q) => { if (q.failed) anyFailed = true; });
+    if (!anyFailed && st.saveError) { st.saveError = null; }
+    countSaving();
+    emit();
+  }
+
+  function retry() {
+    st.saveError = null;
+    pend.forEach((p) => { p.failed = false; p.tries = 0; });
+    countSaving();
+    emit();
+    pump();
+  }
+
+  function put(kind, id, data) {
+    const before = st[kind][id];
+    data.rev = Math.max(Date.now(), ((before && before.rev) || 0) + 1);
+    st[kind] = { ...st[kind], [id]: data };
+    queue(kind, id);
+  }
+  function drop(kind, id) {
+    const next = { ...st[kind] }; delete next[id]; st[kind] = next;
+    tomb.add(kind + "/" + id);
+    queue(kind, id);
+  }
+
+  /* ---------- changes the page can make ---------- */
+  function updateMatch(id, fn) {
+    const cur = st.matches[id];
+    if (!cur) return;
+    const next = clone(cur);
+    fn(next);
+    put("matches", id, next);
+  }
+  function addMatch(fields) {
+    const id = uid("mx");
+    put("matches", id, { date: fields.date, ko: fields.ko || "", home: fields.home, away: fields.away, venue: fields.venue || "", done: false, gk: { h: null, a: null }, shots: [], og: [] });
+    return id;
+  }
+  function deleteMatch(id) { if (st.matches[id]) drop("matches", id); }
+
+  function updateTeam(id, fn) {
+    const cur = st.teams[id];
+    if (!cur) return;
+    const next = clone(cur);
+    fn(next);
+    put("teams", id, next);
+  }
+  function addTeam(name, short) {
+    const clean = String(name).replace(/\s+/g, " ").trim().slice(0, 60);
+    const code = String(short || "").replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 5) || clean.replace(/[^A-Za-z0-9]/g, "").slice(0, 3).toUpperCase() || "CLB";
+    let id = code.toLowerCase();
+    if (st.teams[id]) id = uid("t");
+    put("teams", id, { name: clean, short: code, players: [] });
+    return id;
+  }
+  function addPlayer(teamId, name, num) {
+    const pid = uid(teamId + "_");
+    updateTeam(teamId, (t) => { t.players.push({ id: pid, name: String(name).trim().slice(0, 80), num: num === "" || num == null ? null : Number(num) }); });
+    return pid;
+  }
+
+  /* remember (or forget, with an empty value) the GitHub repository that hosts the public page. Returns false if it does not look like owner/name. */
+  function setSite(repo) {
+    const clean = String(repo || "").trim();
+    if (!clean) { if (st.settings.site) { st.settings = {}; queue("settings", "site"); } return true; }
+    const parsed = Reader.site(clean);
+    if (!parsed) return false;
+    const cur = st.settings.site;   // the branch stays with the repository it was set for
+    put("settings", "site", { repo: parsed.repo, branch: cur && cur.repo === parsed.repo && cur.branch ? cur.branch : "main" });
+    return true;
+  }
+
+  /* how often each player id is used, so a player with tagged shots is never deleted by accident */
+  function usage() {
+    const u = {};
+    const hit = (id) => { if (id) u[id] = (u[id] || 0) + 1; };
+    for (const m of Object.values(st.matches)) {
+      hit(m.gk && m.gk.h); hit(m.gk && m.gk.a);
+      for (const s of m.shots || []) { hit(s.p); hit(s.ap); hit(s.k); }
+    }
+    return u;
+  }
+
+  /* fold one player into another: every shot, assist and save moves across, then the duplicate goes */
+  function mergePlayers(teamId, fromId, toId) {
+    if (!fromId || !toId || fromId === toId) return;
+    for (const [mid, m] of Object.entries(st.matches)) {
+      const touches = (m.gk && (m.gk.h === fromId || m.gk.a === fromId)) || (m.shots || []).some((s) => s.p === fromId || s.ap === fromId || s.k === fromId);
+      if (!touches) continue;
+      updateMatch(mid, (d) => {
+        if (d.gk.h === fromId) d.gk.h = toId;
+        if (d.gk.a === fromId) d.gk.a = toId;
+        for (const s of d.shots) {
+          if (s.p === fromId) s.p = toId;
+          if (s.ap === fromId) s.ap = toId;
+          if (s.k === fromId) s.k = toId;
+        }
+      });
+    }
+    updateTeam(teamId, (t) => { t.players = t.players.filter((p) => p.id !== fromId); });
+  }
+
+  /* ---------- start-up ---------- */
+  function use(name) {
+    try {
+      if (!window.claude || typeof window.claude.use !== "function") return Promise.resolve(null);
+      return within(window.claude.use(name), 15000).catch(() => null);
+    } catch (e) { return Promise.resolve(null); }
+  }
+
+  /* the public page: load the saved data once, finished matches only, and leave everything read-only */
+  function initReader() {
+    const tidy = (kind, raw) => { try { return raw && typeof raw === "object" ? normalise(kind, clone(raw)) : null; } catch (e) { return null; } };
+    const T = {}, M = {};
+    const rt = READER.teams && typeof READER.teams === "object" ? READER.teams : {};
+    const rm = READER.matches && typeof READER.matches === "object" ? READER.matches : {};
+    for (const id of Object.keys(rt)) { const t = tidy("teams", rt[id]); if (t) T[id] = t; }
+    for (const id of Object.keys(rm)) { const m = tidy("matches", rm[id]); if (m && m.done) M[id] = m; }
+    st.teams = T; st.matches = M; st.loaded = { teams: true, matches: true };
+    st.canWrite = false; st.canExport = false; st.phase = "ready";
+    emit();
+  }
+
+  async function init() {
+    if (READER) { initReader(); return; }
+    const [d, user, dl] = await Promise.all([use("db"), use("user"), use("downloads")]);
+    db = d; downloads = dl;
+    st.canExport = !!dl;
+    if (!db) { st.phase = "nodb"; emit(); return; }
+    if (user) { try { const answer = await within(user.canEdit(), 6000); st.canWrite = typeof answer === "boolean" ? answer : null; } catch (e) { st.canWrite = null; } }
+    const fail = () => { if (st.phase === "loading") { st.phase = "nodb"; emit(); } };
+    const watch = (kind, max) => {
+      let q = db.collection(kind);
+      try { if (typeof q.limit === "function") q = q.limit(max); } catch (e) { q = db.collection(kind); }
+      q.onSnapshot((qs) => applySnapshot(kind, qs), fail);
+      /* if live updates never start, read the collection once so the page still opens */
+      setTimeout(() => {
+        if (st.loaded[kind]) return;
+        within(q.get(), 12000, "unavailable").then((qs) => { if (!st.loaded[kind]) applySnapshot(kind, qs); }, fail);
+      }, FIRST_WAIT);
+    };
+    try { watch("teams", 200); watch("matches", 1000); } catch (e) { fail(); }
+    emit();
+    /* where the public page is hosted: read once, it changes about once in a lifetime */
+    try {
+      const snapSite = await within(db.doc("settings/site").get(), 12000);
+      const body = snapSite && snapSite.exists ? snapSite.data() : null;
+      const parsed = body ? Reader.site(str(body.repo, 200), str(body.branch, 100)) : null;
+      if (parsed && !pend.has("settings/site")) { st.settings = { site: { repo: parsed.repo, branch: parsed.branch, rev: Number(body.rev) || 0 } }; emit(); }
+    } catch (e) { /* the links are a convenience; the page works without them */ }
+  }
+
+  async function saveFile(filename, data) {
+    if (!downloads) return { ok: false, message: "Saving files is not available in this view." };
+    try { await downloads.save({ filename, data }); return { ok: true }; }
+    catch (e) {
+      if (e && e.code === "declined") return { ok: false, message: "" };
+      if (e && e.code === "rate_limited") return { ok: false, message: "A save is already waiting for your answer." };
+      if (e && (e.code === "extension_not_enabled" || e.code === "rejected_extension")) return { ok: false, message: "This view cannot save that kind of file. Try the tracker in a web browser." };
+      return { ok: false, message: "The file could not be saved here." };
+    }
+  }
+
+  return {
+    subscribe: (fn) => { listeners.add(fn); return () => listeners.delete(fn); },
+    get: () => snap,
+    init, retry, uid, updateMatch, addMatch, deleteMatch, updateTeam, addTeam, addPlayer, usage, mergePlayers, saveFile, setSite,
+  };
+})();
+
+/* ============================================================
+   SCREEN BUILDING BLOCKS
+   ============================================================ */
+const { useState, useEffect, useMemo, useRef, useSyncExternalStore } = React;
+const h = React.createElement;
+const Frag = React.Fragment;
+
+/* ---------- words and number formats ---------- */
+const OUT = { goal: "Goal", saved: "Saved", off: "Off target", blocked: "Blocked", post: "Woodwork" };
+const BODY = { foot: "Foot", head: "Head", other: "Other" };
+const SIT = { open: "Open play", fk: "Direct free kick", pen: "Penalty" };
+const AST = { none: "No pass", pass: "Pass", cross: "Cross", through: "Through ball", corner: "Corner", fk: "Free kick" };
+const MINUS = "\u2212";
+const f2 = (v) => (v == null || !isFinite(v) ? "" : v.toFixed(2));
+const f1 = (v) => (v == null || !isFinite(v) ? "" : v.toFixed(1));
+const signed = (v) => (v == null || !isFinite(v) ? "" : (v >= 0.005 ? "+" : v <= -0.005 ? MINUS : "") + Math.abs(v).toFixed(2));
+const pct = (v) => (v == null || !isFinite(v) ? "" : Math.round(v * 100) + "%");
+const otherSide = (t) => (t === "h" ? "a" : "h");
+const pad2 = (n) => String(n).padStart(2, "0");
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function fmtDate(iso, long) {
+  const p = String(iso || "").split("-").map(Number);
+  if (p.length !== 3 || p.some((n) => !isFinite(n))) return iso || "No date";
+  const d = new Date(Date.UTC(p[0], p[1] - 1, p[2]));
+  return DAYS[d.getUTCDay()] + " " + p[2] + " " + MONTHS[p[1] - 1] + (long ? " " + p[0] : "");
+}
+function todayIso() { const d = new Date(); return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()); }
+function fmtKo(ko) {
+  const p = String(ko || "").split(":").map(Number);
+  if (p.length < 2 || p.some((n) => !isFinite(n))) return "";
+  return (p[0] % 12 || 12) + ":" + pad2(p[1]) + (p[0] >= 12 ? " PM" : " AM");
+}
+function describeSpot(x, y) {
+  const g = Model.geom(x, y);
+  const off = Math.abs(y - 40);
+  const side = off < 1.5 ? "central" : Math.round(off) + " yd " + (y < 40 ? "left" : "right") + " of centre";
+  return Math.round(g.dist) + " yd from goal, " + side;
+}
+function buildIndex(teams) {
+  const idx = {};
+  for (const tid of Object.keys(teams)) for (const p of teams[tid].players) idx[p.id] = { id: p.id, name: p.name, num: p.num, team: tid };
+  return idx;
+}
+const pname = (idx, id) => (!id ? "" : idx[id] ? idx[id].name : "Unknown player");
+const tname = (teams, id) => (teams[id] ? teams[id].name : "Unknown club");
+const tshort = (teams, id) => (teams[id] ? teams[id].short : "?");
+const sortedMatches = (matches) => Object.keys(matches).map((id) => ({ id, m: matches[id] }))
+  .sort((a, b) => (a.m.date || "").localeCompare(b.m.date || "") || (a.m.ko || "").localeCompare(b.m.ko || "") || a.id.localeCompare(b.id));
+function shotLine(s) {
+  const bits = [OUT[s.out] || s.out];
+  if (s.sit === "pen") bits.push("penalty");
+  else if (s.sit === "fk") bits.push("direct free kick");
+  else {
+    if (s.body === "head") bits.push("header");
+    if (s.ast && s.ast !== "none" && s.ast !== "pass") bits.push("from a " + AST[s.ast].toLowerCase());
+    if (s.oo) bits.push("one-on-one");
+    if (s.og) bits.push("open goal");
+  }
+  return bits.join(", ");
+}
+
+/* ---------- icons ---------- */
+const svgIcon = (d) => () => h("svg", { viewBox: "0 0 16 16", "aria-hidden": "true" }, h("path", { d, fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round" }));
+const IconCheck = svgIcon("M3 8.6l3.1 3.1L13 4.6");
+const IconWarn = svgIcon("M8 2.2l6.3 11.3H1.7L8 2.2zM8 6.6v3.2M8 11.9v.2");
+const IconDots = svgIcon("M3 8h.1M8 8h.1M13 8h.1");
+
+/* StatsBomb's logo, linking to their open data. It is their light-background version, so it always sits on a white plate. */
+function SbLogo() {
+  return h("a", { className: "sb", href: "https://github.com/statsbomb/open-data", target: "_blank", rel: "noopener noreferrer" },
+    h("img", { src: SB_LOGO.src, width: Math.round(SB_LOGO.w / 3), height: Math.round(SB_LOGO.h / 3), alt: "StatsBomb" }));
+}
+
+/* ---------- small controls ---------- */
+function Seg({ label, value, options, onChange, disabled }) {
+  return h("div", { className: "field" },
+    label ? h("span", { className: "label" }, label) : null,
+    h("div", { className: "seg", role: "group", "aria-label": label || undefined },
+      options.map((o) => h("button", {
+        key: o.value, type: "button", className: "seg-btn" + (value === o.value ? " on" : ""), "aria-pressed": value === o.value,
+        disabled: !!disabled || !!o.disabled, onClick: () => onChange(o.value),
+      }, o.dot ? h("i", { className: "dot " + o.dot }) : null, o.label))));
+}
+function Toggle({ on, onChange, disabled, children }) {
+  return h("button", { type: "button", className: "seg-btn" + (on ? " on" : ""), "aria-pressed": !!on, disabled: !!disabled, onClick: () => onChange(!on) }, children);
+}
+function Note({ kind, children, action }) {
+  return h("div", { className: "note" + (kind ? " " + kind : ""), role: kind === "bad" ? "alert" : undefined },
+    kind ? h(IconWarn) : null, h("span", null, children), action || null);
+}
+/* a button that asks once more before doing something that cannot be undone */
+function ConfirmButton({ label, ask, yes, onYes, className, disabled, title }) {
+  const [open, setOpen] = useState(false);
+  if (!open) return h("button", { type: "button", className: className || "btn quiet danger", disabled: !!disabled, title, onClick: () => setOpen(true) }, label);
+  return h("span", { className: "acts" },
+    h("span", { className: "sub", style: { alignSelf: "center" } }, ask),
+    h("button", { type: "button", className: "btn danger", onClick: () => { setOpen(false); onYes(); } }, yes || "Yes"),
+    h("button", { type: "button", className: "btn", onClick: () => setOpen(false) }, "No"));
+}
+
+/* ---------- player picker: type to search a squad, or add someone new ---------- */
+const fold = (str) => String(str).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+const tidyName = (str) => String(str).replace(/\s+/g, " ").trim().slice(0, 80);
+function PlayerPicker({ id, teams, teamId, value, onChange, placeholder, canAdd, exclude }) {
+  const team = teams[teamId];
+  const players = team ? team.players : [];
+  const selected = players.find((p) => p.id === value) || null;
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const [hi, setHi] = useState(0);
+  const query = fold(q);
+  const list = useMemo(() => {
+    const pool = players.filter((p) => p.id !== exclude).sort((a, b) => a.name.localeCompare(b.name));
+    if (!query) return pool;
+    return pool.filter((p) => fold(p.name).includes(query) || (p.num != null && String(p.num) === query));
+  }, [players, query, exclude]);
+  const exact = players.some((p) => fold(p.name) === query);
+  const showAdd = !!canAdd && !!team && query.length >= 2 && !exact && !/^\d+$/.test(query);
+  const total = list.length + (showAdd ? 1 : 0);
+  const pick = (p) => { onChange(p.id); setOpen(false); setQ(""); };
+  const add = () => { const pid = Store.addPlayer(teamId, tidyName(q), null); onChange(pid); setOpen(false); setQ(""); };
+  const choose = (i) => { if (i < list.length) pick(list[i]); else if (showAdd) add(); };
+  const label = (p) => (p.num != null ? p.num + " \u00b7 " : "") + p.name;
+  const onKey = (e) => {
+    if (e.key === "ArrowDown") { e.preventDefault(); setOpen(true); setHi((v) => (total ? (v + 1) % total : 0)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setHi((v) => (total ? (v - 1 + total) % total : 0)); }
+    else if (e.key === "Enter") { if (open && total) { e.preventDefault(); choose(Math.min(hi, total - 1)); } }
+    else if (e.key === "Escape") { setOpen(false); setQ(""); }
+  };
+  const listId = id + "-list";
+  return h("div", { className: "pick" },
+    h("input", {
+      id, className: "input", type: "text", role: "combobox", autoComplete: "off", spellCheck: false,
+      "aria-expanded": open, "aria-controls": listId, "aria-autocomplete": "list",
+      "aria-activedescendant": open && total ? listId + "-" + Math.min(hi, total - 1) : undefined,
+      placeholder: placeholder || "Type a name",
+      value: open ? q : selected ? label(selected) : value ? "Unknown player" : "",
+      onFocus: () => { setOpen(true); setQ(""); setHi(0); },
+      onBlur: () => { setOpen(false); setQ(""); },
+      onChange: (e) => { setQ(e.target.value); setOpen(true); setHi(0); },
+      onKeyDown: onKey,
+    }),
+    value && !open ? h("button", { type: "button", className: "pick-clear", "aria-label": "Clear", onClick: () => onChange(null) }, "\u00d7") : null,
+    open ? h("ul", { className: "pick-list", id: listId, role: "listbox" },
+      list.map((p, i) => h("li", {
+        key: p.id, id: listId + "-" + i, role: "option", "aria-selected": hi === i, className: "pick-opt" + (hi === i ? " hi" : ""),
+        onMouseDown: (e) => e.preventDefault(), onMouseEnter: () => setHi(i), onClick: () => pick(p),
+      }, h("span", { className: "num" }, p.num != null ? p.num : ""), h("span", null, p.name))),
+      showAdd ? h("li", {
+        key: "+", id: listId + "-" + list.length, role: "option", "aria-selected": hi === list.length, className: "pick-opt add" + (hi === list.length ? " hi" : ""),
+        onMouseDown: (e) => e.preventDefault(), onMouseEnter: () => setHi(list.length), onClick: add,
+      }, "+ Add \u201c" + tidyName(q) + "\u201d to " + team.short) : null,
+      !total ? h("li", { className: "pick-none" }, !team ? "Pick a club first." : players.length ? "No match. Type a full name to add them." : canAdd ? "No players yet. Type a name to add the first." : "No players yet.") : null) : null);
+}
+
+/* ---------- drawings: a half pitch and a goal, with shots drawn to scale ---------- */
+function useWidth(ref, fallback) {
+  const [w, setW] = useState(fallback);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const measure = () => { const r = el.getBoundingClientRect().width; if (r > 0) setW(r); };
+    measure();
+    if (typeof ResizeObserver === "undefined") return undefined;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return w;
+}
+const markRadius = (v) => 4 + 9 * Math.sqrt(Math.max(v, 0));   // px; area grows with the value
+
+/* marks: [{ id, cx, cy, v, goal, cls, value, lines, aria }] in drawing units */
+function Marks({ marks, u, activeId, onMark, tipId, setTip, vb }) {
+  const ordered = useMemo(() => [...marks].sort((a, b) => b.v - a.v), [marks]);
+  return h(Frag, null, ordered.map((m) => {
+    const r = markRadius(m.v) * u;
+    const show = () => setTip({ id: m.id, px: (m.cx - vb.x) / u, py: (m.cy - vb.y) / u, value: m.value, lines: m.lines });
+    const hide = () => setTip((t) => (t && t.id === m.id ? null : t));
+    return h("g", { key: m.id, className: "mk " + (m.cls || "home") + (m.goal ? " goal" : "") + (tipId === m.id ? " focus" : "") + (activeId === m.id ? " active" : "") },
+      h("circle", { className: "mk-ring", cx: m.cx, cy: m.cy, r: r + 2 * u }),
+      h("circle", { className: "mk-dot", cx: m.cx, cy: m.cy, r }),
+      h("circle", {
+        className: "mk-hit", cx: m.cx, cy: m.cy, r: Math.max(r, 12 * u), tabIndex: 0, role: onMark ? "button" : "img", "aria-label": m.aria,
+        onPointerEnter: show, onPointerLeave: hide, onFocus: show, onBlur: hide,
+        onClick: onMark ? (e) => { e.stopPropagation(); onMark(m.id); } : undefined,
+        onKeyDown: onMark ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onMark(m.id); } } : undefined,
+      }));
+  }));
+}
+function Tip({ tip, width }) {
+  if (!tip) return null;
+  const left = Math.min(Math.max(tip.px, 80), Math.max(width - 80, 80));
+  const below = tip.py < 84;
+  return h("div", { className: "tip", style: { left, top: tip.py, transform: below ? "translate(-50%, 16px)" : "translate(-50%, calc(-100% - 14px))" } },
+    h("strong", null, tip.value), (tip.lines || []).map((l, i) => h("span", { key: i }, l)));
+}
+function svgPoint(svg, e) {
+  const pt = svg.createSVGPoint();
+  pt.x = e.clientX; pt.y = e.clientY;
+  const ctm = svg.getScreenCTM();
+  return ctm ? pt.matrixTransform(ctm.inverse()) : null;
+}
+
+const PITCH_VB = { x: -3, y: -4.5, w: 86, h: 67 };
+/* the attacking half, goal at the top. Across the screen is pitch width (0 to 80), down the screen is distance from the goal line. */
+function PitchMap({ marks, draft, onPick, onMark, activeId, label }) {
+  const box = useRef(null), svg = useRef(null);
+  const width = useWidth(box, 520);
+  const [tip, setTip] = useState(null);
+  const u = PITCH_VB.w / width;
+  const placed = useMemo(() => (marks || []).map((m) => ({ ...m, cx: m.y, cy: 120 - m.x })), [marks]);
+  const click = (e) => {
+    if (!onPick) return;
+    const p = svgPoint(svg.current, e);
+    if (!p) return;
+    const sx = Model.clamp(p.x, 0, 80), sy = Model.clamp(p.y, 0, 60);
+    onPick({ x: Math.round((120 - sy) * 10) / 10, y: Math.round(sx * 10) / 10 });
+  };
+  return h("div", { className: "viz" + (onPick ? " pickable" : "") + (onMark ? " linked" : ""), ref: box },
+    h("svg", { ref: svg, viewBox: PITCH_VB.x + " " + PITCH_VB.y + " " + PITCH_VB.w + " " + PITCH_VB.h, role: "group", "aria-label": label || "Shot map", onClick: click },
+      h("rect", { className: "turf", x: 0, y: 0, width: 80, height: 60 }),
+      h("rect", { className: "pl", x: 0, y: 0, width: 80, height: 60 }),
+      h("rect", { className: "pl", x: 18, y: 0, width: 44, height: 18 }),
+      h("rect", { className: "pl", x: 30, y: 0, width: 20, height: 6 }),
+      h("rect", { className: "pl", x: 36, y: -2.4, width: 8, height: 2.4 }),
+      h("path", { className: "pl", d: "M32,18 A10,10 0 0 0 48,18" }),
+      h("path", { className: "pl", d: "M30,60 A10,10 0 0 1 50,60" }),
+      h("path", { className: "pl", d: "M1,0 A1,1 0 0 1 0,1" }),
+      h("path", { className: "pl", d: "M79,0 A1,1 0 0 0 80,1" }),
+      h("circle", { className: "pl-dot", cx: 40, cy: 12, r: 0.5 }),
+      h(Marks, { marks: placed, u, activeId, onMark, tipId: tip && tip.id, setTip, vb: PITCH_VB }),
+      draft && draft.x != null ? h("g", { pointerEvents: "none" },
+        h("circle", { className: "mk-ring", cx: draft.y, cy: 120 - draft.x, r: 10 * u }),
+        h("circle", { className: "draft-ring", cx: draft.y, cy: 120 - draft.x, r: 8 * u }),
+        h("circle", { className: "draft-dot", cx: draft.y, cy: 120 - draft.x, r: 2.2 * u })) : null),
+    h(Tip, { tip, width }));
+}
+
+const GOAL_VB = { x: -0.9, y: -0.7, w: 9.8, h: 4.1 };
+/* the goal as the shooter sees it: 8 yards wide, 2.67 yards high. marks carry gy (-4..4) and gz (0..2.67). */
+function GoalMouth({ marks, value, onPick, onMark, activeId, label }) {
+  const box = useRef(null), svg = useRef(null);
+  const width = useWidth(box, 520);
+  const [tip, setTip] = useState(null);
+  const u = GOAL_VB.w / width;
+  const H = Model.GOAL_H;
+  const placed = useMemo(() => (marks || []).map((m) => ({ ...m, cx: m.gy + 4, cy: H - m.gz })), [marks]);
+  const click = (e) => {
+    if (!onPick) return;
+    const p = svgPoint(svg.current, e);
+    if (!p) return;
+    onPick({ gy: Math.round(Model.clamp(p.x - 4, -4, 4) * 100) / 100, gz: Math.round(Model.clamp(H - p.y, 0, H) * 100) / 100 });
+  };
+  return h("div", { className: "viz" + (onPick ? " pickable" : "") + (onMark ? " linked" : ""), ref: box },
+    h("svg", { ref: svg, viewBox: GOAL_VB.x + " " + GOAL_VB.y + " " + GOAL_VB.w + " " + GOAL_VB.h, role: "group", "aria-label": label || "Goal", onClick: click },
+      h("rect", { className: "turf", x: 0, y: 0, width: 8, height: H }),
+      h("path", { className: "net", d: "M2.667,0 V" + H + " M5.333,0 V" + H + " M0," + (H / 3).toFixed(3) + " H8 M0," + ((2 * H) / 3).toFixed(3) + " H8" }),
+      h("path", { className: "ground", d: "M" + GOAL_VB.x + "," + H + " H" + (GOAL_VB.x + GOAL_VB.w) }),
+      h("path", { className: "frame", d: "M0," + H + " V0 H8 V" + H }),
+      h(Marks, { marks: placed, u, activeId, onMark, tipId: tip && tip.id, setTip, vb: GOAL_VB }),
+      value && value.gy != null ? h("g", { pointerEvents: "none" },
+        h("circle", { className: "mk-ring", cx: value.gy + 4, cy: H - value.gz, r: 10 * u }),
+        h("circle", { className: "draft-ring", cx: value.gy + 4, cy: H - value.gz, r: 8 * u }),
+        h("circle", { className: "draft-dot", cx: value.gy + 4, cy: H - value.gz, r: 2.2 * u })) : null),
+    h(Tip, { tip, width }));
+}
+
+/* ---------- a sortable table ---------- */
+function SortTable({ cols, rows, initial, rowKey, onRow, selKey, caption }) {
+  const [sort, setSort] = useState(initial);
+  const sorted = useMemo(() => {
+    const c = cols.find((x) => x.key === sort.key) || cols[0];
+    return [...rows].sort((a, b) => {
+      const va = c.get(a), vb = c.get(b);
+      if (va == null && vb == null) return 0;
+      if (va == null) return 1;
+      if (vb == null) return -1;
+      if (typeof va === "string" || typeof vb === "string") return sort.dir * String(va).localeCompare(String(vb));
+      return sort.dir * (va - vb);
+    });
+  }, [rows, sort, cols]);
+  const flip = (c) => setSort((s) => (s.key === c.key ? { key: c.key, dir: -s.dir } : { key: c.key, dir: c.num ? -1 : 1 }));
+  return h("div", { className: "tbl-wrap" },
+    h("table", { className: "tbl" },
+      caption ? h("caption", { className: "sr" }, caption) : null,
+      h("thead", null, h("tr", null, cols.map((c) => h("th", {
+        key: c.key, className: c.num ? "num" : undefined, scope: "col", title: c.title,
+        "aria-sort": sort.key === c.key ? (sort.dir === 1 ? "ascending" : "descending") : undefined,
+      }, h("button", { type: "button", className: "sortb", onClick: () => flip(c) }, c.label, sort.key === c.key ? h("span", { "aria-hidden": "true" }, sort.dir === 1 ? "\u2191" : "\u2193") : null))))),
+      h("tbody", null, sorted.map((r) => {
+        const k = rowKey(r);
+        return h("tr", {
+          key: k, className: (onRow ? "click" : "") + (selKey === k ? " sel" : ""), tabIndex: onRow ? 0 : undefined,
+          onClick: onRow ? () => onRow(k) : undefined,
+          onKeyDown: onRow ? (e) => { if (e.key === "Enter") onRow(k); } : undefined,
+        }, cols.map((c) => {
+          const v = c.get(r);
+          return h("td", { key: c.key, className: (c.num ? "num" : "") + (c.strong ? " strong" : "") + (c.tone ? " " + c.tone(v) : "") }, c.fmt ? c.fmt(v, r) : v);
+        }));
+      }))));
+}
+
+/* ---------- export helpers ---------- */
+function toCsv(header, rows) {
+  const cell = (v) => {
+    if (v == null) return "";
+    let str = typeof v === "number" ? String(v) : String(v);
+    if (typeof v !== "number" && /^[=+\-@]/.test(str)) str = "'" + str;
+    return /[",\n]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str;
+  };
+  return [header.map(cell).join(",")].concat(rows.map((r) => r.map(cell).join(","))).join("\n") + "\n";
+}
+const r3 = (v) => (v == null ? "" : Math.round(v * 1000) / 1000);
+
+/* ============================================================
+   MATCHES: the fixture list and the tagging screen
+   (on the public page: the list of finished matches, each opening on its timeline)
+   ============================================================ */
+function MatchesView({ s, agg, open }) {
+  const reader = s.reader;
+  const [filter, setFilter] = useState("todo");
+  const [team, setTeam] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [nm, setNm] = useState({ date: "", ko: "19:30", home: "", away: "" });
+  const [err, setErr] = useState("");
+  const [pub, setPub] = useState(null);   // the Public page panel: null while closed, otherwise what the last save did
+  /* the tracker lists fixtures in playing order; the public page lists results, newest first */
+  const all = useMemo(() => { const list = sortedMatches(s.matches); return reader ? list.reverse() : list; }, [s.matches, reader]);
+  const clubs = useMemo(() => Object.keys(s.teams).sort((a, b) => s.teams[a].name.localeCompare(s.teams[b].name)), [s.teams]);
+  const rows = all.filter(({ m }) => (reader || filter === "all" || (filter === "todo" ? !m.done : m.done || m.shots.length > 0)) && (!team || m.home === team || m.away === team));
+  const days = [];
+  for (const r of rows) {
+    const last = days[days.length - 1];
+    if (last && last.date === r.m.date) last.items.push(r); else days.push({ date: r.m.date, items: [r] });
+  }
+  const tagged = all.filter(({ m }) => m.shots.length > 0).length;
+  const today = todayIso();
+  const addMatch = () => {
+    if (!nm.date) return setErr("Pick the match date.");
+    if (!nm.home || !nm.away) return setErr("Pick both clubs.");
+    if (nm.home === nm.away) return setErr("The two clubs must be different.");
+    setErr("");
+    const id = Store.addMatch(nm);
+    setAdding(false);
+    open(id);
+    return null;
+  };
+  /* save a read-only copy of the tracker, finished matches only, as one file to upload */
+  const canPublish = !reader && s.canWrite && s.canExport && typeof READER_TEMPLATE === "string";
+  const savePublic = async () => {
+    const c = Reader.counts(s.matches);
+    const html = Reader.page(READER_TEMPLATE, Reader.data(s.teams, s.matches, new Date().toISOString()));
+    if (!html) { setPub({ state: "failed", message: "The public page could not be put together. Reload the tracker and try again.", done: c.done, open: c.open }); return; }
+    setPub({ state: "busy", done: c.done, open: c.open });
+    const res = await Store.saveFile("index.html", html);
+    setPub({ state: res.ok ? "saved" : res.message ? "failed" : "declined", message: res.message || "", done: c.done, open: c.open });
+  };
+  const clubOptions = [h("option", { key: "", value: "" }, "Choose a club")].concat(clubs.map((id) => h("option", { key: id, value: id }, s.teams[id].name)));
+  const clubFilter = h("div", { className: "field" },
+    h("label", { className: "label", htmlFor: "fx-club" }, "Club"),
+    h("select", { id: "fx-club", className: "input", value: team, onChange: (e) => setTeam(e.target.value) },
+      [h("option", { key: "", value: "" }, "All clubs")].concat(clubs.map((id) => h("option", { key: id, value: id }, s.teams[id].name)))));
+
+  return h("div", { className: "stack" },
+    h("div", { className: "summary" },
+      reader ? h("span", null, h("b", null, all.length), all.length === 1 ? " finished match" : " finished matches") :
+        h("span", null, h("b", null, tagged), " of ", h("b", null, all.length), " matches tagged"),
+      h("span", null, h("b", null, agg.totals.shots), " shots"),
+      h("span", null, h("b", null, agg.totals.goals), " goals from ", h("b", null, f2(agg.totals.xg)), " xG")),
+    reader ? (all.length ? h("div", { className: "toolbar" }, h("div", { className: "row" }, clubFilter)) : null) :
+      h("div", { className: "toolbar" },
+        h("div", { className: "row" },
+          h(Seg, { label: "Show", value: filter, onChange: setFilter, options: [{ value: "todo", label: "To tag" }, { value: "tagged", label: "Tagged" }, { value: "all", label: "All" }] }),
+          clubFilter),
+        h("div", { className: "row" },
+          canPublish ? h("button", { type: "button", className: "btn", id: "pub-save", disabled: !!(pub && pub.state === "busy"), onClick: savePublic }, "Save public page") : null,
+          s.canWrite && clubs.length >= 2 ? h("button", { type: "button", className: "btn", onClick: () => setAdding(!adding) }, adding ? "Close" : "Add a match") : null)),
+    pub ? h(PublicPagePanel, { s, pub, close: () => setPub(null) }) : null,
+    adding ? h("div", { className: "card stack" },
+      h("h2", { className: "h2" }, "Add a match"),
+      h("div", { className: "row" },
+        h("div", { className: "field" }, h("label", { className: "label", htmlFor: "nm-date" }, "Date"),
+          h("input", { id: "nm-date", className: "input", type: "date", value: nm.date, onChange: (e) => setNm({ ...nm, date: e.target.value }) })),
+        h("div", { className: "field" }, h("label", { className: "label", htmlFor: "nm-ko" }, "Kick-off (IST)"),
+          h("input", { id: "nm-ko", className: "input", type: "time", value: nm.ko, onChange: (e) => setNm({ ...nm, ko: e.target.value }) })),
+        h("div", { className: "field grow" }, h("label", { className: "label", htmlFor: "nm-home" }, "Home"),
+          h("select", { id: "nm-home", className: "input", value: nm.home, onChange: (e) => setNm({ ...nm, home: e.target.value }) }, clubOptions)),
+        h("div", { className: "field grow" }, h("label", { className: "label", htmlFor: "nm-away" }, "Away"),
+          h("select", { id: "nm-away", className: "input", value: nm.away, onChange: (e) => setNm({ ...nm, away: e.target.value }) }, clubOptions)),
+        h("button", { type: "button", className: "btn primary", onClick: addMatch }, "Add and open")),
+      err ? h("p", { className: "errs", role: "alert", style: { paddingLeft: 12 } }, err) : null) : null,
+    !all.length ? (reader ?
+      h("div", { className: "empty" }, h("strong", null, "No finished matches yet"), "Matches show up here once they have been tagged.") :
+      h("div", { className: "empty" }, h("strong", null, "No fixtures yet"),
+        clubs.length >= 2 ? "Add your first match to start tagging shots." : "Add at least two clubs on the Squads tab, then add your first match here.")) :
+      !rows.length ? (reader ?
+        h("div", { className: "empty" }, h("strong", null, "No finished matches for this club yet"), "Pick another club.") :
+        h("div", { className: "empty" }, h("strong", null, filter === "todo" ? "Everything is tagged" : "Nothing to show"), "Try another filter.")) :
+        h("div", null, days.map((d) => h("section", { className: "day", key: d.date },
+          h("h2", { className: "day-h" }, fmtDate(d.date, true), d.date === today ? h("span", { className: "today" }, "Today") : null),
+          d.items.map(({ id, m }) => {
+            const n = m.shots.length, sc = Stats.score(m), started = n > 0 || m.og.length > 0;
+            return h("button", { key: id, type: "button", className: "fx", onClick: () => open(id) },
+              h("span", { className: "ko" }, fmtKo(m.ko) || "Time TBC"),
+              h("span", { className: "tm h" }, tname(s.teams, m.home)),
+              started || reader ? h("span", { className: "sc" }, sc.h + "\u2013" + sc.a) : h("span", { className: "sc v" }, "v"),
+              h("span", { className: "tm" }, tname(s.teams, m.away)),
+              reader ? h("span", { className: "stt" }, n + (n === 1 ? " shot" : " shots")) :
+                h("span", { className: "stt" }, m.done ? h(IconCheck) : null, m.done ? "Finished, " + n + " shots" : n ? n + (n === 1 ? " shot tagged" : " shots tagged") : "Not started"),
+              h("span", { className: "go" }, reader ? "Timeline" : !s.canWrite ? "View" : started || m.done ? "Open" : "Tag"));
+          })))));
+}
+
+/* what the last "Save public page" did, and how to get the file online */
+function PublicPagePanel({ s, pub, close }) {
+  const [repo, setRepo] = useState(null);   // null while the hosting field is closed
+  const [bad, setBad] = useState(false);
+  const site = s.site, n = pub.done;
+  const status = pub.state === "busy" ? "Confirm the save in the box that just opened."
+    : pub.state === "saved" ? "Saved index.html with " + n + (n === 1 ? " finished match." : " finished matches.")
+      : pub.state === "declined" ? "Nothing was saved. Press Save public page again when you are ready."
+        : pub.message;
+  const saveRepo = () => { if (Store.setSite(repo)) { setRepo(null); setBad(false); } else setBad(true); };
+  const link = (href, text) => h("a", { href, target: "_blank", rel: "noopener noreferrer" }, text);
+  return h("div", { className: "card stack tight", id: "pub-panel" },
+    h("div", { className: "toolbar" }, h("h2", { className: "h2" }, "Public page"), h("button", { type: "button", className: "btn quiet", onClick: close }, "Close")),
+    pub.state === "failed" ? h("p", { className: "errs", role: "alert", style: { paddingLeft: 12 } }, status) :
+      h("p", { className: pub.state === "saved" ? "flash" : "sub", role: "status" }, pub.state === "saved" ? h(IconCheck) : null, status),
+    !n ? h("p", { className: "sub" }, "No match is marked as finished yet, so the public page will be empty.") : null,
+    pub.open ? h("p", { className: "sub" }, pub.open === 1 ? "1 match with shots is not marked as finished, so it is left out." : pub.open + " matches with shots are not marked as finished, so they are left out.") : null,
+    h("div", { className: "prose" },
+      site ? h("p", null, "To put it online, ", link(site.upload, "open the upload page on GitHub"), ", drag index.html in and press Commit changes. About a minute later it is live at ", link(site.url, site.url.replace("https://", "")), ".") :
+        h("p", null, "To put it online, upload this file as index.html to the place that hosts your public page."),
+      h("p", null, "The file must be called index.html. If your computer saved it as index (1).html, rename it before you upload.")),
+    repo === null ?
+      h("div", { className: "row", style: { alignItems: "center" } },
+        h("span", { className: "sub" }, site ? "Hosted from " + site.repo + " on GitHub." : "Tell the tracker where the page is hosted and it will link straight there."),
+        h("button", { type: "button", className: "btn quiet", onClick: () => setRepo(site ? site.repo : "") }, site ? "Change" : "Set the GitHub repository")) :
+      h("div", { className: "row" },
+        h("div", { className: "field grow", style: { maxWidth: 360 } }, h("label", { className: "label", htmlFor: "pub-repo" }, "GitHub repository"),
+          h("input", { id: "pub-repo", className: "input", type: "text", placeholder: "username/repository", autoComplete: "off", spellCheck: false, value: repo,
+            onChange: (e) => { setRepo(e.target.value); setBad(false); }, onKeyDown: (e) => { if (e.key === "Enter") saveRepo(); } })),
+        h("button", { type: "button", className: "btn primary", onClick: saveRepo }, "Save"),
+        h("button", { type: "button", className: "btn", onClick: () => { setRepo(null); setBad(false); } }, "Cancel")),
+    bad ? h("p", { className: "errs", role: "alert", style: { paddingLeft: 12 } }, "That does not look like a GitHub repository. Write it as username/repository.") : null);
+}
+
+const blankDraft = (t) => ({ id: null, t, p: null, min: "", x: null, y: null, out: null, body: "foot", sit: "open", ast: "none", ap: null, oo: false, og: false, gy: null, gz: null, k: undefined });
+
+function MatchView({ s, idx, matchId, back, view, onView }) {
+  const backBtn = h("button", { type: "button", className: "btn quiet back", onClick: back }, "\u2190 All matches");
+  if (!s.matches[matchId]) return h("div", { className: "stack" }, backBtn, h("div", { className: "empty" }, h("strong", null, "Match not found"), "It may have been deleted."));
+  return h(MatchBody, { key: matchId, s, idx, matchId, back, backBtn, view: view === "timeline" ? "timeline" : "tag", onView: onView || (() => {}) });
+}
+
+function MatchBody({ s, idx, matchId, back, backBtn, view, onView }) {
+  const m = s.matches[matchId];
+  const can = s.canWrite;
+  const [draft, setDraft] = useState(() => blankDraft("h"));
+  const [errs, setErrs] = useState([]);
+  const [flash, setFlash] = useState("");
+  const [meta, setMeta] = useState(null);
+  const [og, setOg] = useState({ t: "h", min: "" });
+  const formRef = useRef(null);
+
+  const side = { h: m.home, a: m.away };
+  const sc = Stats.score(m), sum = Stats.matchSummary(m);
+  const set = (patch) => { setDraft((d) => ({ ...d, ...patch })); setErrs([]); setFlash(""); };
+  const defSide = otherSide(draft.t);
+  const keeper = draft.k !== undefined ? draft.k : m.gk[defSide];
+  const isPen = draft.sit === "pen", isOpen = draft.sit === "open";
+  const onT = draft.out === "goal" || draft.out === "saved";
+  const spot = isPen ? Model.PEN_SPOT : draft.x != null ? { x: draft.x, y: draft.y } : null;
+  const asShot = spot ? { ...draft, x: spot.x, y: spot.y } : null;
+  const preview = asShot ? Model.xg(asShot) : null;
+  const previewOT = asShot && onT && draft.gy != null ? Model.xgot(asShot) : null;
+
+  const marks = useMemo(() => m.shots.filter((x) => x.id !== draft.id).map((x) => {
+    const v = Model.xg(x);
+    return {
+      id: x.id, x: x.x, y: x.y, v, goal: x.out === "goal", cls: x.t === "h" ? "home" : "away", value: f2(v) + " xG",
+      lines: [pname(idx, x.p) + (x.min != null ? " \u00b7 " + x.min + "\u2032" : ""), shotLine(x)],
+      aria: pname(idx, x.p) + ", " + shotLine(x) + ", " + f2(v) + " expected goals",
+    };
+  }), [m.shots, draft.id, idx]);
+  const ordered = useMemo(() => m.shots.map((x, i) => ({ x, i })).sort((a, b) => (a.x.min == null ? 999 : a.x.min) - (b.x.min == null ? 999 : b.x.min) || a.i - b.i).map((o) => o.x), [m.shots]);
+
+  const save = () => {
+    const e = [];
+    if (!draft.p) e.push("Choose who took the shot.");
+    if (!isPen && draft.x == null) e.push("Click the pitch where the shot was taken.");
+    if (!draft.out) e.push("Choose what happened to the shot.");
+    if (onT && draft.gy == null) e.push("Click the goal where the shot ended up.");
+    const minute = draft.min === "" ? null : Number(draft.min);
+    if (minute != null && !(minute >= 0 && minute <= 130)) e.push("The minute should be between 0 and 130.");
+    if (e.length) { setErrs(e); return; }
+    const shot = {
+      id: draft.id || Store.uid("s"), t: draft.t, p: draft.p, min: minute == null ? null : Math.round(minute),
+      x: isPen ? Model.PEN_SPOT.x : draft.x, y: isPen ? Model.PEN_SPOT.y : draft.y, out: draft.out,
+      body: isOpen ? draft.body : "foot", sit: draft.sit,
+      ast: isOpen ? draft.ast : "none", ap: isOpen && draft.ast !== "none" ? draft.ap || null : null,
+      oo: isOpen ? !!draft.oo : false, og: isOpen ? !!draft.og : false,
+      gy: onT ? draft.gy : null, gz: onT ? draft.gz : null, k: keeper || null,
+    };
+    Store.updateMatch(matchId, (d) => {
+      const i = d.shots.findIndex((x) => x.id === shot.id);
+      if (i >= 0) d.shots[i] = shot; else d.shots.push(shot);
+    });
+    setDraft(blankDraft(draft.t));
+    setErrs([]);
+    setFlash((draft.id ? "Changes saved: " : "Shot saved: ") + pname(idx, shot.p) + ", " + f2(Model.xg(shot)) + " xG");
+  };
+  const startEdit = (x) => {
+    setDraft({ ...blankDraft(x.t), ...x, min: x.min == null ? "" : String(x.min), k: x.k == null ? null : x.k });
+    setErrs([]); setFlash("");
+    if (formRef.current && formRef.current.scrollIntoView) formRef.current.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  };
+  const removeShot = (id) => {
+    Store.updateMatch(matchId, (d) => { d.shots = d.shots.filter((x) => x.id !== id); });
+    if (draft.id === id) setDraft(blankDraft(draft.t));
+  };
+  const setGk = (sd, pid) => Store.updateMatch(matchId, (d) => {
+    d.gk[sd] = pid || null;
+    if (pid) for (const x of d.shots) if (x.t !== sd && Model.onTarget(x) && !x.k) x.k = pid;
+  });
+  const addOg = () => {
+    const minute = og.min === "" ? null : Math.round(Number(og.min));
+    Store.updateMatch(matchId, (d) => { d.og.push({ id: Store.uid("o"), t: og.t, min: minute != null && isFinite(minute) ? minute : null }); });
+    setOg({ t: og.t, min: "" });
+  };
+  const sideOptions = [{ value: "h", label: tshort(s.teams, m.home), dot: "home" }, { value: "a", label: tshort(s.teams, m.away), dot: "away" }];
+  const opt = (map) => Object.keys(map).map((k) => ({ value: k, label: map[k] }));
+  const legend = h("div", { className: "legend" },
+    h("span", null, h("i", { className: "dot home" }), tname(s.teams, m.home)),
+    h("span", null, h("i", { className: "dot away" }), tname(s.teams, m.away)),
+    h("span", null, h("i", { className: "dot solid" }), "Goal"),
+    h("span", null, h("i", { className: "dot hollow" }), "No goal"),
+    h("span", null, "Bigger means higher xG"));
+
+  const header = h("div", { className: "card stack" },
+    h("div", { className: "board" },
+      h("div", { className: "side h" }, h("span", null, tname(s.teams, m.home)), h("i", { className: "dot home" })),
+      h("div", { className: "score", "aria-label": "Score " + sc.h + " to " + sc.a }, sc.h + "\u2013" + sc.a),
+      h("div", { className: "side" }, h("i", { className: "dot away" }), h("span", null, tname(s.teams, m.away))),
+      h("div", { className: "xgl h" }, f2(sum.h.xg)),
+      h("div", { className: "mid" }, "xG"),
+      h("div", { className: "xgl" }, f2(sum.a.xg))),
+    h("div", { className: "meta" },
+      h("span", null, fmtDate(m.date, true) + (m.ko ? ", " + fmtKo(m.ko) + " IST" : "")),
+      m.venue ? h("span", null, m.venue) : null,
+      can ? h(Toggle, { on: m.done, onChange: (v) => Store.updateMatch(matchId, (d) => { d.done = v; }) }, m.done ? "Finished tagging" : "Mark as finished") : m.done && !s.reader ? h("span", null, "Tagging finished") : null,
+      can ? h("button", { type: "button", className: "btn quiet", onClick: () => setMeta(meta ? null : { date: m.date || "", ko: m.ko || "", venue: m.venue || "" }) }, meta ? "Close details" : "Edit details") : null),
+    meta ? h("div", { className: "row" },
+      h("div", { className: "field" }, h("label", { className: "label", htmlFor: "md-date" }, "Date"), h("input", { id: "md-date", className: "input", type: "date", value: meta.date, onChange: (e) => setMeta({ ...meta, date: e.target.value }) })),
+      h("div", { className: "field" }, h("label", { className: "label", htmlFor: "md-ko" }, "Kick-off (IST)"), h("input", { id: "md-ko", className: "input", type: "time", value: meta.ko, onChange: (e) => setMeta({ ...meta, ko: e.target.value }) })),
+      h("div", { className: "field grow" }, h("label", { className: "label", htmlFor: "md-venue" }, "Venue"), h("input", { id: "md-venue", className: "input", type: "text", value: meta.venue, onChange: (e) => setMeta({ ...meta, venue: e.target.value }) })),
+      h("button", { type: "button", className: "btn primary", disabled: !meta.date, onClick: () => { Store.updateMatch(matchId, (d) => { d.date = meta.date; d.ko = meta.ko; d.venue = meta.venue.trim().slice(0, 80); }); setMeta(null); } }, "Save details"),
+      h(ConfirmButton, { label: "Delete match", ask: m.shots.length ? "Delete this match and its " + m.shots.length + " shots?" : "Delete this match?", yes: "Delete", onYes: () => { Store.deleteMatch(matchId); back(); } })) : null,
+    can ? view !== "tag" ? null : h("div", { className: "keepers" },
+      ["h", "a"].map((sd) => h("div", { className: "field", key: sd },
+        h("label", { className: "label", htmlFor: "gk-" + sd }, tshort(s.teams, side[sd]) + " goalkeeper"),
+        h(PlayerPicker, { id: "gk-" + sd, teams: s.teams, teamId: side[sd], value: m.gk[sd], onChange: (pid) => setGk(sd, pid), canAdd: true, placeholder: "Type the keeper's name" })))) :
+      (m.gk.h || m.gk.a) ? h("div", { className: "meta" }, "Goalkeepers: " + [m.gk.h, m.gk.a].filter(Boolean).map((k) => pname(idx, k)).join(", ")) : null);
+
+  const tagger = can ? h("div", { className: "tag-grid" },
+    h("div", { className: "card stack" },
+      h("div", { className: "step" }, h("h2", { className: "h2" }, draft.id ? "Edit shot" : "Tag a shot"),
+        h("span", { className: "hint" }, isPen ? "A penalty is placed on the spot for you." : "Click the pitch where the shot was taken. The attack always goes up the screen.")),
+      h(PitchMap, { marks, draft: spot, onPick: isPen ? undefined : (p) => set(p), label: "Half pitch. Click to place the shot." }),
+      legend,
+      onT ? h("div", { className: "stack tight" },
+        h("div", { className: "step" }, h("span", { className: "label", style: { margin: 0 } }, "Where it ended up"),
+          h("span", { className: "hint" }, "Click where the ball crossed the line, or would have without the save.")),
+        h(GoalMouth, { value: draft.gy != null ? { gy: draft.gy, gz: draft.gz } : null, onPick: (p) => set(p), label: "Goal. Click where the shot ended up." })) : null),
+    h("div", { className: "card stack", ref: formRef },
+      h(Seg, { label: "Team shooting", value: draft.t, onChange: (t) => set({ t, p: null, ap: null, k: undefined }), options: sideOptions }),
+      h("div", { className: "form-grid" },
+        h("div", { className: "field" }, h("label", { className: "label", htmlFor: "f-shooter" }, "Shooter"),
+          h(PlayerPicker, { id: "f-shooter", teams: s.teams, teamId: side[draft.t], value: draft.p, onChange: (p) => set({ p }), canAdd: true })),
+        h("div", { className: "field" }, h("label", { className: "label", htmlFor: "f-min" }, "Minute"),
+          h("input", { id: "f-min", className: "input", type: "number", inputMode: "numeric", min: 0, max: 130, placeholder: "Optional", value: draft.min, onChange: (e) => set({ min: e.target.value }) }))),
+      h(Seg, { label: "Outcome", value: draft.out, onChange: (out) => set(out === "goal" || out === "saved" ? { out } : { out, gy: null, gz: null }), options: opt(OUT) }),
+      h(Seg, { label: "Situation", value: draft.sit, onChange: (sit) => set(sit === "open" ? { sit } : { sit, body: "foot", ast: "none", ap: null, oo: false, og: false }), options: opt(SIT) }),
+      h(Seg, { label: "Body part", value: draft.body, disabled: !isOpen, onChange: (body) => set({ body }), options: opt(BODY) }),
+      h(Seg, { label: "Pass before the shot", value: draft.ast, disabled: !isOpen, onChange: (ast) => set(ast === "none" ? { ast, ap: null } : { ast }), options: opt(AST) }),
+      isOpen && draft.ast !== "none" ? h("div", { className: "field" }, h("label", { className: "label", htmlFor: "f-assist" }, "Who set it up"),
+        h(PlayerPicker, { id: "f-assist", teams: s.teams, teamId: side[draft.t], value: draft.ap, onChange: (ap) => set({ ap }), canAdd: true, exclude: draft.p, placeholder: "Leave empty if unsure" })) : null,
+      h("div", { className: "form-grid" },
+        h("div", { className: "field" }, h("span", { className: "label" }, "Extra"),
+          h("div", { className: "seg" },
+            h(Toggle, { on: draft.oo, disabled: !isOpen, onChange: (v) => set({ oo: v }) }, "One-on-one"),
+            h(Toggle, { on: draft.og, disabled: !isOpen, onChange: (v) => set({ og: v }) }, "Open goal"))),
+        h("div", { className: "field" }, h("label", { className: "label", htmlFor: "f-keeper" }, "Keeper facing (" + tshort(s.teams, side[defSide]) + ")"),
+          h(PlayerPicker, { id: "f-keeper", teams: s.teams, teamId: side[defSide], value: keeper, onChange: (k) => set({ k }), canAdd: true, placeholder: "Type the keeper's name" }))),
+      errs.length ? h("ul", { className: "errs", role: "alert" }, errs.map((x, i) => h("li", { key: i }, x))) : null,
+      h("div", { className: "readout" },
+        h("div", { className: "xg" },
+          h("div", null, h("div", { className: "figure" }, preview != null ? f2(preview) : "\u2013"), h("div", { className: "unit" }, "xG")),
+          onT ? h("div", null, h("div", { className: "figure" }, previewOT != null ? f2(previewOT) : "\u2013"), h("div", { className: "unit" }, "xG on target")) : null,
+          spot && !isPen ? h("span", { className: "sub" }, describeSpot(spot.x, spot.y)) : null),
+        h("div", { className: "acts" },
+          draft.id ? h("button", { type: "button", className: "btn big", onClick: () => { setDraft(blankDraft(draft.t)); setErrs([]); } }, "Cancel") : null,
+          h("button", { type: "button", className: "btn primary big", id: "f-save", onClick: save }, draft.id ? "Save changes" : "Save shot"))),
+      flash ? h("div", { className: "flash", role: "status" }, h(IconCheck), flash) : null)) :
+    h("div", { className: "card stack" }, h("h2", { className: "h2" }, "Shot map"),
+      m.shots.length ? h(Frag, null, h(PitchMap, { marks, label: "Shot map for this match" }), legend) : h("div", { className: "empty" }, h("strong", null, "No shots tagged yet"), "This match has not been tagged."));
+
+  const cmpRow = (label, a, b) => h("tr", { key: label }, h("td", null, a), h("td", null, label), h("td", null, b));
+  const shotsCard = h("div", { className: "card stack" },
+    h("div", { className: "detail-grid" },
+      h("div", { className: "stack tight" },
+        h("h2", { className: "h2" }, "Match totals"),
+        h("table", { className: "cmp" }, h("tbody", null,
+          cmpRow("Goals", sc.h, sc.a), cmpRow("Shots", sum.h.sh, sum.a.sh), cmpRow("On target", sum.h.sot, sum.a.sot),
+          cmpRow("xG", f2(sum.h.xg), f2(sum.a.xg)), cmpRow("xG on target", f2(sum.h.xgot), f2(sum.a.xgot))))),
+      h("div", { className: "stack tight" },
+        h("h2", { className: "h2" }, "Own goals"),
+        m.og.length ? m.og.map((o) => h("div", { key: o.id, className: "row", style: { alignItems: "center" } },
+          h("span", null, (o.min != null ? o.min + "\u2032 " : "") + "Own goal, counts for " + tname(s.teams, side[o.t])),
+          can ? h("button", { type: "button", className: "btn quiet danger", onClick: () => Store.updateMatch(matchId, (d) => { d.og = d.og.filter((x) => x.id !== o.id); }) }, "Remove") : null)) :
+          h("p", { className: "sub" }, can ? "Own goals count in the score but not in anyone's xG. Add one here if it happens." : "None."),
+        can ? h("div", { className: "row" },
+          h(Seg, { label: "Counts for", value: og.t, onChange: (t) => setOg({ ...og, t }), options: sideOptions }),
+          h("div", { className: "field", style: { width: 92 } }, h("label", { className: "label", htmlFor: "og-min" }, "Minute"),
+            h("input", { id: "og-min", className: "input", type: "number", inputMode: "numeric", min: 0, max: 130, value: og.min, onChange: (e) => setOg({ ...og, min: e.target.value }) })),
+          h("button", { type: "button", className: "btn", onClick: addOg }, "Add own goal")) : null)),
+    h("h2", { className: "h2" }, "Shots (" + m.shots.length + ")"),
+    m.shots.length ? h("div", { className: "tbl-wrap" }, h("table", { className: "tbl" },
+      h("thead", null, h("tr", null,
+        h("th", { className: "num", scope: "col" }, "Min"), h("th", { scope: "col" }, "Team"), h("th", { scope: "col" }, "Player"), h("th", { scope: "col" }, "What happened"),
+        h("th", { className: "num", scope: "col" }, "xG"), h("th", { className: "num", scope: "col", title: "xG on target" }, "xGOT"), h("th", { scope: "col" }, "Set up by"), h("th", { scope: "col" }, "Keeper"),
+        can ? h("th", { scope: "col" }, h("span", { className: "sr" }, "Actions")) : null)),
+      h("tbody", null, ordered.map((x) => {
+        const ot = Model.xgot(x);
+        return h("tr", { key: x.id, className: draft.id === x.id ? "sel" : undefined },
+          h("td", { className: "num" }, x.min != null ? x.min + "\u2032" : ""),
+          h("td", null, h("span", { style: { display: "inline-flex", gap: 6, alignItems: "center" } }, h("i", { className: "dot " + (x.t === "h" ? "home" : "away") }), tshort(s.teams, side[x.t]))),
+          h("td", { className: "strong" }, pname(idx, x.p)),
+          h("td", null, shotLine(x)),
+          h("td", { className: "num" }, f2(Model.xg(x))),
+          h("td", { className: "num" }, Model.onTarget(x) ? (ot == null ? "Not placed" : f2(ot)) : ""),
+          h("td", null, x.ap ? pname(idx, x.ap) : ""),
+          h("td", null, Model.onTarget(x) ? (x.k ? pname(idx, x.k) : "Not set") : ""),
+          can ? h("td", null, h("div", { className: "acts" },
+            h("button", { type: "button", className: "btn quiet", onClick: () => startEdit(x) }, "Edit"),
+            h(ConfirmButton, { label: "Delete", ask: "Delete?", yes: "Yes", onYes: () => removeShot(x.id) }))) : null);
+      })))) : h("p", { className: "sub" }, can ? "Shots you save appear here, and you can edit or delete them." : "No shots tagged for this match yet."));
+
+  /* two views of the same match: the tagging screen, and the timeline that reads it back */
+  const views = [{ value: "tag", label: can ? "Tag shots" : "Shot map" }, { value: "timeline", label: "Timeline" }];
+  const viewBar = h("div", { className: "seg", role: "group", "aria-label": "Match view" },
+    views.map((v) => h("button", { key: v.value, type: "button", className: "seg-btn" + (view === v.value ? " on" : ""), "aria-pressed": view === v.value, onClick: () => onView(v.value) }, v.label)));
+  /* the public page shows a match as its timeline and nothing else */
+  if (s.reader) return h("div", { className: "stack" }, backBtn, header, h(MatchTimeline, { s, idx, m, can: false }));
+  return h("div", { className: "stack" }, backBtn, header, viewBar,
+    view === "timeline" ? h(MatchTimeline, { s, idx, m, can }) : h(Frag, null, tagger, shotsCard));
+}
+
+/* ============================================================
+   MATCH TIMELINE: the xG worm and the shot-by-shot list
+   ============================================================ */
+
+/* a rough width for a piece of text at a given size, erring wide, so a label can be checked for room before it is drawn */
+function textW(str, px) {
+  let em = 0;
+  for (const ch of String(str)) {
+    if (" .,:;'|!il\u2032".indexOf(ch) >= 0) em += 0.32;
+    else if ("jtfrI()-\u2013".indexOf(ch) >= 0) em += 0.42;
+    else if ("mwMW".indexOf(ch) >= 0) em += 0.92;
+    else if (ch >= "A" && ch <= "Z") em += 0.7;
+    else if (ch >= "0" && ch <= "9") em += 0.62;
+    else em += 0.59;
+  }
+  return em * px;
+}
+/* the name to print beside a goal: the nickname in brackets when the squad list has one, otherwise the name as saved */
+const goalName = (name) => { const m = /\(([^)]+)\)\s*$/.exec(name || ""); return m ? m[1] : name; };
+const WORM_LABEL_PX = 11.5, WORM_END_PX = 12;
+
+/* everything the worm needs to draw itself at a given width, in pixels.
+   The lines are stepped: flat until a shot, then straight up by that shot's xG. */
+function wormLayout(tl, width, sides, nameOf) {
+  const narrow = width < 480;
+  const W = Math.max(Math.round(width), 260), H = Math.round(Math.min(Math.max(W * 0.46, 230), 360));
+  const endW = narrow ? textW("0.00", WORM_END_PX) : Math.max(textW(sides.h.short, WORM_END_PX), textW(sides.a.short, WORM_END_PX)) + 5 + textW("0.00", WORM_END_PX);
+  const mg = { l: 38, r: Math.ceil(10 + endW + 6), t: 24, b: 28 };
+  const pw = W - mg.l - mg.r, ph = H - mg.t - mg.b;
+  const xEnd = Math.min(Math.max(90, Math.ceil((tl.last == null ? 0 : tl.last) / 5) * 5), 130);
+  const top = Math.max(tl.placed.h, tl.placed.a);
+  const step = top <= 1 ? 0.25 : top <= 2 ? 0.5 : top <= 5 ? 1 : 2;
+  const yMax = Math.max(1, Math.ceil(top / step - 1e-9) * step);
+  const x = (min) => mg.l + (Math.min(Math.max(min, 0), xEnd) / xEnd) * pw;
+  const y = (v) => mg.t + ph - (Math.min(Math.max(v, 0), yMax) / yMax) * ph;
+  const yTicks = [], xTicks = [];
+  for (let i = 0; i * step <= yMax + 1e-9; i++) yTicks.push(Math.round(i * step * 100) / 100);
+  for (let v = 0; v <= xEnd; v += 15) xTicks.push(v);
+  const yLabel = (v) => (v === 0 ? "0" : step < 0.5 ? v.toFixed(2) : v.toFixed(1));
+
+  /* the two lines sit a pixel either side of the true height, so when the teams are level (as at kick-off) both still show */
+  const nudge = { h: -1, a: 1 };
+  const points = (side) => {
+    const yy = (v) => y(v) + nudge[side];
+    const out = [[x(0), yy(0)]];
+    let v = 0;
+    for (const p of tl.steps[side]) { out.push([x(p.min), yy(v)], [x(p.min), yy(p.v)]); v = p.v; }
+    out.push([x(xEnd), yy(v)]);
+    return out;
+  };
+  const pts = { h: points("h"), a: points("a") };
+  const path = (P) => P.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ");
+
+  const goals = tl.timed.filter((r) => r.goal).map((r) => ({
+    id: r.kind + r.id, side: r.t, og: r.kind === "og", cx: x(r.min), cy: y(r.cum[r.t]) + nudge[r.t], text: nameOf(r) + " " + r.min + "\u2032",
+  }));
+  const ht = { x: x(45), y: mg.t - 6 };
+  /* on a phone there is room for a name or two at most, which reads as if the other goals mattered less: show markers only there */
+  const labels = narrow ? [] : placeGoalLabels(goals, [pts.h, pts.a], { x0: mg.l + 2, x1: mg.l + pw - 2, y0: 1, y1: mg.t + ph - 2 },
+    [{ x0: ht.x - 11, x1: ht.x + 11, y0: ht.y - 12, y1: ht.y + 4 }]);
+
+  /* the two totals at the right-hand end: beside their own line, eased apart only when the lines finish close together */
+  const ends = { h: { x: x(xEnd), y: y(tl.placed.h) + nudge.h }, a: { x: x(xEnd), y: y(tl.placed.a) + nudge.a } };
+  const ly = { h: ends.h.y, a: ends.a.y }, gap = 15;
+  if (Math.abs(ly.h - ly.a) < gap) {
+    const up = ly.h <= ly.a ? "h" : "a", lo = up === "h" ? "a" : "h";
+    const mid = (ly.h + ly.a) / 2, maxY = mg.t + ph, minY = mg.t + 4;
+    ly[up] = mid - gap / 2; ly[lo] = mid + gap / 2;
+    if (ly[lo] > maxY) { ly[up] -= ly[lo] - maxY; ly[lo] = maxY; }
+    if (ly[up] < minY) { ly[lo] += minY - ly[up]; ly[up] = minY; }
+  }
+  return { W, H, mg, pw, ph, xEnd, yMax, x, y, yTicks, xTicks, yLabel, narrow, nudge, d: { h: path(pts.h), a: path(pts.a) }, goals, labels, ht, ends, ly };
+}
+
+/* find room for a name beside each goal: try the four corners around the marker and keep the first that touches nothing.
+   A name with no room is left off; the list under the chart still has it. */
+function placeGoalLabels(goals, lines, box, extra) {
+  const hits = (a, b) => a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
+  const crosses = (r, P) => {
+    for (let i = 1; i < P.length; i++) {
+      const ax = Math.min(P[i - 1][0], P[i][0]), bx = Math.max(P[i - 1][0], P[i][0]), ay = Math.min(P[i - 1][1], P[i][1]), by = Math.max(P[i - 1][1], P[i][1]);
+      if (ax <= r.x1 && bx >= r.x0 && ay <= r.y1 && by >= r.y0) return true;
+    }
+    return false;
+  };
+  const marks = goals.map((g) => ({ x0: g.cx - 7, x1: g.cx + 7, y0: g.cy - 7, y1: g.cy + 7 }));
+  const placed = [];
+  goals.forEach((g, gi) => {
+    const w = textW(g.text, WORM_LABEL_PX) + 4;
+    const options = [
+      { anchor: "end", x: g.cx - 8, y: g.cy - 10 },
+      { anchor: "start", x: g.cx + 8, y: g.cy - 10 },
+      { anchor: "start", x: g.cx + 8, y: g.cy + 19 },
+      { anchor: "end", x: g.cx - 8, y: g.cy + 19 },
+    ];
+    for (const o of options) {
+      /* the box the text really fills at this size: about 12.5px above its baseline and 3.5px below */
+      const r = { x0: o.anchor === "end" ? o.x - w : o.x, x1: o.anchor === "end" ? o.x : o.x + w, y0: o.y - 12.5, y1: o.y + 3.5 };
+      if (r.x0 < box.x0 || r.x1 > box.x1 || r.y0 < box.y0 || r.y1 > box.y1) continue;
+      if (marks.some((q, qi) => qi !== gi && hits(r, q))) continue;
+      if ((extra || []).some((q) => hits(r, q))) continue;
+      if (placed.some((q) => hits(r, q.rect))) continue;
+      if (lines.some((P) => crosses(r, P))) continue;
+      placed.push({ id: g.id, text: g.text, anchor: o.anchor, x: o.x, y: o.y, rect: r });
+      break;
+    }
+  });
+  return placed;
+}
+
+/* the chart. cursor is { min, py } while a minute is being looked at, from the pointer, the keyboard or the list below. */
+function XgWorm({ tl, sides, idx, cursor, setCursor }) {
+  const box = useRef(null);
+  const width = useWidth(box, 640);
+  const L = useMemo(() => wormLayout(tl, width, sides, (r) => (r.kind === "og" ? "Own goal" : goalName(pname(idx, r.shot.p)))), [tl, width, idx, sides.h.short, sides.a.short]);
+  const { W, H, mg, pw, ph } = L;
+  const eventMins = useMemo(() => [...new Set(tl.timed.map((r) => r.min))], [tl]);
+  /* on a touch screen nothing "leaves" the chart, so a tap anywhere else puts the tooltip away */
+  const active = !!cursor;
+  useEffect(() => {
+    if (!active) return undefined;
+    const away = (e) => { if (e.pointerType !== "mouse" && box.current && !box.current.contains(e.target)) setCursor(null); };
+    document.addEventListener("pointerdown", away);
+    return () => document.removeEventListener("pointerdown", away);
+  }, [active]);
+
+  const fromPointer = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    if (!r.width || !r.height) return null;
+    const px = (e.clientX - r.left) * (W / r.width), py = (e.clientY - r.top) * (H / r.height);
+    return { min: Math.round(Math.min(Math.max((px - mg.l) / pw, 0), 1) * L.xEnd), py };
+  };
+  const onMove = (e) => { const c = fromPointer(e); if (c) setCursor(c); };
+  const onDown = (e) => { if (e.pointerType !== "mouse" && e.currentTarget.focus) e.currentTarget.focus(); onMove(e); };
+  const onLeave = (e) => { if (e.pointerType === "mouse") setCursor(null); };
+  const onKey = (e) => {
+    if (e.key === "Escape") { setCursor(null); return; }
+    if (!eventMins.length) return;
+    const cur = cursor ? cursor.min : eventMins[eventMins.length - 1];
+    let next = null;
+    if (e.key === "ArrowLeft") next = [...eventMins].reverse().find((v) => v < cur);
+    else if (e.key === "ArrowRight") next = eventMins.find((v) => v > cur);
+    else if (e.key === "Home") next = eventMins[0];
+    else if (e.key === "End") next = eventMins[eventMins.length - 1];
+    else return;
+    e.preventDefault();
+    setCursor({ min: next == null ? cur : next, py: null });
+  };
+  const onFocus = () => { if (!cursor && eventMins.length) setCursor({ min: eventMins[eventMins.length - 1], py: null }); };
+
+  const cls = { h: "home", a: "away" };
+  const aria = "xG worm. " + sides.h.name + " " + f2(tl.placed.h) + " xG, " + sides.a.name + " " + f2(tl.placed.a) + " xG. Left and right arrow keys step through the shots. The list below has every shot.";
+  let tip = null, mark = null;
+  if (cursor) {
+    const v = Stats.timelineAt(tl, cursor.min), cx = L.x(cursor.min);
+    const here = tl.timed.filter((r) => r.min === cursor.min);
+    const top = Math.min(Math.max(cursor.py == null ? mg.t + ph / 2 : cursor.py, 46), H - 46);
+    const leftHalf = cx < W / 2;
+    const room = Math.min(260, Math.max((leftHalf ? W - cx : cx) - 16, 130));
+    tip = h("div", { className: "tip rows", style: Object.assign({ top, transform: "translateY(-50%)", maxWidth: room }, leftHalf ? { left: cx + 12 } : { right: W - cx + 12 }) },
+      h("strong", null, cursor.min + "\u2032"),
+      ["h", "a"].map((sd) => h("span", { key: sd, className: "tr" }, h("i", { className: "key " + cls[sd] }), h("b", null, f2(v[sd])), sides[sd].short)),
+      here.map((r) => h("span", { key: r.kind + r.id, className: "ev" },
+        r.kind === "og" ? "Own goal, counts for " + sides[r.t].short : pname(idx, r.shot.p) + ": " + shotLine(r.shot) + ", " + f2(r.xg) + " xG")));
+    mark = h("g", { pointerEvents: "none" },
+      h("path", { className: "wc", d: "M" + cx.toFixed(1) + "," + mg.t + " V" + (mg.t + ph) }),
+      ["h", "a"].map((sd) => h("circle", { key: sd, className: "wm " + cls[sd], cx, cy: L.y(v[sd]) + L.nudge[sd], r: 4 })));
+  }
+
+  return h("div", { className: "worm", ref: box },
+    h("svg", {
+      viewBox: "0 0 " + W + " " + H, height: H, role: "img", tabIndex: 0, "aria-label": aria,
+      onPointerMove: onMove, onPointerDown: onDown, onPointerLeave: onLeave, onKeyDown: onKey, onFocus, onBlur: () => setCursor(null),
+    },
+      L.yTicks.map((v) => h("g", { key: "y" + v },
+        h("path", { className: "wg" + (v === 0 ? " base" : ""), d: "M" + mg.l + "," + L.y(v).toFixed(1) + " H" + (mg.l + pw) }),
+        h("text", { className: "wt", x: mg.l - 7, y: L.y(v) + 3.5, textAnchor: "end" }, L.yLabel(v)))),
+      h("text", { className: "wt", x: mg.l - 7, y: mg.t - 11, textAnchor: "end" }, "xG"),
+      L.xTicks.map((v) => h("text", { key: "x" + v, className: "wt", x: L.x(v), y: mg.t + ph + 17, textAnchor: "middle" }, v + "\u2032")),
+      h("path", { className: "wg ht", d: "M" + L.ht.x.toFixed(1) + "," + mg.t + " V" + (mg.t + ph) }),
+      h("text", { className: "wt", x: L.ht.x, y: L.ht.y, textAnchor: "middle" }, "HT"),
+      h("path", { className: "wl away", d: L.d.a }),
+      h("path", { className: "wl home", d: L.d.h }),
+      ["a", "h"].map((sd) => h("circle", { key: "e" + sd, className: "wm " + cls[sd], cx: L.ends[sd].x, cy: L.ends[sd].y, r: 4 })),
+      L.goals.map((g) => (g.og ?
+        h("g", { key: g.id, className: "wgoal og" }, h("circle", { className: "wm-back", cx: g.cx, cy: g.cy, r: 7 }), h("circle", { className: "wm-open " + cls[g.side], cx: g.cx, cy: g.cy, r: 4.5 })) :
+        h("circle", { key: g.id, className: "wgoal wm " + cls[g.side], cx: g.cx, cy: g.cy, r: 5 }))),
+      L.labels.map((l) => h("text", { key: l.id, className: "wn", x: l.x, y: l.y, textAnchor: l.anchor }, l.text)),
+      ["h", "a"].map((sd) => h("text", { key: "l" + sd, className: "we", x: L.ends[sd].x + 10, y: L.ly[sd] + 4 },
+        L.narrow ? null : h("tspan", null, sides[sd].short),
+        h("tspan", { className: "v", dx: L.narrow ? 0 : 5 }, f2(tl.placed[sd])))),
+      mark),
+    tip);
+}
+
+function MatchTimeline({ s, idx, m, can }) {
+  const tl = useMemo(() => Stats.timeline(m), [m.shots, m.og]);
+  const [cursor, setCursor] = useState(null);
+  const sides = { h: { name: tname(s.teams, m.home), short: tshort(s.teams, m.home) }, a: { name: tname(s.teams, m.away), short: tshort(s.teams, m.away) } };
+  const rows = tl.timed.concat(tl.untimed);
+  if (!rows.length) {
+    return h("div", { className: "empty" }, h("strong", null, "Nothing on the timeline yet"),
+      can ? "Tag the shots first. Give each one a minute and it lands here." : "This match has not been tagged.");
+  }
+  const lost = tl.untimed.filter((r) => r.kind === "shot").length;
+  const hasOg = tl.timed.some((r) => r.kind === "og");
+  const notes = [];
+  if (lost && tl.timed.length) {
+    notes.push((lost === 1 ? "1 shot has no minute, so it is left off the worm" : lost + " shots have no minute, so they are left off the worm")
+      + " (" + f2(tl.unplaced.h + tl.unplaced.a) + " xG)." + (can ? " Add the minute on the Tag shots tab to place " + (lost === 1 ? "it." : "them.") : ""));
+  }
+  if (!m.done && tl.timed.length) notes.push("This match is not marked as finished, so the lines may still move.");
+
+  const worm = h("div", { className: "card stack worm-card" },
+    h("div", { className: "step" }, h("h2", { className: "h2" }, "xG worm"),
+      h("span", { className: "hint" }, "Each team's xG added up through the match. Every step is a shot.")),
+    tl.timed.length ? h(Frag, null,
+      h("div", { className: "legend start" },
+        h("span", null, h("i", { className: "key home" }), sides.h.name),
+        h("span", null, h("i", { className: "key away" }), sides.a.name),
+        h("span", null, h("i", { className: "dot solid" }), "Goal"),
+        hasOg ? h("span", null, h("i", { className: "dot hollow" }), "Own goal") : null),
+      h(XgWorm, { tl, sides, idx, cursor, setCursor })) :
+      h("div", { className: "empty" }, h("strong", null, "No minutes yet"), "The worm needs the minute of each shot." + (can ? " Add it on the Tag shots tab." : "")),
+    notes.map((n, i) => h("p", { key: i, className: "sub" }, n)));
+
+  /* One table, two shapes. On a wide screen every fact has its own column. On a phone the team, outcome and score
+     fold in under the player's name (the tl-* pieces below), so minute, shot and outcome all show without sideways scrolling. */
+  const list = h("div", { className: "card stack" },
+    h("h2", { className: "h2" }, "Shot by shot"),
+    h("div", { className: "tbl-wrap" }, h("table", { className: "tbl tl" },
+      h("caption", { className: "sr" }, "Every shot in order, with the score and each team's running xG"),
+      h("thead", null, h("tr", null,
+        h("th", { className: "num", scope: "col" }, "Min"), h("th", { className: "c-team", scope: "col" }, "Team"), h("th", { scope: "col" }, "Player"),
+        h("th", { className: "c-what", scope: "col" }, "Outcome"), h("th", { className: "num", scope: "col" }, "xG"), h("th", { className: "num c-score", scope: "col" }, "Score"),
+        h("th", { className: "num c-run", scope: "col", title: "Each team's xG so far, " + sides.h.short + " first" }, sides.h.short + " \u2013 " + sides.a.short + " xG"))),
+      h("tbody", null, rows.map((r) => {
+        const timed = r.min != null, og = r.kind === "og";
+        const what = og ? "Own goal" : shotLine(r.shot);
+        const score = r.goal && r.score ? r.score.h + "\u2013" + r.score.a : "";
+        return h("tr", {
+          key: r.kind + r.id, className: ((r.goal ? "goal" : "") + (cursor && timed && r.min === cursor.min ? " sel" : "")).trim() || undefined,
+          onMouseEnter: timed ? () => setCursor({ min: r.min, py: null }) : undefined, onMouseLeave: timed ? () => setCursor(null) : undefined,
+        },
+          h("td", { className: "num" }, timed ? r.min + "\u2032" : h("span", { className: "faint", title: "No minute saved" }, "\u2013")),
+          h("td", { className: "c-team" }, h("span", { className: "tchip" }, h("i", { className: "dot " + (r.t === "h" ? "home" : "away") }), sides[r.t].short)),
+          h("td", { className: "strong who" },
+            h("i", { className: "tl-dot dot " + (r.t === "h" ? "home" : "away") }),
+            og ? h("span", { className: "tl-og" }, "Own goal") : pname(idx, r.shot.p),
+            h("span", { className: "tl-sub" }, [sides[r.t].short, og ? null : what, score || null].filter(Boolean).join(" \u00b7 "))),
+          h("td", { className: "what soft c-what" }, what),
+          h("td", { className: "num" }, og ? "" : f2(r.xg)),
+          h("td", { className: "num c-score" }, score),
+          h("td", { className: "num c-run" }, r.cum ? f2(r.cum.h) + " \u2013 " + f2(r.cum.a) : ""));
+      })))));
+
+  return h(Frag, null, worm, list);
+}
+
+/* ============================================================
+   PLAYERS, KEEPERS AND TEAMS: the season tables
+   ============================================================ */
+const NoShotsYet = ({ what }) => (READER ?
+  h("div", { className: "empty" }, h("strong", null, "Nothing here yet"), "After the first finished match, " + what + " fill in here.") :
+  h("div", { className: "empty" }, h("strong", null, "No shots tagged yet"), "Tag a match and " + what + " fill in here."));
+/* the public page counts finished matches only; the tracker counts everything tagged */
+const matchesWord = (n) => n + (READER ? (n === 1 ? " finished match" : " finished matches") : (n === 1 ? " tagged match" : " tagged matches"));
+const Defs = ({ items }) => h("dl", { className: "deflist" }, items.map(([t, d]) => h(Frag, { key: t }, h("dt", null, t), h("dd", null, d))));
+const ClubSelect = ({ id, s, value, onChange }) => h("div", { className: "field" },
+  h("label", { className: "label", htmlFor: id }, "Club"),
+  h("select", { id, className: "input", value, onChange: (e) => onChange(e.target.value) },
+    [h("option", { key: "", value: "" }, "All clubs")].concat(Object.keys(s.teams).sort((a, b) => s.teams[a].name.localeCompare(s.teams[b].name)).map((t) => h("option", { key: t, value: t }, s.teams[t].name)))));
+const Kpi = ({ v, k }) => h("div", { className: "kpi" }, h("div", { className: "v" }, v), h("div", { className: "k" }, k));
+
+const PLAYER_COLS = [
+  { key: "name", label: "Player", get: (r) => r.name, strong: true },
+  { key: "club", label: "Club", get: (r) => r.club },
+  { key: "sh", label: "Shots", num: true, get: (r) => r.sh, title: "Every shot taken, penalties included" },
+  { key: "sot", label: "On target", num: true, get: (r) => r.sot, title: "Shots that were scored or saved by the keeper" },
+  { key: "g", label: "Goals", num: true, get: (r) => r.g, title: "Goals scored, penalties included" },
+  { key: "xg", label: "xG", num: true, get: (r) => r.xg, fmt: f2, title: "Expected goals from all shots" },
+  { key: "diff", label: "G " + MINUS + " xG", num: true, get: (r) => r.diff, fmt: signed, title: "Goals minus expected goals" },
+  { key: "npxg", label: "npxG", num: true, get: (r) => r.npxg, fmt: f2, title: "Expected goals without penalties" },
+  { key: "per", label: "npxG / shot", num: true, get: (r) => r.per, fmt: f2, title: "Average chance quality, penalties left out" },
+  { key: "xgot", label: "xGOT", num: true, get: (r) => r.xgot, fmt: f2, title: "Expected goals on target: chance of scoring given where each shot was placed" },
+  { key: "kp", label: "Key passes", num: true, get: (r) => r.kp, title: "Passes that led straight to a shot" },
+  { key: "a", label: "Assists", num: true, get: (r) => r.a, title: "Key passes that ended in a goal" },
+  { key: "xa", label: "xA", num: true, get: (r) => r.xa, fmt: f2, title: "Expected assists: the xG of the shots this player set up" },
+];
+
+function PlayersView({ s, idx, agg }) {
+  const [team, setTeam] = useState("");
+  const [q, setQ] = useState("");
+  const [minSh, setMinSh] = useState(0);
+  const [sel, setSel] = useState(null);
+  const rows = useMemo(() => Object.keys(agg.players).map((id) => {
+    const d = agg.players[id];
+    return { id, name: pname(idx, id), club: tshort(s.teams, d.team), team: d.team, sh: d.sh, sot: d.sot, g: d.g, xg: d.xg, diff: d.g - d.xg, npxg: d.npxg, per: d.npsh ? d.npxg / d.npsh : null, xgot: d.xgot, kp: d.kp, a: d.a, xa: d.xa, pens: d.pens, pg: d.pg };
+  }), [agg, idx, s.teams]);
+  if (!rows.length) return h(NoShotsYet, { what: "every player's shots, goals, xG and xA" });
+  const shown = rows.filter((r) => (!team || r.team === team) && r.sh >= minSh && (!q || fold(r.name).includes(fold(q))));
+  const picked = sel && agg.players[sel] ? rows.find((r) => r.id === sel) : null;
+  return h("div", { className: "stack" },
+    h("div", { className: "row" },
+      h("div", { className: "field grow", style: { maxWidth: 280 } }, h("label", { className: "label", htmlFor: "pl-q" }, "Find a player"),
+        h("input", { id: "pl-q", className: "input", type: "search", placeholder: "Type a name", value: q, onChange: (e) => setQ(e.target.value) })),
+      h(ClubSelect, { id: "pl-club", s, value: team, onChange: setTeam }),
+      h(Seg, { label: "At least", value: minSh, onChange: setMinSh, options: [{ value: 0, label: "Any" }, { value: 5, label: "5 shots" }, { value: 10, label: "10" }, { value: 20, label: "20" }] })),
+    picked ? h(PlayerDetail, { s, idx, r: picked, close: () => setSel(null) }) : null,
+    shown.length ? h(SortTable, { cols: PLAYER_COLS, rows: shown, initial: { key: "xg", dir: -1 }, rowKey: (r) => r.id, onRow: (id) => setSel(sel === id ? null : id), selKey: sel, caption: "Player totals" }) :
+      h("div", { className: "empty" }, h("strong", null, "No players match"), "Loosen the filters above."),
+    h("p", { className: "sub" }, "Click a player to see their shot map. Click a column heading to sort. From " + matchesWord(agg.totals.matches) + " and " + agg.totals.shots + (agg.totals.shots === 1 ? " shot." : " shots.")),
+    h(Defs, { items: [
+      ["xG", "Expected goals. Each shot is worth the chance that a shot like it is scored, from 0 to 1. A penalty is worth 0.76."],
+      ["G " + MINUS + " xG", "Goals minus xG. Above zero means more goals than the chances were worth."],
+      ["npxG", "xG with penalties left out."],
+      ["xGOT", "xG on target. Rates each on-target shot again once you know where in the goal it went. Shots off target count zero."],
+      ["Key passes", "Passes that led straight to a shot. An assist is a key pass that ended in a goal."],
+      ["xA", "Expected assists. The xG of every shot the player set up, scored or not."],
+    ] }));
+}
+
+function PlayerDetail({ s, idx, r, close }) {
+  const shots = useMemo(() => {
+    const out = [];
+    for (const { id, m } of sortedMatches(s.matches)) for (const x of m.shots) if (x.p === r.id) out.push({ x, mid: id, m });
+    return out;
+  }, [s.matches, r.id]);
+  const marks = shots.map(({ x, m }) => {
+    const v = Model.xg(x);
+    const opp = tshort(s.teams, x.t === "h" ? m.away : m.home);
+    return { id: x.id, x: x.x, y: x.y, v, goal: x.out === "goal", cls: "home", value: f2(v) + " xG", lines: ["v " + opp + ", " + fmtDate(m.date) + (x.min != null ? " \u00b7 " + x.min + "\u2032" : ""), shotLine(x)], aria: "Against " + opp + ", " + shotLine(x) + ", " + f2(v) + " expected goals" };
+  });
+  return h("div", { className: "card stack" },
+    h("div", { className: "toolbar" },
+      h("div", null, h("h2", { className: "h2" }, r.name), h("p", { className: "sub" }, tname(s.teams, r.team) + (r.pens ? " \u00b7 " + r.pg + " of " + r.pens + " penalties scored" : ""))),
+      h("button", { type: "button", className: "btn", onClick: close }, "Close")),
+    h("div", { className: "kpis" }, h(Kpi, { v: r.sh, k: "Shots" }), h(Kpi, { v: r.sot, k: "On target" }), h(Kpi, { v: r.g, k: "Goals" }), h(Kpi, { v: f2(r.xg), k: "xG" }), h(Kpi, { v: r.a, k: "Assists" }), h(Kpi, { v: f2(r.xa), k: "xA" })),
+    shots.length ? h("div", { className: "detail-grid" },
+      h("div", null, h(PitchMap, { marks, label: "Shot map for " + r.name }),
+        h("div", { className: "legend" }, h("span", null, h("i", { className: "dot home" }), "Goal"), h("span", null, h("i", { className: "dot soft" }), "No goal"), h("span", null, "Bigger means higher xG"))),
+      h("div", { className: "tbl-wrap tall" }, h("table", { className: "tbl" },
+        h("thead", null, h("tr", null, h("th", { scope: "col" }, "Match"), h("th", { className: "num", scope: "col" }, "Min"), h("th", { scope: "col" }, "What happened"), h("th", { className: "num", scope: "col" }, "xG"))),
+        h("tbody", null, shots.map(({ x, m }) => h("tr", { key: x.id },
+          h("td", null, "v " + tshort(s.teams, x.t === "h" ? m.away : m.home) + ", " + fmtDate(m.date)),
+          h("td", { className: "num" }, x.min != null ? x.min + "\u2032" : ""),
+          h("td", null, shotLine(x)),
+          h("td", { className: "num" }, f2(Model.xg(x))))))))) :
+      h("p", { className: "sub" }, "No shots of their own yet. Their numbers come from setting up others."));
+}
+
+const KEEPER_COLS = [
+  { key: "name", label: "Keeper", get: (r) => r.name, strong: true },
+  { key: "club", label: "Club", get: (r) => r.club },
+  { key: "sotf", label: "On target faced", num: true, get: (r) => r.sotf, title: "Shots on target this keeper faced" },
+  { key: "ga", label: "Goals against", num: true, get: (r) => r.ga, title: "Goals conceded from those shots. Own goals are left out." },
+  { key: "sv", label: "Saves", num: true, get: (r) => r.sv },
+  { key: "svp", label: "Save %", num: true, get: (r) => r.svp, fmt: pct },
+  { key: "xgotf", label: "xGOT faced", num: true, get: (r) => r.xgotf, fmt: f2, title: "Goals an average keeper would concede from the same shots" },
+  { key: "xsv", label: "Expected saves", num: true, get: (r) => r.xsv, fmt: f2, title: "Saves an average keeper would make from the same shots" },
+  { key: "sae", label: "Saves above expected", num: true, get: (r) => r.sae, fmt: signed, title: "Saves minus expected saves. Also called goals prevented." },
+  { key: "xsvp", label: "Expected save %", num: true, get: (r) => r.xsvp, fmt: pct },
+];
+
+function KeepersView({ s, idx, agg }) {
+  const [team, setTeam] = useState("");
+  const [sel, setSel] = useState(null);
+  const rows = useMemo(() => Object.keys(agg.keepers).map((id) => {
+    const d = agg.keepers[id], sv = d.sotf - d.ga, xsv = d.sotf - d.xgotf;
+    return { id, name: pname(idx, id), club: tshort(s.teams, d.team), team: d.team, sotf: d.sotf, ga: d.ga, sv, svp: d.sotf ? sv / d.sotf : null, xgotf: d.xgotf, xsv, sae: d.xgotf - d.ga, xsvp: d.sotf ? xsv / d.sotf : null };
+  }), [agg, idx, s.teams]);
+  const warn = agg.totals.unassigned ? h(Note, { kind: "warn" }, agg.totals.unassigned + (agg.totals.unassigned === 1 ? " shot on target has" : " shots on target have") + " no keeper recorded, so no keeper is credited or charged for them." + (READER ? "" : " Set the goalkeepers at the top of each match to fix this.")) : null;
+  if (!rows.length) return h("div", { className: "stack" }, warn, h(NoShotsYet, { what: "saves, expected saves and goals prevented for each keeper" }));
+  const shown = rows.filter((r) => !team || r.team === team);
+  const picked = sel ? rows.find((r) => r.id === sel) : null;
+  return h("div", { className: "stack" },
+    warn,
+    h("div", { className: "row" }, h(ClubSelect, { id: "gk-club", s, value: team, onChange: setTeam })),
+    picked ? h(KeeperDetail, { s, idx, r: picked, close: () => setSel(null) }) : null,
+    shown.length ? h(SortTable, { cols: KEEPER_COLS, rows: shown, initial: { key: "sae", dir: -1 }, rowKey: (r) => r.id, onRow: (id) => setSel(sel === id ? null : id), selKey: sel, caption: "Goalkeeper totals" }) :
+      h("div", { className: "empty" }, h("strong", null, "No keepers for this club yet"), "Pick another club."),
+    h("p", { className: "sub" }, "Click a keeper to see where the shots they faced were placed. From " + matchesWord(agg.totals.matches) + "."),
+    h(Defs, { items: [
+      ["xGOT faced", "For every shot on target, the chance it goes in given where it was struck from and where in the goal it was heading. Added up, it is the goals an average keeper would concede."],
+      ["Expected saves", "Shots on target faced minus xGOT faced: the saves an average keeper would make."],
+      ["Saves above expected", "Saves minus expected saves. It is the same number as goals prevented. Above zero is better than average shot-stopping."],
+    ] }));
+}
+
+function KeeperDetail({ s, idx, r, close }) {
+  const marks = useMemo(() => {
+    const out = [];
+    for (const { m } of sortedMatches(s.matches)) for (const x of m.shots) {
+      if (x.k !== r.id || !Model.onTarget(x) || x.gy == null || x.gz == null) continue;
+      const v = Model.xgot(x) || 0;
+      const lines = [pname(idx, x.p) + ", " + tshort(s.teams, x.t === "h" ? m.home : m.away) + ", " + fmtDate(m.date), x.out === "goal" ? "Goal" : "Saved"];
+      out.push({ id: x.id, gy: x.gy, gz: x.gz, v, goal: x.out === "goal", cls: "home", value: f2(v) + " xGOT", lines, aria: lines.join(", ") + ", " + f2(v) + " expected goals on target" });
+    }
+    return out;
+  }, [s.matches, r.id, idx, s.teams]);
+  return h("div", { className: "card stack" },
+    h("div", { className: "toolbar" },
+      h("div", null, h("h2", { className: "h2" }, r.name), h("p", { className: "sub" }, tname(s.teams, r.team))),
+      h("button", { type: "button", className: "btn", onClick: close }, "Close")),
+    h("div", { className: "kpis" }, h(Kpi, { v: r.sotf, k: "On target faced" }), h(Kpi, { v: r.sv, k: "Saves" }), h(Kpi, { v: f2(r.xsv), k: "Expected saves" }), h(Kpi, { v: signed(r.sae), k: "Saves above expected" })),
+    h(GoalMouth, { marks, label: "Shots on target faced by " + r.name }),
+    h("div", { className: "legend" }, h("span", null, h("i", { className: "dot home" }), "Goal conceded"), h("span", null, h("i", { className: "dot soft" }), "Saved"), h("span", null, "Bigger means harder to save")));
+}
+
+const TEAM_COLS = [
+  { key: "name", label: "Club", get: (r) => r.name, strong: true },
+  { key: "mp", label: "Matches", num: true, get: (r) => r.mp, title: READER ? "Finished matches" : "Matches with at least one tagged shot" },
+  { key: "gf", label: "Goals for", num: true, get: (r) => r.gf, title: "Goals scored, own goals in their favour included" },
+  { key: "ga", label: "Goals against", num: true, get: (r) => r.ga },
+  { key: "sh", label: "Shots", num: true, get: (r) => r.sh },
+  { key: "sot", label: "On target", num: true, get: (r) => r.sot },
+  { key: "xg", label: "xG", num: true, get: (r) => r.xg, fmt: f2 },
+  { key: "sha", label: "Shots against", num: true, get: (r) => r.sha },
+  { key: "xga", label: "xG against", num: true, get: (r) => r.xga, fmt: f2 },
+  { key: "xgd", label: "xG difference", num: true, get: (r) => r.xgd, fmt: signed, title: "xG for minus xG against" },
+  { key: "xgpm", label: "xG / match", num: true, get: (r) => r.xgpm, fmt: f2 },
+];
+
+function TeamsView({ s, agg }) {
+  const rows = useMemo(() => Object.keys(agg.teams).map((id) => {
+    const d = agg.teams[id];
+    return { id, name: tname(s.teams, id), mp: d.mp, gf: d.g + d.ogf, ga: d.ga + d.oga, sh: d.sh, sot: d.sot, xg: d.xg, sha: d.sha, xga: d.xga, xgd: d.xg - d.xga, xgpm: d.mp ? d.xg / d.mp : null };
+  }), [agg, s.teams]);
+  if (!rows.length) return h(NoShotsYet, { what: "each club's shots and xG for and against" });
+  return h("div", { className: "stack" },
+    h(SortTable, { cols: TEAM_COLS, rows, initial: { key: "xgd", dir: -1 }, rowKey: (r) => r.id, caption: "Club totals" }),
+    h("p", { className: "sub" }, (READER ? "Only finished matches are counted." : "Only matches you have tagged are counted.") + " Goals include own goals; xG never does."));
+}
+
+/* ============================================================
+   SQUADS: the players of each club
+   ============================================================ */
+const cleanNum = (v) => { const n = Number(v); return v === "" || v == null || !isFinite(n) || n < 0 || n > 99 ? null : Math.round(n); };
+
+function PlayerRow({ tid, p, used, others, can }) {
+  const [name, setName] = useState(p.name);
+  const [num, setNum] = useState(p.num == null ? "" : String(p.num));
+  const [into, setInto] = useState("");
+  useEffect(() => { setName(p.name); setNum(p.num == null ? "" : String(p.num)); }, [p.name, p.num]);
+  const commit = () => {
+    const n = tidyName(name), nn = cleanNum(num);
+    if (!n) { setName(p.name); return; }
+    if (n !== p.name || nn !== p.num) Store.updateTeam(tid, (t) => { const q = t.players.find((x) => x.id === p.id); if (q) { q.name = n; q.num = nn; } });
+  };
+  const onEnter = (e) => { if (e.key === "Enter") e.target.blur(); };
+  if (!can) return h("tr", null, h("td", { className: "num" }, p.num != null ? p.num : ""), h("td", { className: "strong" }, p.name), h("td", { className: "num" }, used || ""));
+  return h("tr", null,
+    h("td", { style: { width: 84, minWidth: 76 } }, h("input", { className: "input", type: "number", inputMode: "numeric", min: 0, max: 99, "aria-label": "Shirt number for " + p.name, value: num, onChange: (e) => setNum(e.target.value), onBlur: commit, onKeyDown: onEnter })),
+    h("td", { style: { minWidth: 200 } }, h("input", { className: "input", type: "text", "aria-label": "Name", value: name, onChange: (e) => setName(e.target.value), onBlur: commit, onKeyDown: onEnter })),
+    h("td", { className: "num" }, used || ""),
+    h("td", null, h("div", { className: "acts" },
+      others.length ? (into ?
+        h(Frag, null,
+          h("span", { className: "sub", style: { alignSelf: "center" } }, "Move everything to " + (others.find((o) => o.id === into) || {}).name + "?"),
+          h("button", { type: "button", className: "btn", onClick: () => { Store.mergePlayers(tid, p.id, into); setInto(""); } }, "Merge"),
+          h("button", { type: "button", className: "btn", onClick: () => setInto("") }, "Cancel")) :
+        h("select", { className: "input", style: { width: 150 }, "aria-label": "Merge " + p.name + " into another player", value: "", onChange: (e) => setInto(e.target.value) },
+          [h("option", { key: "", value: "" }, "Merge into\u2026")].concat(others.map((o) => h("option", { key: o.id, value: o.id }, o.name))))) : null,
+      !into ? h(ConfirmButton, { label: "Remove", ask: "Remove " + p.name + "?", yes: "Remove", disabled: used > 0, title: used > 0 ? "This player has tagged shots. Merge them into another player instead." : undefined,
+        onYes: () => Store.updateTeam(tid, (t) => { t.players = t.players.filter((x) => x.id !== p.id); }) }) : null)));
+}
+
+function SquadsView({ s }) {
+  const clubs = useMemo(() => Object.keys(s.teams).sort((a, b) => s.teams[a].name.localeCompare(s.teams[b].name)), [s.teams]);
+  const [tidRaw, setTid] = useState("");
+  const [np, setNp] = useState({ name: "", num: "" });
+  const [paste, setPaste] = useState(null);
+  const [msg, setMsg] = useState("");
+  const [nc, setNc] = useState(null);
+  const usage = useMemo(() => Store.usage(), [s.matches]);
+  const can = s.canWrite;
+  const tid = s.teams[tidRaw] ? tidRaw : clubs[0] || "";
+  const team = s.teams[tid];
+
+  const addClubForm = can ? (nc ? h("div", { className: "card stack" },
+    h("h2", { className: "h2" }, "Add a club"),
+    h("div", { className: "row" },
+      h("div", { className: "field grow" }, h("label", { className: "label", htmlFor: "nc-name" }, "Club name"), h("input", { id: "nc-name", className: "input", type: "text", value: nc.name, onChange: (e) => setNc({ ...nc, name: e.target.value }) })),
+      h("div", { className: "field", style: { width: 120 } }, h("label", { className: "label", htmlFor: "nc-short" }, "Short code"), h("input", { id: "nc-short", className: "input", type: "text", maxLength: 5, placeholder: "e.g. BFC", value: nc.short, onChange: (e) => setNc({ ...nc, short: e.target.value }) })),
+      h("button", { type: "button", className: "btn primary", disabled: tidyName(nc.name).length < 2, onClick: () => { const id = Store.addTeam(nc.name, nc.short); setNc(null); setTid(id); } }, "Add club"),
+      h("button", { type: "button", className: "btn", onClick: () => setNc(null) }, "Cancel"))) :
+    h("button", { type: "button", className: "btn", style: { alignSelf: "flex-start" }, onClick: () => setNc({ name: "", short: "" }) }, "Add a club")) : null;
+
+  if (!team) return h("div", { className: "stack" }, h("div", { className: "empty" }, h("strong", null, "No clubs yet"), can ? "Add the clubs first, then their players." : "Nothing has been set up yet."), addClubForm);
+
+  const players = [...team.players].sort((a, b) => (a.num == null ? 999 : a.num) - (b.num == null ? 999 : b.num) || a.name.localeCompare(b.name));
+  const addOne = () => {
+    const n = tidyName(np.name);
+    if (!n) return;
+    if (team.players.some((p) => fold(p.name) === fold(n))) { setMsg(n + " is already in this squad."); return; }
+    Store.addPlayer(tid, n, cleanNum(np.num));
+    setNp({ name: "", num: "" }); setMsg("");
+  };
+  const addMany = () => {
+    const have = new Set(team.players.map((p) => fold(p.name)));
+    const fresh = [];
+    for (const raw of String(paste || "").split(/\r?\n/)) {
+      const line = raw.replace(/\t/g, " ").trim();
+      if (!line) continue;
+      const hit = line.match(/^#?(\d{1,2})[\s.,:;)\-]+(.+)$/);
+      const name = tidyName(hit ? hit[2] : line), num = hit ? cleanNum(hit[1]) : null;
+      if (name.length < 2 || have.has(fold(name))) continue;
+      have.add(fold(name));
+      fresh.push({ id: Store.uid(tid + "_") + fresh.length, name, num });
+    }
+    if (fresh.length) Store.updateTeam(tid, (t) => { t.players = t.players.concat(fresh); });
+    setMsg(fresh.length ? "Added " + fresh.length + (fresh.length === 1 ? " player." : " players.") : "No new names found. Players already in the squad are skipped.");
+    setPaste(null);
+  };
+
+  return h("div", { className: "stack" },
+    h("div", { className: "chips", role: "group", "aria-label": "Club" }, clubs.map((id) => h("button", { key: id, type: "button", className: "seg-btn" + (id === tid ? " on" : ""), "aria-pressed": id === tid, onClick: () => { setTid(id); setMsg(""); setPaste(null); } }, s.teams[id].short))),
+    h("div", { className: "toolbar" },
+      h("div", null, h("h2", { className: "h2" }, team.name), h("p", { className: "sub" }, team.players.length + (team.players.length === 1 ? " player" : " players") + ". You can also add players while tagging, just by typing a new name.")),
+      addClubForm && !nc ? addClubForm : null),
+    nc ? addClubForm : null,
+    can ? h("div", { className: "card stack" },
+      h("div", { className: "row" },
+        h("div", { className: "field", style: { width: 84 } }, h("label", { className: "label", htmlFor: "np-num" }, "Number"), h("input", { id: "np-num", className: "input", type: "number", inputMode: "numeric", min: 0, max: 99, value: np.num, onChange: (e) => setNp({ ...np, num: e.target.value }) })),
+        h("div", { className: "field grow" }, h("label", { className: "label", htmlFor: "np-name" }, "Player name"), h("input", { id: "np-name", className: "input", type: "text", value: np.name, onChange: (e) => setNp({ ...np, name: e.target.value }), onKeyDown: (e) => { if (e.key === "Enter") addOne(); } })),
+        h("button", { type: "button", className: "btn primary", onClick: addOne }, "Add player"),
+        h("button", { type: "button", className: "btn", onClick: () => setPaste(paste == null ? "" : null) }, paste == null ? "Paste a whole squad" : "Close")),
+      paste != null ? h("div", { className: "stack tight" },
+        h("label", { className: "label", htmlFor: "np-paste" }, "One player per line. Start a line with the shirt number if you have it."),
+        h("textarea", { id: "np-paste", className: "input", placeholder: "1 Goalkeeper Name\n9 Striker Name\nAnother Player", value: paste, onChange: (e) => setPaste(e.target.value) }),
+        h("button", { type: "button", className: "btn primary", style: { alignSelf: "flex-start" }, onClick: addMany }, "Add these players")) : null,
+      msg ? h("p", { className: "sub", role: "status" }, msg) : null) : null,
+    players.length ? h("div", { className: "tbl-wrap" }, h("table", { className: "tbl" },
+      h("thead", null, h("tr", null, h("th", { scope: "col", className: can ? undefined : "num" }, "No."), h("th", { scope: "col" }, "Name"), h("th", { className: "num", scope: "col", title: "Shots, key passes and shots faced tagged for this player" }, "Tagged"), can ? h("th", { scope: "col" }, h("span", { className: "sr" }, "Actions")) : null)),
+      h("tbody", null, players.map((p) => h(PlayerRow, { key: p.id, tid, p, used: usage[p.id] || 0, others: players.filter((o) => o.id !== p.id), can }))))) :
+      h("div", { className: "empty" }, h("strong", null, "No players yet"), can ? "Add them here, paste a squad list, or just type names while you tag." : "No players have been added for this club."),
+    can && players.length ? h("p", { className: "sub" }, "Spelled a name two ways? Use Merge to fold one into the other. Nothing tagged is lost.") : null);
+}
+
+/* ============================================================
+   METHOD: how to tag, what the numbers mean, the model check, exports
+   ============================================================ */
+function exportShots(s, idx) {
+  const rows = [];
+  for (const { id, m } of sortedMatches(s.matches)) for (const x of m.shots) {
+    const g = Model.geom(x.x, x.y), ot = Model.xgot(x);
+    rows.push([id, m.date, tname(s.teams, m.home), tname(s.teams, m.away), tname(s.teams, x.t === "h" ? m.home : m.away), tname(s.teams, x.t === "h" ? m.away : m.home),
+      x.min, pname(idx, x.p), x.x, x.y, Math.round(g.dist * 10) / 10, x.out, Model.onTarget(x) ? 1 : 0, x.out === "goal" ? 1 : 0, x.body, x.sit, x.ast,
+      pname(idx, x.ap), x.oo ? 1 : 0, x.og ? 1 : 0, r3(Model.xg(x)), x.gy, x.gz, Model.onTarget(x) ? r3(ot) : "", pname(idx, x.k)]);
+  }
+  return toCsv(["match_id", "date", "home", "away", "team", "opponent", "minute", "player", "x", "y", "distance_yd", "outcome", "on_target", "goal", "body", "situation", "pass_type",
+    "set_up_by", "one_on_one", "open_goal", "xg", "goal_y", "goal_z", "xgot", "keeper"], rows);
+}
+function exportPlayers(s, idx, agg) {
+  const rows = Object.keys(agg.players).map((id) => {
+    const d = agg.players[id];
+    return [pname(idx, id), tname(s.teams, d.team), d.m, d.sh, d.sot, d.g, r3(d.xg), r3(d.g - d.xg), d.pens, d.pg, r3(d.npxg), r3(d.xgot), d.kp, d.a, r3(d.xa)];
+  }).sort((a, b) => b[6] - a[6]);
+  return toCsv(["player", "club", "matches_with_a_shot_or_key_pass", "shots", "on_target", "goals", "xg", "goals_minus_xg", "penalties_taken", "penalties_scored", "npxg", "xgot", "key_passes", "assists", "xa"], rows);
+}
+function exportKeepers(s, idx, agg) {
+  const rows = Object.keys(agg.keepers).map((id) => {
+    const d = agg.keepers[id];
+    return [pname(idx, id), tname(s.teams, d.team), d.m, d.sotf, d.ga, d.sotf - d.ga, r3(d.xgotf), r3(d.sotf - d.xgotf), r3(d.xgotf - d.ga)];
+  }).sort((a, b) => b[8] - a[8]);
+  return toCsv(["keeper", "club", "matches", "on_target_faced", "goals_against", "saves", "xgot_faced", "expected_saves", "saves_above_expected"], rows);
+}
+
+function MethodView({ s, idx, agg }) {
+  const [msg, setMsg] = useState("");
+  const c = agg.check;
+  const save = async (filename, make) => {
+    setMsg("");
+    const res = await Store.saveFile(filename, make());
+    setMsg(res.ok ? "Saved " + filename + "." : res.message);
+  };
+  const checkRow = (label, d, unit) => h("tr", { key: label },
+    h("td", { className: "strong" }, label), h("td", { className: "num" }, d.n), h("td", { className: "num" }, d.g), h("td", { className: "num" }, f2(d.xg) + (unit ? " " + unit : "")),
+    h("td", { className: "num" }, d.xg > 0 ? (d.g / d.xg).toFixed(2) : ""));
+  return h("div", { className: "stack", style: { gap: 26 } },
+    h("section", { className: "stack tight" },
+      h("h2", { className: "h2" }, "How to tag a match"),
+      h("ol", { className: "prose", style: { paddingLeft: 20, margin: 0 } },
+        h("li", null, "Open the match on the Matches tab and set both goalkeepers."),
+        h("li", null, "For each shot, pick the team, click the pitch where it was taken, then choose the shooter, the minute and what happened."),
+        h("li", null, "If it was scored or saved, click the goal where the ball ended up."),
+        h("li", null, "Add the details that change the chance: header, free kick or penalty, the pass before it, one-on-one, open goal."),
+        h("li", null, "Save the shot. When the match is done, mark it as finished."))),
+    h("section", { className: "stack tight" },
+      h("h2", { className: "h2" }, "What counts as what"),
+      h(Defs, { items: [
+        ["Shot", "Any attempt to score, blocked ones included. An own goal is not a shot. Add it under Own goals in the match."],
+        ["Minute", "The minute on the match clock when the shot was taken. For added time at the end of the first half, type 45, so the shot stays before half-time on the match timeline."],
+        ["On target", "Scored, or saved by the goalkeeper. A shot blocked by a defender, or one that hits the post or bar and stays out, is not on target."],
+        ["Direct free kick", "A shot struck straight from the free kick. A header from a free-kick cross is open play, with Free kick as the pass before it."],
+        ["Cross", "A ball played in from wide, a pull-back along the ground included."],
+        ["Through ball", "A pass played in behind the defence for the shooter to run onto."],
+        ["Corner, Free kick", "As the pass before the shot: the shot came straight from that delivery."],
+        ["One-on-one", "The shooter is through with only the goalkeeper to beat."],
+        ["Open goal", "The goalkeeper is out of position or on the ground and the goal is unguarded."],
+        ["Who set it up", "The player who made the pass straight before the shot. Leave it empty for rebounds, loose balls and solo runs."],
+      ] })),
+    h("section", { className: "stack tight" },
+      h("h2", { className: "h2" }, "How the numbers are worked out"),
+      h("div", { className: "prose" },
+        h("p", null, h("strong", null, "xG"), " is the chance that a shot is scored, judged before it is struck. It uses how far out and how central the shot is, foot or head, whether it is a direct free kick, the pass before it, and whether it is a one-on-one or an open goal. A penalty is always 0.76."),
+        h("p", null, h("strong", null, "xA"), " gives the player who set up a shot that shot's xG, scored or not."),
+        h("p", null, h("strong", null, "The xG worm"), " on a match's Timeline tab adds up each team's xG as the match goes on. The line steps up at every shot, by that shot's xG. A shot saved without a minute cannot be placed, so it is left off the worm but still counts in every total."),
+        h("p", null, h("strong", null, "xG on target"), " rates a shot again once you know where in the goal it was heading. A shot into the top corner is worth more than one straight at the keeper."),
+        h("p", null, h("strong", null, "Expected saves"), " is what an average goalkeeper would save from the same shots: shots on target faced minus xG on target faced. ", h("strong", null, "Saves above expected"), " is real saves minus that, the same number as goals prevented."))),
+    h("section", { className: "stack tight" },
+      h("h2", { className: "h2" }, "Where the model comes from"),
+      h("div", { className: "prose" },
+        h("p", null, "It was trained on ", h("strong", null, MODEL.n.pool.toLocaleString("en-IN") + " shots"), " from StatsBomb's free data: the Premier League, La Liga, Serie A and Ligue 1 in 2015-16, part of the Bundesliga that season, and six international tournaments from 2018 to 2024."),
+        h("p", null, "It was then tuned to ", h("strong", null, MODEL.n.isl.toLocaleString("en-IN") + " ISL shots from 2021-22"), ", the one ISL season with free shot-by-shot data. In that season ISL shots from distance went in more often than the same shots elsewhere, and the clearest chances a little less often, so the model builds that in."),
+        h("p", null, "On that ISL season, player totals from this model line up closely with StatsBomb's own xG: a correlation of 0.97 for players with 20 or more shots and 0.99 for teams."),
+        h("p", null, "Its limits: it cannot see where the defenders are, and shot locations are placed by hand. One shot can be off. Season totals are far steadier."))),
+    s.reader ? null : h("section", { className: "stack tight" },
+      h("h2", { className: "h2" }, "Model check on your data"),
+      h("p", { className: "sub", style: { maxWidth: "68ch" } }, "If the model fits this season, goals divided by expected goals sits near 1.00. With fewer than about 300 shots it is mostly luck. If it stays well away from 1.00 after that, the model needs re-tuning."),
+      c.all.n ? h("div", { className: "tbl-wrap" }, h("table", { className: "tbl" },
+        h("thead", null, h("tr", null, h("th", { scope: "col" }, "Shots counted"), h("th", { className: "num", scope: "col" }, "Shots"), h("th", { className: "num", scope: "col" }, "Goals"), h("th", { className: "num", scope: "col" }, "Expected"), h("th", { className: "num", scope: "col" }, "Goals \u00f7 expected"))),
+        h("tbody", null,
+          checkRow("All shots", c.all, "xG"), checkRow("Without penalties", c.np, "xG"), checkRow("Inside the box", c.inbox, "xG"), checkRow("Outside the box", c.outbox, "xG"),
+          checkRow("Headers", c.head, "xG"), checkRow("Penalties", c.pen, "xG"), checkRow("On target, by placement", c.ot, "xGOT")))) :
+        h("div", { className: "empty" }, h("strong", null, "Nothing to check yet"), "This fills in as you tag shots.")),
+    s.canExport ? h("section", { className: "stack tight" },
+      h("h2", { className: "h2" }, "Take your data out"),
+      h("p", { className: "sub" }, "The CSV files open in Excel, Tableau or Power BI. The backup holds everything on this page."),
+      h("div", { className: "row" },
+        h("button", { type: "button", className: "btn", onClick: () => save("isl-shots.csv", () => exportShots(s, idx)) }, "Every shot (CSV)"),
+        h("button", { type: "button", className: "btn", onClick: () => save("isl-players.csv", () => exportPlayers(s, idx, agg)) }, "Player totals (CSV)"),
+        h("button", { type: "button", className: "btn", onClick: () => save("isl-keepers.csv", () => exportKeepers(s, idx, agg)) }, "Keeper totals (CSV)"),
+        h("button", { type: "button", className: "btn", onClick: () => save("isl-xg-backup.json", () => JSON.stringify({ exported: new Date().toISOString(), model: MODEL.version, teams: s.teams, matches: s.matches }, null, 1)) }, "Full backup (JSON)")),
+      msg ? h("p", { className: "sub", role: "status" }, msg) : null) : null,
+    h("div", { className: "credit" }, h(SbLogo),
+      h("p", { className: "foot" }, "The xG model is built on ", h("a", { href: "https://github.com/statsbomb/open-data", target: "_blank", rel: "noopener noreferrer" }, "StatsBomb Open Data"),
+        s.reader ? ". This is an independent, non-commercial project, not affiliated with the Indian Super League or its clubs. Model version " + MODEL.version + "." :
+          ". StatsBomb's terms ask for a credit and their logo wherever analysis based on their data is published, and do not allow commercial use. This is an independent project, not affiliated with the Indian Super League or its clubs. Model version " + MODEL.version + ".")));
+}
+
+/* ============================================================
+   THE PAGE SHELL
+   ============================================================ */
+/* the public page has no Squads tab: squads are a tagging tool */
+const TABS = [["matches", "Matches"], ["players", "Players"], ["keepers", "Keepers"], ["teams", "Teams"], ["squads", "Squads"], ["method", "Method"]].filter((t) => !READER || t[0] !== "squads");
+const ROUTE_KEY = READER ? "islxg.public.route" : "islxg.route";
+/* "Updated 9 Oct 2026" from the moment the public page was saved, in the reader's own time zone */
+function updatedLabel(iso) {
+  const d = new Date(iso);
+  if (!iso || isNaN(d.getTime())) return "";
+  return "Updated " + d.getDate() + " " + MONTHS[d.getMonth()] + " " + d.getFullYear();
+}
+function firstRoute(saved) {
+  const ok = (r) => r && TABS.some((t) => t[0] === r.tab);
+  const keep = (r) => ({ tab: r.tab, matchId: r.matchId || null, view: r.matchId && r.view === "timeline" ? "timeline" : "tag" });
+  if (saved && ok(saved.route)) return keep(saved.route);
+  const hash = String(window.location.hash || "").replace("#", "");
+  if (TABS.some((t) => t[0] === hash)) return { tab: hash, matchId: null, view: "tag" };
+  try {
+    const r = JSON.parse(window.localStorage.getItem(ROUTE_KEY) || "null");
+    if (ok(r)) return keep(r);
+  } catch (e) { /* storage can be unavailable; start on Matches */ }
+  return { tab: "matches", matchId: null, view: "tag" };
+}
+
+class Boundary extends React.Component {
+  constructor(props) { super(props); this.state = { failed: false }; }
+  static getDerivedStateFromError() { return { failed: true }; }
+  render() {
+    if (!this.state.failed) return this.props.children;
+    return h("div", { className: "wrap" }, h("div", { className: "empty" }, h("strong", null, "This screen hit a problem"), "Reload the page. Everything you saved is safe."));
+  }
+}
+
+function App({ initial }) {
+  const s = useSyncExternalStore(Store.subscribe, Store.get);
+  const [route, setRoute] = useState(() => firstRoute(initial));
+  const routeRef = useRef(route);
+  routeRef.current = route;
+  const go = (r) => {
+    setRoute(r);
+    try { window.localStorage.setItem(ROUTE_KEY, JSON.stringify(r)); } catch (e) { /* fine without it */ }
+    if (r.tab !== route.tab || r.matchId !== route.matchId) { try { window.scrollTo(0, 0); } catch (e) { /* ignore */ } }
+  };
+  useEffect(() => {
+    try { const hot = window.claude && window.claude.hot; if (hot && typeof hot.snapshot === "function") hot.snapshot(() => ({ route: routeRef.current })); } catch (e) { /* optional */ }
+  }, []);
+  const idx = useMemo(() => buildIndex(s.teams), [s.teams]);
+  const agg = useMemo(() => Stats.aggregate(s.teams, s.matches), [s.teams, s.matches]);
+
+  let sync = null;
+  if (s.phase === "loading") sync = h("span", { className: "sync" }, h(IconDots), "Loading");
+  else if (s.phase === "ready") {
+    if (s.saveError) sync = h("span", { className: "sync bad" }, h(IconWarn), "Not saved");
+    else if (s.saving) sync = h("span", { className: "sync" }, h(IconDots), "Saving");
+    else if (s.canWrite) sync = h("span", { className: "sync ok" }, h(IconCheck), "All changes saved");
+    else if (s.reader) sync = updatedLabel(s.generated) ? h("span", { className: "sync" }, updatedLabel(s.generated)) : null;
+    else sync = h("span", { className: "sync" }, "View only");
+  }
+
+  let view;
+  if (s.phase === "loading") view = h("div", { className: "empty" }, h("strong", null, "Loading your data"), "One moment.");
+  else if (s.phase === "nodb") view = route.tab === "method" ? h(MethodView, { s, idx, agg }) : h("div", { className: "empty" }, h("strong", null, "Your data cannot be reached from here"), "Open this page inside Claude while signed in, and your matches and shots will load.");
+  else if (route.tab === "matches") view = route.matchId ? h(MatchView, { s, idx, matchId: route.matchId, view: route.view, onView: (v) => go({ tab: "matches", matchId: route.matchId, view: v }), back: () => go({ tab: "matches", matchId: null }) }) : h(MatchesView, { s, agg, open: (id) => go({ tab: "matches", matchId: id }) });
+  else if (route.tab === "players") view = h(PlayersView, { s, idx, agg });
+  else if (route.tab === "keepers") view = h(KeepersView, { s, idx, agg });
+  else if (route.tab === "teams") view = h(TeamsView, { s, agg });
+  else if (route.tab === "squads") view = h(SquadsView, { s });
+  else view = h(MethodView, { s, idx, agg });
+
+  return h("div", { className: "wrap" },
+    h("header", { className: "mast" },
+      h("div", { className: "brand" }, h("h1", null, "ISL xG Tracker"), h("span", { className: "season" }, "2026-27")),
+      h("div", { role: "status", "aria-live": "polite" }, sync)),
+    h("nav", { className: "tabs", "aria-label": "Sections" }, TABS.map(([id, label]) => h("button", {
+      key: id, type: "button", className: "tab" + (route.tab === id ? " on" : ""), "aria-current": route.tab === id ? "page" : undefined,
+      onClick: () => go({ tab: id, matchId: null }),
+    }, label))),
+    s.saveError ? h(Note, { kind: "bad", action: s.saveError.denied ? null : h("button", { type: "button", className: "btn", onClick: Store.retry }, "Retry") }, s.saveError.message) : null,
+    h("main", { className: "stack" }, h(Boundary, { key: route.tab + (route.matchId || "") }, view)),
+    route.tab !== "method" ? h("div", { className: "credit" }, h(SbLogo),
+      h("p", { className: "foot" }, "xG model built on StatsBomb Open Data. An independent project, not affiliated with the Indian Super League or its clubs.")) : null);
+}
+
+(function boot() {
+  let started = false;
+  const start = (saved) => {
+    if (started) return;
+    started = true;
+    Store.init();
+    ReactDOM.createRoot(document.getElementById("app")).render(h(Boundary, null, h(App, { initial: saved || {} })));
+  };
+  const hot = window.claude && window.claude.hot;
+  if (hot && typeof hot.ready === "function") {
+    try { hot.ready(start); } catch (e) { start({}); }
+    setTimeout(() => start({}), 2500);
+  } else {
+    start((hot && hot.data) || {});
+  }
+})();
+</script>
+</body>
+</html>
