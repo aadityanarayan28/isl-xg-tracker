@@ -2212,7 +2212,8 @@ function MethodView({ s, idx, agg }) {
     h("td", { className: "strong" }, label), h("td", { className: "num" }, d.n), h("td", { className: "num" }, d.g), h("td", { className: "num" }, f2(d.xg) + (unit ? " " + unit : "")),
     h("td", { className: "num" }, d.xg > 0 ? (d.g / d.xg).toFixed(2) : ""));
   return h("div", { className: "stack", style: { gap: 26 } },
-    h("section", { className: "stack tight" },
+    /* the tagging steps are for the tracker only; the public page has nothing to tag */
+    s.reader ? null : h("section", { className: "stack tight" },
       h("h2", { className: "h2" }, "How to tag a match"),
       h("ol", { className: "prose", style: { paddingLeft: 20, margin: 0 } },
         h("li", null, "Open the match on the Matches tab and set both goalkeepers."),
