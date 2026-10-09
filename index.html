@@ -2243,7 +2243,8 @@ function MethodView({ s, idx, agg }) {
         h("p", null, h("strong", null, "The xG worm"), " on a match's Timeline tab adds up each team's xG as the match goes on. The line steps up at every shot, by that shot's xG. A shot saved without a minute cannot be placed, so it is left off the worm but still counts in every total."),
         h("p", null, h("strong", null, "xG on target"), " rates a shot again once you know where in the goal it was heading. A shot into the top corner is worth more than one straight at the keeper."),
         h("p", null, h("strong", null, "Expected saves"), " is what an average goalkeeper would save from the same shots: shots on target faced minus xG on target faced. ", h("strong", null, "Saves above expected"), " is real saves minus that, the same number as goals prevented."))),
-    h("section", { className: "stack tight" },
+    /* the model's background stays in the tracker; the public page credits StatsBomb in the line at the foot of every tab */
+    s.reader ? null : h("section", { className: "stack tight" },
       h("h2", { className: "h2" }, "Where the model comes from"),
       h("div", { className: "prose" },
         h("p", null, "It was trained on ", h("strong", null, MODEL.n.pool.toLocaleString("en-IN") + " shots"), " from StatsBomb's free data: the Premier League, La Liga, Serie A and Ligue 1 in 2015-16, part of the Bundesliga that season, and six international tournaments from 2018 to 2024."),
