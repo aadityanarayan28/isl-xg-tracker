@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ISL xG Tracker</title>
+<title>ISL Shooting Actions</title>
 <meta name="description" content="Shot-by-shot expected goals for the Indian Super League 2026-27: match timelines, and xG, xA and goalkeeper numbers for every player and club.">
 <meta property="og:type" content="website">
-<meta property="og:title" content="ISL xG Tracker 2026-27">
+<meta property="og:title" content="ISL Shooting Actions 2026-27">
 <meta property="og:description" content="Shot-by-shot expected goals for the Indian Super League 2026-27: match timelines, and xG, xA and goalkeeper numbers for every player and club.">
 <meta name="twitter:card" content="summary">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23111714'/%3E%3Cpath d='M5 25h7v-7h7v-8h8' fill='none' stroke='%233987e5' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M5 26h13v-4h9' fill='none' stroke='%23eb6834' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' opacity='.95'/%3E%3C/svg%3E">
@@ -312,7 +312,7 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: 13.5px; }
 </style>
 </head>
 <body>
-<div id="app"><div class="wrap"><header class="mast"><div class="brand"><h1>ISL xG Tracker</h1><span class="season">2026-27</span></div></header><div class="empty"><strong>Loading the season</strong>One moment.</div></div></div>
+<div id="app"><div class="wrap"><header class="mast"><div class="brand"><h1>ISL Shooting Actions</h1><span class="season">2026-27</span></div></header><div class="empty"><strong>Loading the season</strong>One moment.</div></div></div>
 <noscript><div class="wrap"><div class="empty"><strong>This page needs JavaScript</strong>Turn it on in your browser and reload.</div></div></noscript>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
@@ -326,6 +326,9 @@ window.__READER__ = {"v":1,"generated":"2026-10-09T14:55:59.685Z","teams":{"bfc"
 "use strict";
 /* The numbers behind the model. Fitted on StatsBomb Open Data, tuned to ISL 2021-22. */
 const MODEL = {"version": "2026-10-09", "xg": {"b": {"const": -6.402248, "dist": -0.235666, "log_dist": 2.515817, "angle": 2.617019, "head": -0.430032, "other_body": -0.775795, "head_dist": -0.059847, "is_fk": -1.185621, "fk_dist": 0.087061, "one_on_one": 0.616181, "open_goal": 1.388238, "a_cross": -0.229773, "a_through": 1.008587, "a_corner": -0.745249, "a_freekick": -0.234179}, "lo": 3.0, "cap": 35.0, "islA": -0.29162, "islB": 0.777577, "pen": 0.76}, "ps": {"g": {"const": 2.188921, "xg_lg": 0.865018, "ay2": 0.078002, "ay4": -0.012621, "gz": -0.815903, "gz2": 0.4592, "dc": -0.034677, "logd": -0.796762, "is_pen": -1.030174, "one_on_one": -0.572396, "open_goal": 2.032212, "ay2_logd": 0.121898}, "islA": 0.144392, "islB": 0.781716, "goalH": 2.67}, "n": {"pool": 45827, "isl": 3053, "psPool": 15512, "psIsl": 952}};
+
+/* What each page calls itself in its heading. Set in build.py, next to the browser-tab titles. */
+const PAGE_NAMES = {"tracker": "ISL xG Tracker", "reader": "ISL Shooting Actions"};
 
 /* The public page, ready for its data. Only the private tracker carries it. */
 const READER_TEMPLATE = null;
@@ -2281,6 +2284,8 @@ function MethodView({ s, idx, agg }) {
 /* the public page has no Squads tab: squads are a tagging tool */
 const TABS = [["matches", "Matches"], ["players", "Players"], ["keepers", "Keepers"], ["teams", "Teams"], ["squads", "Squads"], ["method", "Method"]].filter((t) => !READER || t[0] !== "squads");
 const ROUTE_KEY = READER ? "islxg.public.route" : "islxg.route";
+/* the public page goes by its own name; the tracker keeps its working name */
+const SITE_NAME = READER ? PAGE_NAMES.reader : PAGE_NAMES.tracker;
 /* "Updated 9 Oct 2026" from the moment the public page was saved, in the reader's own time zone */
 function updatedLabel(iso) {
   const d = new Date(iso);
@@ -2347,7 +2352,7 @@ function App({ initial }) {
 
   return h("div", { className: "wrap" },
     h("header", { className: "mast" },
-      h("div", { className: "brand" }, h("h1", null, "ISL xG Tracker"), h("span", { className: "season" }, "2026-27")),
+      h("div", { className: "brand" }, h("h1", null, SITE_NAME), h("span", { className: "season" }, "2026-27")),
       h("div", { role: "status", "aria-live": "polite" }, sync)),
     h("nav", { className: "tabs", "aria-label": "Sections" }, TABS.map(([id, label]) => h("button", {
       key: id, type: "button", className: "tab" + (route.tab === id ? " on" : ""), "aria-current": route.tab === id ? "page" : undefined,
