@@ -29,7 +29,6 @@
   --accent-soft: #e2f0e8;
   --home: #2a78d6;
   --away: #eb6834;
-  --trail-op: 0.6;
   --ok-text: #006300;
   --danger-text: #b42318;
   --danger-soft: #fdecea;
@@ -42,7 +41,7 @@
   :root:not([data-theme="light"]) {
     --bg: #0e1210; --surface: #181d1a; --sunken: #121614; --ink: #f2f5f1; --ink-2: #c2c8c1; --muted: #949b94;
     --line: #2a312c; --line-2: #414a43; --accent: #43b987; --on-accent: #06140d; --accent-soft: #17302a;
-    --home: #3987e5; --away: #d95926; --trail-op: 0.8; --ok-text: #4cc46f; --danger-text: #ff9a8f; --danger-soft: #3a1c19; --warn-soft: #3a3115;
+    --home: #3987e5; --away: #d95926; --ok-text: #4cc46f; --danger-text: #ff9a8f; --danger-soft: #3a1c19; --warn-soft: #3a3115;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.45);
     color-scheme: dark;
   }
@@ -50,7 +49,7 @@
 :root[data-theme="dark"] {
   --bg: #0e1210; --surface: #181d1a; --sunken: #121614; --ink: #f2f5f1; --ink-2: #c2c8c1; --muted: #949b94;
   --line: #2a312c; --line-2: #414a43; --accent: #43b987; --on-accent: #06140d; --accent-soft: #17302a;
-  --home: #3987e5; --away: #d95926; --trail-op: 0.8; --ok-text: #4cc46f; --danger-text: #ff9a8f; --danger-soft: #3a1c19; --warn-soft: #3a3115;
+  --home: #3987e5; --away: #d95926; --ok-text: #4cc46f; --danger-text: #ff9a8f; --danger-soft: #3a1c19; --warn-soft: #3a3115;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.45);
   color-scheme: dark;
 }
@@ -241,16 +240,12 @@ textarea.input { min-height: 110px; resize: vertical; }
 .mk.lit.goal .mk-dot { fill-opacity: 1; }
 .viz.dim .mk:not(.lit) { opacity: 0.22; }
 @media (prefers-reduced-motion: no-preference) { .mk { transition: opacity 0.12s ease; } }
-/* the public page's lines from a shot to where it ended: solid for a shot on target, dashed for one off the woodwork.
-   They sit under the shots in the side's colour, and fade with the rest when a shot is picked out. */
-.trail { fill: none; stroke: var(--home); stroke-width: 1.5px; stroke-opacity: var(--trail-op); stroke-linecap: round; vector-effect: non-scaling-stroke; }
+/* the public page's line from a shot to where it ended up, for the shot being pointed at or picked out: in the side's
+   colour, under the shots, with a small ring on top where it ended. Neither ever takes the pointer from a shot. */
+.trail { fill: none; stroke: var(--home); stroke-width: 2px; stroke-linecap: round; vector-effect: non-scaling-stroke; pointer-events: none; }
 .trail.away { stroke: var(--away); }
-.trail.wood { stroke-dasharray: 4 3; stroke-linecap: butt; }
-.trail.lit { stroke-opacity: 1; stroke-width: 2px; }
-.viz.dim .trail:not(.lit) { opacity: 0.22; }
-@media (prefers-reduced-motion: no-preference) { .trail { transition: opacity 0.12s ease; } }
-.lkey { display: inline-block; flex: none; width: 18px; height: 0; border-top: 2px solid var(--ink-2); }
-.lkey.wood { border-top-style: dashed; }
+.trail-end { fill: var(--surface); stroke: var(--home); stroke-width: 2px; vector-effect: non-scaling-stroke; pointer-events: none; }
+.trail-end.away { stroke: var(--away); }
 /* a match's map on the public page: the whole pitch with the two sides at opposite ends, each named at the end it attacks.
    Lying across it is drawn about as large per yard as a half pitch; standing upright on a phone it fills the width. */
 .viz.full.across { max-width: 800px; }
@@ -275,6 +270,9 @@ textarea.input { min-height: 110px; resize: vertical; }
   @keyframes peek-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 }
 .draft-ring { fill: none; stroke: var(--ink); stroke-width: 2.4px; vector-effect: non-scaling-stroke; }
+/* tagging a shot off target or blocked: where it ended up, joined to where it was taken */
+.draft-line { stroke: var(--ink); stroke-width: 1.6px; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; }
+.draft-end { fill: var(--surface); stroke: var(--ink); stroke-width: 2.4px; vector-effect: non-scaling-stroke; }
 .draft-dot { fill: var(--ink); }
 .tip { position: absolute; z-index: 20; pointer-events: none; min-width: 130px; max-width: 220px; padding: 7px 10px; border-radius: 8px; background: var(--ink); color: var(--bg); font-size: 12.5px; line-height: 1.35; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 1px; }
 .tip strong { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -814,9 +812,10 @@ const SB_LOGO = { w: 374, h: 60, src: "data:image/png;base64,iVBORw0KGgoAAAANSUh
    Matches live in matches/<match id>
      { date, ko, home, away, venue, done, gk: { h, a }, shots: [...], og: [...] }
    A shot is
-     { id, t: "h"|"a", p, min, x, y, out, body, sit, ast, ap, oo, og, gy, gz, ww, k }
+     { id, t: "h"|"a", p, min, x, y, out, body, sit, ast, ap, oo, og, gy, gz, ww, ex, ey, k }
      gy, gz: where an on-target shot crossed the goal line (or would have, without the save), or where a shot off the
      woodwork hit the frame. ww: for a shot off the woodwork, the part it hit: "left", "bar" or "right" (as the shooter sees it).
+     ex, ey: for a shot off target or blocked, the spot on the pitch where it went out or was blocked (same axes as x, y).
    An own goal is
      { id, t: the side it counts for, p: the player who put it in (from the other side) or null, min }
    The page keeps a working copy in memory, shows changes at once and
@@ -899,7 +898,8 @@ const Store = (() => {
       id: s.id, t: s.t, p: s.p, min: numOrNull(s.min), x, y, out,
       body: oneOf(s.body, ["foot", "head", "other"], "foot"), sit: oneOf(s.sit, ["open", "fk", "pen"], "open"),
       ast: oneOf(s.ast, ["none", "pass", "cross", "through", "corner", "fk"], "none"), ap: idOrNull(s.ap),
-      oo: !!s.oo, og: !!s.og, gy: numOrNull(s.gy), gz: numOrNull(s.gz), ww: out === "post" ? oneOf(s.ww, ["left", "bar", "right"], null) : null, k: idOrNull(s.k),
+      oo: !!s.oo, og: !!s.og, gy: numOrNull(s.gy), gz: numOrNull(s.gz), ww: out === "post" ? oneOf(s.ww, ["left", "bar", "right"], null) : null,
+      ex: out === "off" || out === "blocked" ? numOrNull(s.ex) : null, ey: out === "off" || out === "blocked" ? numOrNull(s.ey) : null, k: idOrNull(s.k),
     };
   }
   function normalise(kind, d) {
@@ -1219,12 +1219,14 @@ function shotLine(s) {
   return bits.join(", ");
 }
 /* where a shot ended, in pitch coordinates, for the public page's maps to draw a line to: the point on the goal line an
-   on-target shot crossed (or would have, without the save), or the part of the frame a shot off the woodwork hit.
-   Seen from above, the posts and the bar all stand on the goal line, so only the point across the goal changes.
+   on-target shot crossed (or would have, without the save), the part of the frame a shot off the woodwork hit (seen from
+   above, the posts and the bar all stand on the goal line), or the spot a shot off target went out or a block stopped it.
    null when the tagging has no record of it. */
+const needsPitchEnd = (out) => out === "off" || out === "blocked";
 function shotEnd(s) {
-  if (Model.onTarget(s)) return s.gy == null ? null : { x: 120, y: 40 + Model.clamp(s.gy, -4, 4), wood: false };
-  if (s.out === "post" && WOOD[s.ww]) return { x: 120, y: s.ww === "left" ? 36 : s.ww === "right" ? 44 : 40 + Model.clamp(s.gy == null ? 0 : s.gy, -4, 4), wood: true };
+  if (Model.onTarget(s)) return s.gy == null ? null : { x: 120, y: 40 + Model.clamp(s.gy, -4, 4) };
+  if (s.out === "post") return WOOD[s.ww] ? { x: 120, y: s.ww === "left" ? 36 : s.ww === "right" ? 44 : 40 + Model.clamp(s.gy == null ? 0 : s.gy, -4, 4) } : null;
+  if (needsPitchEnd(s.out)) return s.ex == null || s.ey == null ? null : { x: s.ex, y: s.ey };
   return null;
 }
 /* a shot off the woodwork: the point on the frame nearest to where the goal drawing was clicked, and which part that is.
@@ -1235,12 +1237,6 @@ function onFrame(gy, gz) {
   const d = { left: Math.hypot(gy + 4, gz - up), right: Math.hypot(gy - 4, gz - up), bar: Math.hypot(gy - across, gz - H) };
   const ww = d.bar <= d.left && d.bar <= d.right ? "bar" : d.left <= d.right ? "left" : "right";
   return ww === "bar" ? { ww, gy: r2(across), gz: H } : { ww, gy: ww === "left" ? -4 : 4, gz: r2(up) };
-}
-/* the legend entries for those lines, for the kinds a map actually draws */
-function trailKeys(marks) {
-  const on = marks.some((m) => m.end && !m.end.wood), wood = marks.some((m) => m.end && m.end.wood);
-  return [on ? h("span", { key: "on" }, h("i", { className: "lkey" }), "On target") : null,
-    wood ? h("span", { key: "wood" }, h("i", { className: "lkey wood" }), "Woodwork") : null];
 }
 /* where a part of the woodwork is marked when it is picked from the buttons rather than clicked on the drawing */
 const woodSpot = (ww) => (ww === "bar" ? { gy: 0, gz: Model.GOAL_H } : { gy: ww === "left" ? -4 : 4, gz: Math.round(Model.GOAL_H * 50) / 100 });
@@ -1368,8 +1364,9 @@ function Marks({ marks, u, activeId, onMark, tipId, setTip, vb, lit, onHover, st
     const r = markRadius(m.v) * u * (scale || 1);
     const show = () => setTip({ id: m.id, px: (m.cx - vb.x) / u, py: (m.cy - vb.y) / u, value: m.value, lines: m.lines });
     const hide = () => setTip((t) => (t && t.id === m.id ? null : t));
-    const pointer = onHover ? {} : { onPointerEnter: show, onPointerLeave: hide };
-    return h("g", { key: m.id, className: "mk " + (m.cls || "home") + (m.goal ? " goal" : "") + (tipId === m.id ? " focus" : "") + (activeId === m.id ? " active" : "") + (lit && lit.has(m.id) ? " lit" : "") },
+    /* a mouse shows a shot's numbers while it is over it; a tap keeps them up until the next tap lands somewhere else (blur) */
+    const pointer = onHover ? {} : { onPointerEnter: show, onPointerLeave: (e) => { if (e.pointerType === "mouse") hide(); } };
+    return h("g", { key: m.id, "data-id": m.id, className: "mk " + (m.cls || "home") + (m.goal ? " goal" : "") + (tipId === m.id ? " focus" : "") + (activeId === m.id ? " active" : "") + (lit && lit.has(m.id) ? " lit" : "") },
       h("circle", { className: "mk-ring", cx: m.cx, cy: m.cy, r: r + 2 * u }),
       h("circle", { className: "mk-dot", cx: m.cx, cy: m.cy, r }),
       still ? null : h("circle", Object.assign({
@@ -1427,8 +1424,9 @@ function FullPitchLines() {
    its side (sd) attacks.
    Linked to other views (onHover given), the page decides which shots are lit and which one shows its tooltip (tipId).
    depth (yards from the goal line, 60 by default) cuts the half pitch short for a map that only needs to reach its longest shot;
-   the side lines then run off the bottom, open, so it reads as part of a pitch. */
-function PitchMap({ marks, draft, onPick, onMark, activeId, label, lit, onHover, tipId, still, scale, depth, full }) {
+   the side lines then run off the bottom, open, so it reads as part of a pitch.
+   draftEnd: on the tagging screen, where the shot being tagged ended up (off target or blocked), joined to draft by a line. */
+function PitchMap({ marks, draft, draftEnd, onPick, onMark, activeId, label, lit, onHover, tipId, still, scale, depth, full }) {
   const box = useRef(null), svg = useRef(null);
   const width = useWidth(box, 520);
   const [ownTip, setTip] = useState(null);
@@ -1439,18 +1437,18 @@ function PitchMap({ marks, draft, onPick, onMark, activeId, label, lit, onHover,
   const at = (m, x, y) => (F ? F.place(m.sd, x, y) : [y, 120 - x]);
   const placed = useMemo(() => (marks || []).map((m) => { const [cx, cy] = at(m, m.x, m.y); return { ...m, cx, cy }; }), [marks, full]);
   const litSet = lit && lit.length ? new Set(lit) : null;
-  /* the public page's lines from a shot to where it ended (marks carry end, from shotEnd): drawn under every shot,
-     solid for a shot on target, dashed for one off the woodwork; a picked-out shot's line goes on top of the others */
-  const trails = useMemo(() => placed.filter((m) => m.end).map((m) => {
-    const [x2, y2] = at(m, m.end.x, m.end.y);
-    return { id: m.id, cls: m.cls || "home", wood: !!m.end.wood, x1: m.cx, y1: m.cy, x2, y2 };
-  }), [placed]);
-  const trailsDrawn = litSet ? trails.filter((t) => !litSet.has(t.id)).concat(trails.filter((t) => litSet.has(t.id))) : trails;
   let tip = ownTip;
   if (onHover || still) {
     const pm = tipId != null && !still ? placed.find((x) => x.id === tipId) : null;
     tip = pm ? { id: pm.id, px: (pm.cx - vb.x) / u, py: (pm.cy - vb.y) / u, value: pm.value, lines: pm.lines } : null;
   }
+  /* the public page's lines from a shot to where it ended up (marks carry end, from shotEnd), only for the shots picked out
+     here or in the worm or the list (lit) and the one whose numbers are showing: the line under the shots, a small ring
+     where it ended on top of them, so even a shot blocked a yard in front of the shooter shows where it stopped */
+  const trails = placed.filter((m) => m.end && ((litSet && litSet.has(m.id)) || (tip && tip.id === m.id))).map((m) => {
+    const [x2, y2] = at(m, m.end.x, m.end.y);
+    return { id: m.id, cls: m.cls || "home", x1: m.cx, y1: m.cy, x2, y2 };
+  });
   const click = (e) => {
     if (!onPick) return;
     const p = svgPoint(svg.current, e);
@@ -1493,10 +1491,17 @@ function PitchMap({ marks, draft, onPick, onMark, activeId, label, lit, onHover,
         h("path", { className: "pl", d: "M1,0 A1,1 0 0 1 0,1" }),
         h("path", { className: "pl", d: "M79,0 A1,1 0 0 0 80,1" }),
         h("circle", { className: "pl-dot", cx: 40, cy: 12, r: 0.5 })),
-      trails.length ? h("g", { className: "trails", "aria-hidden": "true" }, trailsDrawn.map((t) => h("line", {
-        key: t.id, className: "trail " + t.cls + (t.wood ? " wood" : "") + (litSet && litSet.has(t.id) ? " lit" : ""), x1: t.x1, y1: t.y1, x2: t.x2, y2: t.y2,
+      trails.length ? h("g", { className: "trails", "aria-hidden": "true", pointerEvents: "none" }, trails.map((t) => h("line", {
+        key: t.id, "data-id": t.id, className: "trail " + t.cls, x1: t.x1, y1: t.y1, x2: t.x2, y2: t.y2,
       }))) : null,
       h(Marks, { marks: placed, u, activeId, onMark, tipId: tip && tip.id, setTip, vb, lit: litSet, onHover, still, scale }),
+      trails.length ? h("g", { className: "trail-ends", "aria-hidden": "true", pointerEvents: "none" }, trails.map((t) => h("circle", {
+        key: t.id, "data-id": t.id, className: "trail-end " + t.cls, cx: t.x2, cy: t.y2, r: 3.5 * u * (scale || 1),
+      }))) : null,
+      draft && draft.x != null && draftEnd && draftEnd.x != null ? h("g", { pointerEvents: "none" },
+        h("line", { className: "draft-line", x1: draft.y, y1: 120 - draft.x, x2: draftEnd.y, y2: 120 - draftEnd.x }),
+        h("circle", { className: "mk-ring", cx: draftEnd.y, cy: 120 - draftEnd.x, r: 7 * u }),
+        h("circle", { className: "draft-end", cx: draftEnd.y, cy: 120 - draftEnd.x, r: 5 * u })) : null,
       draft && draft.x != null ? h("g", { pointerEvents: "none" },
         h("circle", { className: "mk-ring", cx: draft.y, cy: 120 - draft.x, r: 10 * u }),
         h("circle", { className: "draft-ring", cx: draft.y, cy: 120 - draft.x, r: 8 * u }),
@@ -1715,7 +1720,7 @@ function PublicPagePanel({ s, pub, close }) {
     bad ? h("p", { className: "errs", role: "alert", style: { paddingLeft: 12 } }, "That does not look like a GitHub repository. Write it as username/repository.") : null);
 }
 
-const blankDraft = (t) => ({ id: null, t, p: null, min: "", x: null, y: null, out: null, body: "foot", sit: "open", ast: "none", ap: null, oo: false, og: false, gy: null, gz: null, ww: null, k: undefined });
+const blankDraft = (t) => ({ id: null, t, p: null, min: "", x: null, y: null, out: null, body: "foot", sit: "open", ast: "none", ap: null, oo: false, og: false, gy: null, gz: null, ww: null, ex: null, ey: null, k: undefined });
 
 /* one line of a team's scorers: "Borja Martinez 22\u2032, 75\u2032", "Sunil Chhetri 45\u2032 (pen)", "Pritam Kotal (og) 32\u2032",
    or "Own goal 32\u2032" when nobody was named for it.
@@ -1775,6 +1780,9 @@ function MatchBody({ s, idx, matchId, back, backBtn, view, onView }) {
   const m = s.matches[matchId];
   const can = s.canWrite;
   const [draft, setDraft] = useState(() => blankDraft("h"));
+  /* for a shot off target or blocked the pitch takes two spots: where it was taken and where it ended up. pickEnd says which
+     one the next click places. */
+  const [pickEnd, setPickEnd] = useState(false);
   const [errs, setErrs] = useState([]);
   const [flash, setFlash] = useState("");
   const [meta, setMeta] = useState(null);
@@ -1789,13 +1797,23 @@ function MatchBody({ s, idx, matchId, back, backBtn, view, onView }) {
   const defSide = otherSide(draft.t);
   const keeper = draft.k !== undefined ? draft.k : m.gk[defSide];
   const isPen = draft.sit === "pen", isOpen = draft.sit === "open";
-  const onT = draft.out === "goal" || draft.out === "saved", wood = draft.out === "post";
-  /* a new outcome keeps the spot in the goal only while it means the same thing: goal and saved share where the ball
-     crossed the line, the woodwork has its own spot on the frame, and nothing else has one */
+  const onT = draft.out === "goal" || draft.out === "saved", wood = draft.out === "post", toPitch = needsPitchEnd(draft.out);
+  /* a new outcome keeps where the shot ended up only while it means the same thing: goal and saved share where the ball
+     crossed the line, the woodwork has its spot on the frame, off target and blocked a spot on the pitch. Moving to off
+     target or blocked with the shot already placed, the next click on the pitch places where it ended up. */
+  const endKind = (o) => (o === "goal" || o === "saved" ? "goal" : needsPitchEnd(o) ? "pitch" : o);
   const setOut = (out) => {
-    const was = draft.out === "goal" || draft.out === "saved" ? "on" : draft.out, now = out === "goal" || out === "saved" ? "on" : out;
-    set(now === was && (now === "on" || now === "post") ? { out } : { out, gy: null, gz: null, ww: null });
+    const was = endKind(draft.out), now = endKind(out), keep = now === was && (now === "goal" || now === "post" || now === "pitch");
+    set(keep ? { out } : { out, gy: null, gz: null, ww: null, ex: null, ey: null });
+    setPickEnd(now === "pitch" && (keep ? pickEnd : isPen || draft.x != null));
   };
+  const pitchPick = (p) => {
+    if (toPitch && (pickEnd || isPen)) { set({ ex: p.x, ey: p.y }); return; }
+    if (isPen) return;
+    set(p);
+    if (toPitch && draft.ex == null) setPickEnd(true);
+  };
+  const fresh = (t) => { setDraft(blankDraft(t)); setPickEnd(false); };
   const spot = isPen ? Model.PEN_SPOT : draft.x != null ? { x: draft.x, y: draft.y } : null;
   const asShot = spot ? { ...draft, x: spot.x, y: spot.y } : null;
   const preview = asShot ? Model.xg(asShot) : null;
@@ -1818,6 +1836,7 @@ function MatchBody({ s, idx, matchId, back, backBtn, view, onView }) {
     if (!draft.out) e.push("Choose what happened to the shot.");
     if (onT && draft.gy == null) e.push("Click the goal where the shot ended up.");
     if (wood && !draft.ww) e.push("Choose which part of the woodwork it hit.");
+    if (toPitch && draft.ex == null) e.push("Click the pitch where it ended up: where it went out, or where it was blocked.");
     const minute = draft.min === "" ? null : Number(draft.min);
     if (minute != null && !(minute >= 0 && minute <= 130)) e.push("The minute should be between 0 and 130.");
     if (e.length) { setErrs(e); return; }
@@ -1827,24 +1846,26 @@ function MatchBody({ s, idx, matchId, back, backBtn, view, onView }) {
       body: isOpen ? draft.body : "foot", sit: draft.sit,
       ast: isOpen ? draft.ast : "none", ap: isOpen && draft.ast !== "none" ? draft.ap || null : null,
       oo: isOpen ? !!draft.oo : false, og: isOpen ? !!draft.og : false,
-      gy: onT || wood ? draft.gy : null, gz: onT || wood ? draft.gz : null, ww: wood ? draft.ww : null, k: keeper || null,
+      gy: onT || wood ? draft.gy : null, gz: onT || wood ? draft.gz : null, ww: wood ? draft.ww : null,
+      ex: toPitch ? draft.ex : null, ey: toPitch ? draft.ey : null, k: keeper || null,
     };
     Store.updateMatch(matchId, (d) => {
       const i = d.shots.findIndex((x) => x.id === shot.id);
       if (i >= 0) d.shots[i] = shot; else d.shots.push(shot);
     });
-    setDraft(blankDraft(draft.t));
+    fresh(draft.t);
     setErrs([]);
     setFlash((draft.id ? "Changes saved: " : "Shot saved: ") + pname(idx, shot.p) + ", " + f2(Model.xg(shot)) + " xG");
   };
   const startEdit = (x) => {
     setDraft({ ...blankDraft(x.t), ...x, min: x.min == null ? "" : String(x.min), k: x.k == null ? null : x.k });
+    setPickEnd(needsPitchEnd(x.out) && x.ex == null);
     setErrs([]); setFlash("");
     if (formRef.current && formRef.current.scrollIntoView) formRef.current.scrollIntoView({ block: "nearest", behavior: "smooth" });
   };
   const removeShot = (id) => {
     Store.updateMatch(matchId, (d) => { d.shots = d.shots.filter((x) => x.id !== id); });
-    if (draft.id === id) setDraft(blankDraft(draft.t));
+    if (draft.id === id) fresh(draft.t);
   };
   const setGk = (sd, pid) => Store.updateMatch(matchId, (d) => {
     d.gk[sd] = pid || null;
@@ -1908,8 +1929,11 @@ function MatchBody({ s, idx, matchId, back, backBtn, view, onView }) {
   const tagger = can ? h("div", { className: "tag-grid" },
     h("div", { className: "card stack" },
       h("div", { className: "step" }, h("h2", { className: "h2" }, draft.id ? "Edit shot" : "Tag a shot"),
-        h("span", { className: "hint" }, isPen ? "A penalty is placed on the spot for you." : "Click the pitch where the shot was taken. The attack always goes up the screen.")),
-      h(PitchMap, { marks, draft: spot, onPick: isPen ? undefined : (p) => set(p), label: "Half pitch. Click to place the shot." }),
+        h("span", { className: "hint" }, toPitch && (pickEnd || isPen) ? "Click where it ended up: where the ball went out, or where it was blocked." :
+          isPen ? "A penalty is placed on the spot for you." : "Click the pitch where the shot was taken. The attack always goes up the screen.")),
+      toPitch ? h(Seg, { label: "Clicking the pitch places", value: pickEnd || isPen ? "end" : "shot", onChange: (v) => setPickEnd(v === "end"),
+        options: [{ value: "shot", label: "Where it was taken", disabled: isPen }, { value: "end", label: "Where it ended up" }] }) : null,
+      h(PitchMap, { marks, draft: spot, draftEnd: toPitch && draft.ex != null ? { x: draft.ex, y: draft.ey } : null, onPick: isPen && !toPitch ? undefined : pitchPick, label: "Half pitch. Click to place the shot." }),
       legend,
       onT ? h("div", { className: "stack tight" },
         h("div", { className: "step" }, h("span", { className: "label", style: { margin: 0 } }, "Where it ended up"),
@@ -1946,7 +1970,7 @@ function MatchBody({ s, idx, matchId, back, backBtn, view, onView }) {
           onT ? h("div", null, h("div", { className: "figure" }, previewOT != null ? f2(previewOT) : "\u2013"), h("div", { className: "unit" }, "xG on target")) : null,
           spot && !isPen ? h("span", { className: "sub" }, describeSpot(spot.x, spot.y)) : null),
         h("div", { className: "acts" },
-          draft.id ? h("button", { type: "button", className: "btn big", onClick: () => { setDraft(blankDraft(draft.t)); setErrs([]); } }, "Cancel") : null,
+          draft.id ? h("button", { type: "button", className: "btn big", onClick: () => { fresh(draft.t); setErrs([]); } }, "Cancel") : null,
           h("button", { type: "button", className: "btn primary big", id: "f-save", onClick: save }, draft.id ? "Save changes" : "Save shot"))),
       flash ? h("div", { className: "flash", role: "status" }, h(IconCheck), flash) : null)) :
     h("div", { className: "card stack" }, h("h2", { className: "h2" }, "Shot map"),
@@ -1977,6 +2001,12 @@ function MatchBody({ s, idx, matchId, back, backBtn, view, onView }) {
               og.id ? h("button", { type: "button", className: "btn", onClick: () => setOg({ id: null, t: og.t, min: "", p: null }) }, "Cancel") : null,
               h("button", { type: "button", className: "btn", id: "og-save", onClick: saveOg }, og.id ? "Save changes" : "Add own goal")))) : null)),
     h("h2", { className: "h2" }, "Shots (" + m.shots.length + ")"),
+    /* shots tagged before the tracker asked where they ended up: the public map has no line for them until it is added */
+    (() => {
+      const left = m.shots.filter((x) => !shotEnd(x)).length;
+      return can && left ? h("p", { className: "sub" }, left === 1 ? "1 shot still needs where it ended up. Edit it and add that, so the public shot map can show it." :
+        left + " shots still need where they ended up. Edit each one and add that, so the public shot map can show them.") : null;
+    })(),
     m.shots.length ? h("div", { className: "tbl-wrap" }, h("table", { className: "tbl" },
       h("thead", null, h("tr", null,
         h("th", { className: "num", scope: "col" }, "Min"), h("th", { scope: "col" }, "Team"), h("th", { scope: "col" }, "Player"), h("th", { scope: "col" }, "What happened"),
@@ -1988,7 +2018,7 @@ function MatchBody({ s, idx, matchId, back, backBtn, view, onView }) {
           h("td", { className: "num" }, x.min != null ? x.min + "\u2032" : ""),
           h("td", null, h("span", { style: { display: "inline-flex", gap: 6, alignItems: "center" } }, h("i", { className: "dot " + (x.t === "h" ? "home" : "away") }), tshort(s.teams, side[x.t]))),
           h("td", { className: "strong" }, pname(idx, x.p)),
-          h("td", null, shotLine(x)),
+          h("td", null, shotLine(x), !shotEnd(x) ? h("span", { className: "faint" }, " \u00b7 end not placed") : null),
           h("td", { className: "num" }, f2(Model.xg(x))),
           h("td", { className: "num" }, Model.onTarget(x) ? (ot == null ? "Not placed" : f2(ot)) : ""),
           h("td", null, x.ap ? pname(idx, x.ap) : ""),
@@ -2303,7 +2333,7 @@ function MatchTimeline({ s, idx, m, can, withMap }) {
   const ends = orient === "across" ? ["left", "right"] : ["top", "bottom"];
   const shotMap = linked ? h("div", { className: "card stack shotmap-card", ref: mapRef },
     h("div", { className: "step" }, h("h2", { className: "h2" }, "Shot map"),
-      h("span", { className: "hint" }, "Every shot, sized by its xG, with a line to where it ended if it was on target or hit the woodwork. Hover over a shot here, on the worm or in the list to see it in all three.")),
+      h("span", { className: "hint" }, "Every shot, sized by its xG. Hover over a shot to see where it ended up. It lights up on the worm and in the list too.")),
     h("div", { className: "pitch-wrap " + orient },
       h("div", { className: "ends" }, endName("h"), orient === "across" ? endName("a") : null),
       h(PitchMap, { marks, lit, full: orient, onHover: hoverMark, tipId: cursor && cursor.src === "map" ? cursor.shot : null,
@@ -2312,7 +2342,6 @@ function MatchTimeline({ s, idx, m, can, withMap }) {
     h("div", { className: "legend" },
       h("span", null, h("i", { className: "dot solid" }), "Goal"),
       h("span", null, h("i", { className: "dot hollow" }), "No goal"),
-      trailKeys(marks),
       h("span", null, "Bigger means higher xG"))) : null;
 
   /* the corner copy: only while something is picked out in the worm or the list and the map itself is off screen */
@@ -2363,7 +2392,7 @@ function MatchTimeline({ s, idx, m, can, withMap }) {
           onPointerLeave: (e) => { if (e.pointerType === "mouse") setCursor((c) => (c && c.key === key && !c.pin ? null : c)); },
           onClick: () => { if (lastPointer.current !== "mouse") setCursor((c) => (c && c.key === key && c.pin ? null : rowFocus(r, true))); },
         } : { onMouseEnter: timed ? () => setCursor({ min: r.min, py: null }) : undefined, onMouseLeave: timed ? () => setCursor(null) : undefined };
-        return h("tr", Object.assign({ key, className: ((r.goal ? "goal" : "") + (sel ? " sel" : "")).trim() || undefined }, how),
+        return h("tr", Object.assign({ key, "data-shot": og ? undefined : r.id, className: ((r.goal ? "goal" : "") + (sel ? " sel" : "")).trim() || undefined }, how),
           h("td", { className: "num" }, timed ? r.min + "\u2032" : h("span", { className: "faint", title: "No minute saved" }, "\u2013")),
           h("td", { className: "c-team" }, h("span", { className: "tchip" }, h("i", { className: "dot " + (r.t === "h" ? "home" : "away") }), sides[r.t].short)),
           h("td", { className: "strong who" },
@@ -2451,13 +2480,14 @@ function PlayerDetail({ s, idx, r, close }) {
     for (const { id, m } of sortedMatches(s.matches)) for (const x of m.shots) if (x.p === r.id) out.push({ x, mid: id, m });
     return out;
   }, [s.matches, r.id]);
-  const marks = shots.map(({ x, m }) => {
+  /* a shot's id is only unique within its match, so a map across matches names each mark by both */
+  const marks = shots.map(({ x, mid, m }) => {
     const v = Model.xg(x);
     const opp = tshort(s.teams, x.t === "h" ? m.away : m.home);
-    return { id: x.id, x: x.x, y: x.y, v, goal: x.out === "goal", cls: "home", value: f2(v) + " xG", lines: ["v " + opp + ", " + fmtDate(m.date) + (x.min != null ? " \u00b7 " + x.min + "\u2032" : ""), shotLine(x)], aria: "Against " + opp + ", " + shotLine(x) + ", " + f2(v) + " expected goals",
+    return { id: mid + "/" + x.id, x: x.x, y: x.y, v, goal: x.out === "goal", cls: "home", value: f2(v) + " xG", lines: ["v " + opp + ", " + fmtDate(m.date) + (x.min != null ? " \u00b7 " + x.min + "\u2032" : ""), shotLine(x)], aria: "Against " + opp + ", " + shotLine(x) + ", " + f2(v) + " expected goals",
       end: READER ? shotEnd(x) : null };
   });
-  /* on the public page a player's shots are drawn in his club's colour, with lines to where the ones on target ended */
+  /* on the public page a player's shots are drawn in his club's colour, and pointing at one shows where it ended up */
   const cc = READER ? ClubColours.club(r.team) : null;
   return h("div", { className: "card stack" + (cc ? " club-colors" : ""), style: cc || undefined },
     h("div", { className: "toolbar" },
@@ -2466,7 +2496,8 @@ function PlayerDetail({ s, idx, r, close }) {
     h("div", { className: "kpis" }, h(Kpi, { v: r.sh, k: "Shots" }), h(Kpi, { v: r.sot, k: "On target" }), h(Kpi, { v: r.g, k: "Goals" }), h(Kpi, { v: f2(r.xg), k: "xG" }), h(Kpi, { v: r.a, k: "Assists" }), h(Kpi, { v: f2(r.xa), k: "xA" })),
     shots.length ? h("div", { className: "detail-grid" },
       h("div", null, h(PitchMap, { marks, label: "Shot map for " + r.name }),
-        h("div", { className: "legend" }, h("span", null, h("i", { className: "dot home" }), "Goal"), h("span", null, h("i", { className: "dot soft" }), "No goal"), trailKeys(marks), h("span", null, "Bigger means higher xG"))),
+        h("div", { className: "legend" }, h("span", null, h("i", { className: "dot home" }), "Goal"), h("span", null, h("i", { className: "dot soft" }), "No goal"), h("span", null, "Bigger means higher xG"),
+          READER ? h("span", null, "Hover over a shot to see where it ended up") : null)),
       h("div", { className: "tbl-wrap tall" }, h("table", { className: "tbl" },
         h("thead", null, h("tr", null, h("th", { scope: "col" }, "Match"), h("th", { className: "num", scope: "col" }, "Min"), h("th", { scope: "col" }, "What happened"), h("th", { className: "num", scope: "col" }, "xG"))),
         h("tbody", null, shots.map(({ x, m }) => h("tr", { key: x.id },
@@ -2526,11 +2557,11 @@ function KeepersView({ s, idx, agg }) {
 function KeeperDetail({ s, idx, r, close }) {
   const marks = useMemo(() => {
     const out = [];
-    for (const { m } of sortedMatches(s.matches)) for (const x of m.shots) {
+    for (const { id: mid, m } of sortedMatches(s.matches)) for (const x of m.shots) {
       if (x.k !== r.id || !Model.onTarget(x) || x.gy == null || x.gz == null) continue;
       const v = Model.xgot(x) || 0;
       const lines = [pname(idx, x.p) + ", " + tshort(s.teams, x.t === "h" ? m.home : m.away) + ", " + fmtDate(m.date), x.out === "goal" ? "Goal" : "Saved"];
-      out.push({ id: x.id, gy: x.gy, gz: x.gz, v, goal: x.out === "goal", cls: "home", value: f2(v) + " xGOT", lines, aria: lines.join(", ") + ", " + f2(v) + " expected goals on target" });
+      out.push({ id: mid + "/" + x.id, gy: x.gy, gz: x.gz, v, goal: x.out === "goal", cls: "home", value: f2(v) + " xGOT", lines, aria: lines.join(", ") + ", " + f2(v) + " expected goals on target" });
     }
     return out;
   }, [s.matches, r.id, idx, s.teams]);
@@ -2681,14 +2712,15 @@ function SquadsView({ s }) {
 function exportShots(s, idx) {
   const rows = [];
   for (const { id, m } of sortedMatches(s.matches)) for (const x of m.shots) {
-    const g = Model.geom(x.x, x.y), ot = Model.xgot(x);
+    const g = Model.geom(x.x, x.y), ot = Model.xgot(x), end = shotEnd(x);
     rows.push([id, m.date, tname(s.teams, m.home), tname(s.teams, m.away), tname(s.teams, x.t === "h" ? m.home : m.away), tname(s.teams, x.t === "h" ? m.away : m.home),
       x.min, pname(idx, x.p), x.x, x.y, Math.round(g.dist * 10) / 10, x.out, x.out === "post" && WOOD[x.ww] ? WOOD[x.ww].toLowerCase() : "", Model.onTarget(x) ? 1 : 0, x.out === "goal" ? 1 : 0, x.body, x.sit, x.ast,
-      pname(idx, x.ap), x.oo ? 1 : 0, x.og ? 1 : 0, r3(Model.xg(x)), x.gy, x.gz, Model.onTarget(x) ? r3(ot) : "", pname(idx, x.k)]);
+      pname(idx, x.ap), x.oo ? 1 : 0, x.og ? 1 : 0, r3(Model.xg(x)), x.gy, x.gz, end ? r3(end.x) : "", end ? r3(end.y) : "", Model.onTarget(x) ? r3(ot) : "", pname(idx, x.k)]);
   }
-  /* goal_y and goal_z: where an on-target shot crossed the line, or where a shot off the woodwork hit the frame */
+  /* goal_y and goal_z: where an on-target shot crossed the line, or where a shot off the woodwork hit the frame.
+     end_x and end_y: where every shot ended up on the pitch, on the same axes as x and y (blank where it was not recorded) */
   return toCsv(["match_id", "date", "home", "away", "team", "opponent", "minute", "player", "x", "y", "distance_yd", "outcome", "woodwork", "on_target", "goal", "body", "situation", "pass_type",
-    "set_up_by", "one_on_one", "open_goal", "xg", "goal_y", "goal_z", "xgot", "keeper"], rows);
+    "set_up_by", "one_on_one", "open_goal", "xg", "goal_y", "goal_z", "end_x", "end_y", "xgot", "keeper"], rows);
 }
 function exportPlayers(s, idx, agg) {
   const rows = Object.keys(agg.players).map((id) => {
@@ -2724,7 +2756,7 @@ function MethodView({ s, idx, agg }) {
       h("ol", { className: "prose", style: { paddingLeft: 20, margin: 0 } },
         h("li", null, "Open the match on the Matches tab and set both goalkeepers."),
         h("li", null, "For each shot, pick the team, click the pitch where it was taken, then choose the shooter, the minute and what happened."),
-        h("li", null, "If it was scored or saved, click the goal where the ball ended up. If it hit the woodwork, pick the post or the bar, or click the frame where it hit."),
+        h("li", null, "If it was scored or saved, click the goal where the ball ended up. If it hit the woodwork, pick the post or the bar, or click the frame where it hit. If it went off target or was blocked, click the pitch where it went out or was blocked."),
         h("li", null, "Add the details that change the chance: header, free kick or penalty, the pass before it, one-on-one, open goal."),
         h("li", null, "Save the shot. When the match is done, mark it as finished."))),
     h("section", { className: "stack tight" },
@@ -2747,7 +2779,7 @@ function MethodView({ s, idx, agg }) {
         h("p", null, h("strong", null, "xG"), " is the chance that a shot is scored, judged before it is struck. It uses how far out and how central the shot is, foot or head, whether it is a direct free kick, the pass before it, and whether it is a one-on-one or an open goal. A penalty is always 0.76."),
         h("p", null, h("strong", null, "xA"), " gives the player who set up a shot that shot's xG, scored or not."),
         h("p", null, h("strong", null, "The xG worm"), " on a match's Timeline tab adds up each team's xG as the match goes on. The line steps up at every shot, by that shot's xG. A shot saved without a minute cannot be placed, so it is left off the worm but still counts in every total."),
-        s.reader ? h("p", null, h("strong", null, "The shot map"), " draws every shot where it was taken, sized by its xG. A line runs from each shot on target to where it crossed the goal line, or would have without the save, and a dashed line from each shot off the woodwork to the post or bar it hit.") : null,
+        s.reader ? h("p", null, h("strong", null, "The shot map"), " draws every shot where it was taken, sized by its xG, with each side attacking its own end. Point at a shot and a line shows where it ended up: where a shot on target crossed the goal line (or would have, without the save), the post or bar it hit, where it went out, or where it was blocked.") : null,
         h("p", null, h("strong", null, "xG on target"), " rates a shot again once you know where in the goal it was heading. A shot into the top corner is worth more than one straight at the keeper."),
         h("p", null, h("strong", null, "Expected saves"), " is what an average goalkeeper would save from the same shots: shots on target faced minus xG on target faced. ", h("strong", null, "Saves above expected"), " is real saves minus that, the same number as goals prevented."))),
     /* the model's background stays in the tracker; the public page credits StatsBomb in the line at the foot of every tab */
@@ -2796,12 +2828,18 @@ function updatedLabel(iso) {
   if (!iso || isNaN(d.getTime())) return "";
   return "Updated " + d.getDate() + " " + MONTHS[d.getMonth()] + " " + d.getFullYear();
 }
+/* where the page opens. The tracker comes back to wherever you were. The public page always opens on its list of matches
+   (or on the tab a link names, like #players), never on the last match a visitor happened to look at. */
 function firstRoute(saved) {
   const ok = (r) => r && TABS.some((t) => t[0] === r.tab);
   const keep = (r) => ({ tab: r.tab, matchId: r.matchId || null, view: r.matchId && r.view === "timeline" ? "timeline" : "tag" });
   if (saved && ok(saved.route)) return keep(saved.route);
   const hash = String(window.location.hash || "").replace("#", "");
   if (TABS.some((t) => t[0] === hash)) return { tab: hash, matchId: null, view: "tag" };
+  if (READER) {
+    try { window.localStorage.removeItem(ROUTE_KEY); } catch (e) { /* nothing was kept */ }
+    return { tab: "matches", matchId: null, view: "tag" };
+  }
   try {
     const r = JSON.parse(window.localStorage.getItem(ROUTE_KEY) || "null");
     if (ok(r)) return keep(r);
@@ -2825,7 +2863,7 @@ function App({ initial }) {
   routeRef.current = route;
   const go = (r) => {
     setRoute(r);
-    try { window.localStorage.setItem(ROUTE_KEY, JSON.stringify(r)); } catch (e) { /* fine without it */ }
+    if (!READER) { try { window.localStorage.setItem(ROUTE_KEY, JSON.stringify(r)); } catch (e) { /* fine without it */ } }
     if (r.tab !== route.tab || r.matchId !== route.matchId) { try { window.scrollTo(0, 0); } catch (e) { /* ignore */ } }
   };
   useEffect(() => {
