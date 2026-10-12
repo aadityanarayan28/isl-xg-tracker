@@ -543,12 +543,13 @@ const Stats = (() => {
     const pl = (pid, tid) => (P[pid] || (P[pid] = {
       team: rosterTeam[pid] || tid, sh: 0, sot: 0, g: 0, xg: 0, npxg: 0, npsh: 0, pens: 0, pg: 0, xgot: 0, kp: 0, a: 0, xa: 0, _m: new Set(),
     }));
-    const kp = (kid, tid) => (K[kid] || (K[kid] = { team: rosterTeam[kid] || tid, sotf: 0, ga: 0, xgotf: 0, _m: new Set() }));
+    /* a keeper: shots on target faced (sotf), goals from them (ga), own goals let in while he was in goal (oga), xGOT faced */
+    const kp = (kid, tid) => (K[kid] || (K[kid] = { team: rosterTeam[kid] || tid, sotf: 0, ga: 0, oga: 0, xgotf: 0, _m: new Set() }));
     const tm = (tid) => (T[tid] || (T[tid] = { mp: 0, sh: 0, sot: 0, g: 0, xg: 0, xgot: 0, sha: 0, sota: 0, ga: 0, xga: 0, ogf: 0, oga: 0 }));
 
     const mk = () => ({ n: 0, g: 0, xg: 0 });
     const check = { all: mk(), np: mk(), inbox: mk(), outbox: mk(), head: mk(), pen: mk(), ot: mk() };
-    const totals = { matches: 0, shots: 0, goals: 0, xg: 0, unassigned: 0, noplace: 0 };
+    const totals = { matches: 0, shots: 0, goals: 0, xg: 0, unassigned: 0, noplace: 0, ogunassigned: 0 };
 
     for (const mid of Object.keys(matches)) {
       const mt = matches[mid];
@@ -561,6 +562,10 @@ const Stats = (() => {
       for (const o of ogs) {
         tm(side[o.t]).ogf += 1;
         tm(side[other(o.t)]).oga += 1;
+        /* the keeper in goal for the side that conceded it (set at the top of the match) let it in too. It counts in his
+           goals against; his saves, xGOT faced and goals prevented are about shots on target, so it stays out of those. */
+        const kid = mt.gk && mt.gk[other(o.t)];
+        if (kid) { const k = kp(kid, side[other(o.t)]); k._m.add(mid); k.oga += 1; } else totals.ogunassigned += 1;
       }
       for (const s of shots) {
         const tid = side[s.t], opp = side[other(s.t)];
@@ -2255,23 +2260,27 @@ const KEEPER_COLS = [
   { key: "name", label: "Keeper", get: (r) => r.name, strong: true },
   { key: "club", label: "Club", get: (r) => r.club },
   { key: "sotf", label: "On target faced", num: true, get: (r) => r.sotf, title: "Shots on target this keeper faced" },
-  { key: "ga", label: "Goals against", num: true, get: (r) => r.ga, title: "Goals conceded from those shots. Own goals are left out." },
-  { key: "sv", label: "Saves", num: true, get: (r) => r.sv },
+  { key: "ga", label: "Goals against", num: true, get: (r) => r.ga, title: "Every goal conceded while in goal, own goals included" },
+  { key: "sv", label: "Saves", num: true, get: (r) => r.sv, title: "Shots on target saved" },
   { key: "svp", label: "Save %", num: true, get: (r) => r.svp, fmt: pct },
   { key: "xgotf", label: "xGOT faced", num: true, get: (r) => r.xgotf, fmt: f2, title: "Goals an average keeper would concede from the same shots" },
   { key: "xsv", label: "Expected saves", num: true, get: (r) => r.xsv, fmt: f2, title: "Saves an average keeper would make from the same shots" },
-  { key: "sae", label: "Saves above expected", num: true, get: (r) => r.sae, fmt: signed, title: "Saves minus expected saves. Also called goals prevented." },
+  { key: "sae", label: "Saves above expected", num: true, get: (r) => r.sae, fmt: signed, title: "Saves minus expected saves. Also called goals prevented. Own goals are left out." },
   { key: "xsvp", label: "Expected save %", num: true, get: (r) => r.xsvp, fmt: pct },
 ];
 
 function KeepersView({ s, idx, agg }) {
   const [team, setTeam] = useState("");
   const [sel, setSel] = useState(null);
+  /* goals against: every goal he let in, own goals included. Saves, save % and the expected numbers come from the
+     shots on target he faced, so an own goal never counts against his shot-stopping. */
   const rows = useMemo(() => Object.keys(agg.keepers).map((id) => {
     const d = agg.keepers[id], sv = d.sotf - d.ga, xsv = d.sotf - d.xgotf;
-    return { id, name: pname(idx, id), club: tshort(s.teams, d.team), team: d.team, sotf: d.sotf, ga: d.ga, sv, svp: d.sotf ? sv / d.sotf : null, xgotf: d.xgotf, xsv, sae: d.xgotf - d.ga, xsvp: d.sotf ? xsv / d.sotf : null };
+    return { id, name: pname(idx, id), club: tshort(s.teams, d.team), team: d.team, sotf: d.sotf, ga: d.ga + d.oga, sv, svp: d.sotf ? sv / d.sotf : null, xgotf: d.xgotf, xsv, sae: d.xgotf - d.ga, xsvp: d.sotf ? xsv / d.sotf : null };
   }), [agg, idx, s.teams]);
-  const warn = agg.totals.unassigned ? h(Note, { kind: "warn" }, agg.totals.unassigned + (agg.totals.unassigned === 1 ? " shot on target has" : " shots on target have") + " no keeper recorded, so no keeper is credited or charged for them." + (READER ? "" : " Set the goalkeepers at the top of each match to fix this.")) : null;
+  const noShot = agg.totals.unassigned, noOg = agg.totals.ogunassigned;
+  const missing = [noShot ? noShot + (noShot === 1 ? " shot on target" : " shots on target") : null, noOg ? noOg + (noOg === 1 ? " own goal" : " own goals") : null].filter(Boolean);
+  const warn = missing.length ? h(Note, { kind: "warn" }, missing.join(" and ") + (noShot + noOg === 1 ? " has" : " have") + " no keeper recorded, so no keeper is credited or charged for " + (noShot + noOg === 1 ? "it." : "them.") + (READER ? "" : " Set the goalkeepers at the top of each match to fix this.")) : null;
   if (!rows.length) return h("div", { className: "stack" }, warn, h(NoShotsYet, { what: "saves, expected saves and goals prevented for each keeper" }));
   const shown = rows.filter((r) => !team || r.team === team);
   const picked = sel ? rows.find((r) => r.id === sel) : null;
@@ -2286,6 +2295,7 @@ function KeepersView({ s, idx, agg }) {
       h("div", { className: "empty" }, h("strong", null, "No keepers for this club yet"), "Pick another club."),
     READER ? null : hint,
     h(Defs, { items: [
+      ["Goals against", "Every goal conceded while he was in goal, own goals included. Saves and the numbers below count shots on target only, so an own goal never counts against his shot-stopping."],
       ["xGOT faced", "For every shot on target, the chance it goes in given where it was struck from and where in the goal it was heading. Added up, it is the goals an average keeper would concede."],
       ["Expected saves", "Shots on target faced minus xGOT faced: the saves an average keeper would make."],
       ["Saves above expected", "Saves minus expected saves. It is the same number as goals prevented. Above zero is better than average shot-stopping."],
@@ -2466,9 +2476,10 @@ function exportPlayers(s, idx, agg) {
 function exportKeepers(s, idx, agg) {
   const rows = Object.keys(agg.keepers).map((id) => {
     const d = agg.keepers[id];
-    return [pname(idx, id), tname(s.teams, d.team), d.m, d.sotf, d.ga, d.sotf - d.ga, r3(d.xgotf), r3(d.sotf - d.xgotf), r3(d.xgotf - d.ga)];
-  }).sort((a, b) => b[8] - a[8]);
-  return toCsv(["keeper", "club", "matches", "on_target_faced", "goals_against", "saves", "xgot_faced", "expected_saves", "saves_above_expected"], rows);
+    /* goals against include own goals, as on the Keepers tab; saves and the expected numbers count shots on target only */
+    return [pname(idx, id), tname(s.teams, d.team), d.m, d.sotf, d.ga + d.oga, d.oga, d.sotf - d.ga, r3(d.xgotf), r3(d.sotf - d.xgotf), r3(d.xgotf - d.ga)];
+  }).sort((a, b) => b[9] - a[9]);
+  return toCsv(["keeper", "club", "matches", "on_target_faced", "goals_against", "own_goals_against", "saves", "xgot_faced", "expected_saves", "saves_above_expected"], rows);
 }
 
 function MethodView({ s, idx, agg }) {
