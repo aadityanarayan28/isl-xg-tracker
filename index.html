@@ -2046,7 +2046,10 @@ function PlayersView({ s, idx, agg }) {
   if (!rows.length) return h(NoShotsYet, { what: "every player's shots, goals, xG and xA" });
   const shown = rows.filter((r) => (!team || r.team === team) && r.sh >= minSh && (!q || fold(r.name).includes(fold(q))));
   const picked = sel && agg.players[sel] ? rows.find((r) => r.id === sel) : null;
+  /* how to use the table. The public page says it first, before the filters, so a reader knows a row opens a shot map */
+  const hint = h("p", { className: "sub table-hint" }, "Click a player to see their shot map. Click a column heading to sort. From " + matchesWord(agg.totals.matches) + " and " + agg.totals.shots + (agg.totals.shots === 1 ? " shot." : " shots."));
   return h("div", { className: "stack" },
+    READER ? hint : null,
     h("div", { className: "row" },
       h("div", { className: "field grow", style: { maxWidth: 280 } }, h("label", { className: "label", htmlFor: "pl-q" }, "Find a player"),
         h("input", { id: "pl-q", className: "input", type: "search", placeholder: "Type a name", value: q, onChange: (e) => setQ(e.target.value) })),
@@ -2055,7 +2058,7 @@ function PlayersView({ s, idx, agg }) {
     picked ? h(PlayerDetail, { s, idx, r: picked, close: () => setSel(null) }) : null,
     shown.length ? h(SortTable, { cols: PLAYER_COLS, rows: shown, initial: { key: "xg", dir: -1 }, rowKey: (r) => r.id, onRow: (id) => setSel(sel === id ? null : id), selKey: sel, caption: "Player totals" }) :
       h("div", { className: "empty" }, h("strong", null, "No players match"), "Loosen the filters above."),
-    h("p", { className: "sub" }, "Click a player to see their shot map. Click a column heading to sort. From " + matchesWord(agg.totals.matches) + " and " + agg.totals.shots + (agg.totals.shots === 1 ? " shot." : " shots.")),
+    READER ? null : hint,
     h(Defs, { items: [
       ["xG", "Expected goals. Each shot is worth the chance that a shot like it is scored, from 0 to 1. A penalty is worth 0.76."],
       ["G " + MINUS + " xG", "Goals minus xG. Above zero means more goals than the chances were worth."],
@@ -2119,13 +2122,16 @@ function KeepersView({ s, idx, agg }) {
   if (!rows.length) return h("div", { className: "stack" }, warn, h(NoShotsYet, { what: "saves, expected saves and goals prevented for each keeper" }));
   const shown = rows.filter((r) => !team || r.team === team);
   const picked = sel ? rows.find((r) => r.id === sel) : null;
+  /* as on Players: first thing on the public page, under the table in the tracker */
+  const hint = h("p", { className: "sub table-hint" }, "Click a keeper to see where the shots they faced were placed. From " + matchesWord(agg.totals.matches) + ".");
   return h("div", { className: "stack" },
+    READER ? hint : null,
     warn,
     h("div", { className: "row" }, h(ClubSelect, { id: "gk-club", s, value: team, onChange: setTeam })),
     picked ? h(KeeperDetail, { s, idx, r: picked, close: () => setSel(null) }) : null,
     shown.length ? h(SortTable, { cols: KEEPER_COLS, rows: shown, initial: { key: "sae", dir: -1 }, rowKey: (r) => r.id, onRow: (id) => setSel(sel === id ? null : id), selKey: sel, caption: "Goalkeeper totals" }) :
       h("div", { className: "empty" }, h("strong", null, "No keepers for this club yet"), "Pick another club."),
-    h("p", { className: "sub" }, "Click a keeper to see where the shots they faced were placed. From " + matchesWord(agg.totals.matches) + "."),
+    READER ? null : hint,
     h(Defs, { items: [
       ["xGOT faced", "For every shot on target, the chance it goes in given where it was struck from and where in the goal it was heading. Added up, it is the goals an average keeper would concede."],
       ["Expected saves", "Shots on target faced minus xGOT faced: the saves an average keeper would make."],
