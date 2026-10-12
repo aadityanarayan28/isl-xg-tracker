@@ -435,7 +435,7 @@ window.__READER__ = {"v":1,"generated":"2026-10-12T12:15:21.115Z","teams":{"bfc"
 <script>
 "use strict";
 /* The numbers behind the model. Fitted on StatsBomb Open Data, tuned to ISL 2021-22. */
-const MODEL = {"version": "2026-10-09", "xg": {"b": {"const": -6.402248, "dist": -0.235666, "log_dist": 2.515817, "angle": 2.617019, "head": -0.430032, "other_body": -0.775795, "head_dist": -0.059847, "is_fk": -1.185621, "fk_dist": 0.087061, "one_on_one": 0.616181, "open_goal": 1.388238, "a_cross": -0.229773, "a_through": 1.008587, "a_corner": -0.745249, "a_freekick": -0.234179}, "lo": 3.0, "cap": 35.0, "islA": -0.29162, "islB": 0.777577, "pen": 0.76}, "ps": {"g": {"const": 2.188921, "xg_lg": 0.865018, "ay2": 0.078002, "ay4": -0.012621, "gz": -0.815903, "gz2": 0.4592, "dc": -0.034677, "logd": -0.796762, "is_pen": -1.030174, "one_on_one": -0.572396, "open_goal": 2.032212, "ay2_logd": 0.121898}, "islA": 0.144392, "islB": 0.781716, "goalH": 2.67}, "n": {"pool": 45827, "isl": 3053, "psPool": 15512, "psIsl": 952}};
+const MODEL = {"version": "2026-10-12", "xg": {"b": {"const": -6.402248, "dist": -0.235666, "log_dist": 2.515817, "angle": 2.617019, "head": -0.430032, "other_body": -0.775795, "head_dist": -0.059847, "is_fk": -1.185621, "fk_dist": 0.087061, "one_on_one": 0.616181, "open_goal": 1.388238, "a_cross": -0.229773, "a_through": 1.008587, "a_corner": -0.745249, "a_freekick": -0.234179}, "lo": 3.0, "cap": 35.0, "islA": -0.29162, "islB": 0.777577, "pen": 0.76}, "ps": {"g": {"const": 2.831653, "xg_lg": 0.85096, "ay2": -0.040263, "ay4": -0.013219, "gz": -1.01641, "gz2": 0.600174, "dc": -0.043731, "logd": -0.975422, "is_pen": -0.972346, "one_on_one": -0.549444, "open_goal": 2.016916, "ay2_logd": 0.163727, "head": 0.376018, "head_ay2": 0.08598, "head_gz": -0.712334}, "islA": 0.134056, "islB": 0.781566, "goalH": 2.67}, "n": {"pool": 45827, "isl": 3053, "psPool": 15512, "psIsl": 952}};
 
 /* What each page calls itself in its heading. Set in build.py, next to the browser-tab titles. */
 const PAGE_NAMES = {"tracker": "ISL xG Tracker", "reader": "ISL 2026-27", "season": "2026-27"};
@@ -502,7 +502,9 @@ const Model = (() => {
   const onTarget = (s) => s.out === "goal" || s.out === "saved";
 
   /* expected goals on target: the chance of scoring given where the shot was placed.
-     0 for shots that miss or are blocked, null if an on-target shot has no placement recorded. */
+     0 for shots that miss or are blocked, null if an on-target shot has no placement recorded.
+     A header has its own placement terms: aimed low it is harder to save than a shot with the foot, aimed high easier,
+     and the corners help it more. */
   function xgot(s) {
     if (!onTarget(s)) return 0;
     if (s.gy == null || s.gz == null) return null;
@@ -512,7 +514,8 @@ const Model = (() => {
     const gz = clamp(s.gz, 0, m.goalH);
     const lin = g.const + g.xg_lg * xgLin(s) + g.ay2 * ay * ay + g.ay4 * Math.pow(ay, 4) + g.gz * gz + g.gz2 * gz * gz
       + g.dc * dc + g.logd * Math.log(dc) + g.is_pen * n.pen + g.one_on_one * n.oo + g.open_goal * n.og
-      + g.ay2_logd * ay * ay * Math.log(dc);
+      + g.ay2_logd * ay * ay * Math.log(dc)
+      + (g.head || 0) * n.head + (g.head_ay2 || 0) * n.head * ay * ay + (g.head_gz || 0) * n.head * gz;
     return sigmoid(m.islA + m.islB * lin);
   }
 
@@ -3019,7 +3022,7 @@ function MethodView({ s, idx, agg }) {
         h("p", null, h("strong", null, "xA"), " gives the player who set up a shot that shot's xG, scored or not."),
         h("p", null, h("strong", null, "The xG worm"), " on a match's Timeline tab adds up each team's xG as the match goes on. The line steps up at every shot, by that shot's xG. A shot saved without a minute cannot be placed, so it is left off the worm but still counts in every total."),
         s.reader ? h("p", null, h("strong", null, "The shot map"), " draws every shot where it was taken, sized by its xG, with each side attacking its own end. Point at a shot and a line shows where it ended up: where a shot on target crossed the goal line (or would have, without the save), the post or bar it hit, where it went out, or where it was blocked.") : null,
-        h("p", null, h("strong", null, "xG on target"), " rates a shot again once you know where in the goal it was heading. A shot into the top corner is worth more than one straight at the keeper."),
+        h("p", null, h("strong", null, "xG on target"), " rates a shot again once you know where in the goal it was heading. A shot into the top corner is worth more than one straight at the keeper. Headers differ on height: a header aimed low is harder to save than one aimed high."),
         h("p", null, h("strong", null, "Expected saves"), " is what an average goalkeeper would save from the same shots: shots on target faced minus xG on target faced. ", h("strong", null, "Saves above expected"), " is real saves minus that, the same number as goals prevented."))),
     /* the model's background stays in the tracker; the public page credits StatsBomb in the line at the foot of every tab */
     s.reader ? null : h("section", { className: "stack tight" },
@@ -3028,6 +3031,7 @@ function MethodView({ s, idx, agg }) {
         h("p", null, "It was trained on ", h("strong", null, MODEL.n.pool.toLocaleString("en-IN") + " shots"), " from StatsBomb's free data: the Premier League, La Liga, Serie A and Ligue 1 in 2015-16, part of the Bundesliga that season, and six international tournaments from 2018 to 2024."),
         h("p", null, "It was then tuned to ", h("strong", null, MODEL.n.isl.toLocaleString("en-IN") + " ISL shots from 2021-22"), ", the one ISL season with free shot-by-shot data. In that season ISL shots from distance went in more often than the same shots elsewhere, and the clearest chances a little less often, so the model builds that in."),
         h("p", null, "On that ISL season, player totals from this model line up closely with StatsBomb's own xG: a correlation of 0.97 for players with 20 or more shots and 0.99 for teams."),
+        h("p", null, "In October 2026 it was checked against the official xG and xGoT of every ISL goal from 2014 to 2025-26. Set against every 2021-22 shot, those official numbers undercount ISL goals, so they were used to test this model, not to retune it. One change came out of the check: headers have their own placement effect in xG on target, as a header aimed low is harder to save and one aimed high easier."),
         h("p", null, "Its limits: it cannot see where the defenders are, and shot locations are placed by hand. One shot can be off. Season totals are far steadier."))),
     s.reader ? null : h("section", { className: "stack tight" },
       h("h2", { className: "h2" }, "Model check on your data"),
