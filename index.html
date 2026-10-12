@@ -2047,7 +2047,8 @@ function MatchBody({ s, idx, matchId, back, backBtn, view, onView }) {
       ["h", "a"].map((sd) => h("div", { className: "field", key: sd },
         h("label", { className: "label", htmlFor: "gk-" + sd }, tshort(s.teams, side[sd]) + " goalkeeper"),
         h(PlayerPicker, { id: "gk-" + sd, teams: s.teams, teamId: side[sd], value: m.gk[sd], onChange: (pid) => setGk(sd, pid), canAdd: true, placeholder: "Type the keeper's name" })))) :
-      (m.gk.h || m.gk.a) ? h("div", { className: "meta" }, "Goalkeepers: " + [m.gk.h, m.gk.a].filter(Boolean).map((k) => pname(idx, k)).join(", ")) : null);
+      /* someone viewing the tracker without edit rights sees who kept goal; the public page leaves that line out */
+      (m.gk.h || m.gk.a) && !s.reader ? h("div", { className: "meta" }, "Goalkeepers: " + [m.gk.h, m.gk.a].filter(Boolean).map((k) => pname(idx, k)).join(", ")) : null);
 
   const tagger = can ? h("div", { className: "tag-grid" },
     h("div", { className: "card stack" },
