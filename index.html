@@ -360,6 +360,11 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: 13.5px; }
 .tbl th { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); background: var(--surface); vertical-align: bottom; }
 .tbl th.num, .tbl td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .tbl td.strong { font-weight: 600; }
+/* the public Teams table has thirteen columns: where the room runs out its headings wrap onto two lines and the cells sit a
+   little closer, so it fits a laptop screen without scrolling sideways */
+.tbl.fit th { white-space: normal; }
+.tbl.fit .sortb { text-align: inherit; }
+.tbl.fit th, .tbl.fit td { padding-inline: 8px; }
 .tbl td.soft { white-space: normal; min-width: 150px; }
 .tbl .sortb { appearance: none; background: none; border: 0; padding: 0; cursor: pointer; font: inherit; color: inherit; letter-spacing: inherit; text-transform: inherit; display: inline-flex; gap: 4px; align-items: center; }
 .tbl .sortb:hover { color: var(--ink); }
@@ -533,6 +538,24 @@ const Stats = (() => {
     return sc;
   }
 
+  /* each club's results, from the final score of every match with anything tagged in it (the same matches its Matches count
+     covers): a win is three points, a draw one each, a defeat none. The public page carries finished matches only, so there
+     these are the points from finished matches. */
+  function results(matches) {
+    const out = {};
+    const add = (tid, mine, theirs) => {
+      const r = out[tid] || (out[tid] = { w: 0, d: 0, l: 0, pts: 0 });
+      if (mine > theirs) { r.w += 1; r.pts += 3; } else if (mine === theirs) { r.d += 1; r.pts += 1; } else r.l += 1;
+    };
+    for (const m of Object.values(matches)) {
+      if (!(m.shots || []).length && !(m.og || []).length) continue;
+      const sc = score(m);
+      add(m.home, sc.h, sc.a);
+      add(m.away, sc.a, sc.h);
+    }
+    return out;
+  }
+
   /* shots, on target, goals and xG for each side of one match */
   function matchSummary(match) {
     const mk = () => ({ sh: 0, sot: 0, g: 0, xg: 0, xgot: 0, og: 0 });
@@ -696,7 +719,7 @@ const Stats = (() => {
     return { players: P, keepers: K, teams: T, check, totals };
   }
 
-  return { score, matchSummary, matchPlayers, scorers, timeline, timelineAt, aggregate };
+  return { score, results, matchSummary, matchPlayers, scorers, timeline, timelineAt, aggregate };
 })();
 
 /* ============================================================
@@ -1223,6 +1246,8 @@ const MINUS = "\u2212";
 const f2 = (v) => (v == null || !isFinite(v) ? "" : v.toFixed(2));
 const f1 = (v) => (v == null || !isFinite(v) ? "" : v.toFixed(1));
 const signed = (v) => (v == null || !isFinite(v) ? "" : (v >= 0.005 ? "+" : v <= -0.005 ? MINUS : "") + Math.abs(v).toFixed(2));
+/* a whole number with its sign, as a goal difference is written: +3, 0, or a true minus sign before 2 */
+const signedInt = (v) => (v == null || !isFinite(v) ? "" : (v > 0 ? "+" : v < 0 ? MINUS : "") + Math.abs(Math.round(v)));
 const pct = (v) => (v == null || !isFinite(v) ? "" : Math.round(v * 100) + "%");
 const otherSide = (t) => (t === "h" ? "a" : "h");
 const pad2 = (n) => String(n).padStart(2, "0");
@@ -1657,22 +1682,26 @@ function GoalMouth({ marks, value, onPick, onMark, activeId, label, frame }) {
 }
 
 /* ---------- a sortable table ---------- */
-function SortTable({ cols, rows, initial, rowKey, onRow, selKey, caption }) {
+/* a column can name what settles a tie in it (then: more values, each sorted the same way round), as points in a league
+   table go to goal difference and then goals scored */
+function SortTable({ cols, rows, initial, rowKey, onRow, selKey, caption, className }) {
   const [sort, setSort] = useState(initial);
   const sorted = useMemo(() => {
     const c = cols.find((x) => x.key === sort.key) || cols[0];
-    return [...rows].sort((a, b) => {
-      const va = c.get(a), vb = c.get(b);
+    const by = (get) => (a, b) => {
+      const va = get(a), vb = get(b);
       if (va == null && vb == null) return 0;
       if (va == null) return 1;
       if (vb == null) return -1;
       if (typeof va === "string" || typeof vb === "string") return sort.dir * String(va).localeCompare(String(vb));
       return sort.dir * (va - vb);
-    });
+    };
+    const keys = [c.get].concat(c.then || []).map(by);
+    return [...rows].sort((a, b) => { for (const k of keys) { const d = k(a, b); if (d) return d; } return 0; });
   }, [rows, sort, cols]);
   const flip = (c) => setSort((s) => (s.key === c.key ? { key: c.key, dir: -s.dir } : { key: c.key, dir: c.num ? -1 : 1 }));
   return h("div", { className: "tbl-wrap" },
-    h("table", { className: "tbl" },
+    h("table", { className: "tbl" + (className ? " " + className : "") },
       caption ? h("caption", { className: "sr" }, caption) : null,
       h("thead", null, h("tr", null, cols.map((c) => h("th", {
         key: c.key, className: c.num ? "num" : undefined, scope: "col", title: c.title,
@@ -2728,6 +2757,12 @@ const TEAM_COLS = [
   { key: "mp", label: "Matches", num: true, get: (r) => r.mp, title: READER ? "Finished matches" : "Matches with at least one tagged shot" },
   { key: "gf", label: "Goals for", num: true, get: (r) => r.gf, title: "Goals scored, own goals in their favour included" },
   { key: "ga", label: "Goals against", num: true, get: (r) => r.ga },
+  /* the public page, where every match is finished, also has the league table's two columns; a tie on points goes to goal
+     difference, then goals scored */
+  ...(READER ? [
+    { key: "gd", label: "Goal difference", num: true, get: (r) => r.gd, fmt: signedInt, title: "Goals for minus goals against" },
+    { key: "pts", label: "Points", num: true, get: (r) => r.pts, title: "Three for a win and one for a draw", then: [(r) => r.gd, (r) => r.gf] },
+  ] : []),
   { key: "sh", label: "Shots", num: true, get: (r) => r.sh },
   { key: "sot", label: "On target", num: true, get: (r) => r.sot },
   { key: "xg", label: "xG", num: true, get: (r) => r.xg, fmt: f2 },
@@ -2739,10 +2774,11 @@ const TEAM_COLS = [
 
 function TeamsView({ s, idx, agg }) {
   const [sel, setSel] = useState(null);
+  const res = useMemo(() => Stats.results(s.matches), [s.matches]);
   const rows = useMemo(() => Object.keys(agg.teams).map((id) => {
-    const d = agg.teams[id];
-    return { id, name: tname(s.teams, id), mp: d.mp, gf: d.g + d.ogf, ga: d.ga + d.oga, sh: d.sh, sot: d.sot, xg: d.xg, sha: d.sha, xga: d.xga, xgd: d.xg - d.xga, xgpm: d.mp ? d.xg / d.mp : null };
-  }), [agg, s.teams]);
+    const d = agg.teams[id], gf = d.g + d.ogf, ga = d.ga + d.oga;
+    return { id, name: tname(s.teams, id), mp: d.mp, gf, ga, gd: gf - ga, pts: res[id] ? res[id].pts : 0, sh: d.sh, sot: d.sot, xg: d.xg, sha: d.sha, xga: d.xga, xgd: d.xg - d.xga, xgpm: d.mp ? d.xg / d.mp : null };
+  }), [agg, s.teams, res]);
   if (!rows.length) return h(NoShotsYet, { what: "each club's shots and xG for and against" });
   const picked = sel && agg.teams[sel] ? rows.find((r) => r.id === sel) : null;
   /* as on Players and Keepers: the public page says how to use the table first, the tracker under it */
@@ -2750,7 +2786,7 @@ function TeamsView({ s, idx, agg }) {
   return h("div", { className: "stack" },
     READER ? hint : null,
     picked ? h(TeamDetail, { s, idx, r: picked, close: () => setSel(null) }) : null,
-    h(SortTable, { cols: TEAM_COLS, rows, initial: { key: "xgd", dir: -1 }, rowKey: (r) => r.id, onRow: (id) => setSel(sel === id ? null : id), selKey: sel, caption: "Club totals" }),
+    h(SortTable, { cols: TEAM_COLS, rows, initial: { key: "xgd", dir: -1 }, rowKey: (r) => r.id, onRow: (id) => setSel(sel === id ? null : id), selKey: sel, caption: "Club totals", className: READER ? "fit" : undefined }),
     READER ? null : hint,
     h("p", { className: "sub" }, (READER ? "Only finished matches are counted." : "Only matches you have tagged are counted.") + " Goals include own goals; xG never does."));
 }
