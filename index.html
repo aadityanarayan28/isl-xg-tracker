@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ISL Shooting Actions</title>
+<title>ISL 2026-27</title>
 <meta name="description" content="Shot-by-shot expected goals for the Indian Super League 2026-27: match timelines, and xG, xA and goalkeeper numbers for every player and club.">
 <meta property="og:type" content="website">
-<meta property="og:title" content="ISL Shooting Actions 2026-27">
+<meta property="og:title" content="ISL 2026-27">
 <meta property="og:description" content="Shot-by-shot expected goals for the Indian Super League 2026-27: match timelines, and xG, xA and goalkeeper numbers for every player and club.">
 <meta name="twitter:card" content="summary">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23111714'/%3E%3Cpath d='M5 25h7v-7h7v-8h8' fill='none' stroke='%233987e5' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M5 26h13v-4h9' fill='none' stroke='%23eb6834' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' opacity='.95'/%3E%3C/svg%3E">
@@ -297,6 +297,8 @@ textarea.input { min-height: 110px; resize: vertical; }
 .wm-open { fill: var(--surface); stroke-width: 2px; }
 .wm-open.home { stroke: var(--home); }
 .wm-open.away { stroke: var(--away); }
+/* a goal's name set a row or more away from its marker, joined to it by a short line */
+.wlead { fill: none; stroke: var(--muted); stroke-width: 1px; }
 .wn { fill: var(--ink-2); font-size: 11.5px; font-weight: 500; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round; paint-order: stroke; }
 .we { fill: var(--ink-2); font-size: 12px; }
 .we .v { fill: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -392,7 +394,7 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: 13.5px; }
 </style>
 </head>
 <body>
-<div id="app"><div class="wrap"><header class="mast"><div class="brand"><h1>ISL Shooting Actions</h1><span class="season">2026-27</span></div></header><div class="empty"><strong>Loading the season</strong>One moment.</div></div></div>
+<div id="app"><div class="wrap"><header class="mast"><div class="brand"><h1>ISL 2026-27</h1></div></header><div class="empty"><strong>Loading the season</strong>One moment.</div></div></div>
 <noscript><div class="wrap"><div class="empty"><strong>This page needs JavaScript</strong>Turn it on in your browser and reload.</div></div></noscript>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
@@ -408,7 +410,7 @@ window.__READER__ = {"v":1,"generated":"2026-10-12T05:41:40.189Z","teams":{"bfc"
 const MODEL = {"version": "2026-10-09", "xg": {"b": {"const": -6.402248, "dist": -0.235666, "log_dist": 2.515817, "angle": 2.617019, "head": -0.430032, "other_body": -0.775795, "head_dist": -0.059847, "is_fk": -1.185621, "fk_dist": 0.087061, "one_on_one": 0.616181, "open_goal": 1.388238, "a_cross": -0.229773, "a_through": 1.008587, "a_corner": -0.745249, "a_freekick": -0.234179}, "lo": 3.0, "cap": 35.0, "islA": -0.29162, "islB": 0.777577, "pen": 0.76}, "ps": {"g": {"const": 2.188921, "xg_lg": 0.865018, "ay2": 0.078002, "ay4": -0.012621, "gz": -0.815903, "gz2": 0.4592, "dc": -0.034677, "logd": -0.796762, "is_pen": -1.030174, "one_on_one": -0.572396, "open_goal": 2.032212, "ay2_logd": 0.121898}, "islA": 0.144392, "islB": 0.781716, "goalH": 2.67}, "n": {"pool": 45827, "isl": 3053, "psPool": 15512, "psIsl": 952}};
 
 /* What each page calls itself in its heading. Set in build.py, next to the browser-tab titles. */
-const PAGE_NAMES = {"tracker": "ISL xG Tracker", "reader": "ISL Shooting Actions"};
+const PAGE_NAMES = {"tracker": "ISL xG Tracker", "reader": "ISL 2026-27", "season": "2026-27"};
 
 /* The public page, ready for its data. Only the private tracker carries it. */
 const READER_TEMPLATE = null;
@@ -2127,8 +2129,11 @@ function wormLayout(tl, width, sides, nameOf) {
   return { W, H, mg, pw, ph, xEnd, yMax, x, y, yTicks, xTicks, yLabel, narrow, nudge, d: { h: path(pts.h), a: path(pts.a) }, goals, labels, ht, ends, ly };
 }
 
-/* find room for a name beside each goal: try the four corners around the marker and keep the first that touches nothing.
-   A name with no room is left off; the list under the chart still has it. */
+/* find room for a name beside every goal and own goal: first a corner right beside the marker, as always; failing that,
+   the nearest spot pushed sideways or a row or more up or down, joined to its marker by a short leader line (among spots
+   equally near, the one furthest from the names already placed). A name never covers another name, a goal marker, a line
+   or the HT label, and stays inside the chart, so in a truly crowded corner a name can still be left off; the list under
+   the chart always has it. */
 function placeGoalLabels(goals, lines, box, extra) {
   const hits = (a, b) => a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
   const crosses = (r, P) => {
@@ -2139,28 +2144,41 @@ function placeGoalLabels(goals, lines, box, extra) {
     return false;
   };
   const marks = goals.map((g) => ({ x0: g.cx - 7, x1: g.cx + 7, y0: g.cy - 7, y1: g.cy + 7 }));
-  const placed = [];
-  goals.forEach((g, gi) => {
+  const corners = [["end", -10], ["start", -10], ["start", 19], ["end", 19]];
+  const near = corners.map(([anchor, dy]) => ({ anchor, dy, shift: 0, cost: 0 }));
+  const far = [];
+  for (let k = 0; k <= 10; k++) for (const shift of [0, 12, 24, 36, 48, 60, 72, 84]) {
+    if (!k && !shift) continue;
+    for (const [anchor, base] of corners) far.push({ anchor, dy: base < 0 ? base - 16 * k : base + 16 * k, shift, cost: 16 * k + shift });
+  }
+  far.sort((a, b) => a.cost - b.cost);
+  const placed = new Map();
+  const centre = (r) => [(r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2];
+  const room = (r) => Math.min(Infinity, ...[...placed.values()].map((q) => { const a = centre(r), b = centre(q.rect); return Math.hypot(a[0] - b[0], a[1] - b[1]); }));
+  const tryAt = (g, gi, spots, apart) => {
     const w = textW(g.text, WORM_LABEL_PX) + 4;
-    const options = [
-      { anchor: "end", x: g.cx - 8, y: g.cy - 10 },
-      { anchor: "start", x: g.cx + 8, y: g.cy - 10 },
-      { anchor: "start", x: g.cx + 8, y: g.cy + 19 },
-      { anchor: "end", x: g.cx - 8, y: g.cy + 19 },
-    ];
-    for (const o of options) {
+    let best = null;
+    for (const c of spots) {
+      if (best && c.cost > best.cost) break;
+      const x = c.anchor === "end" ? g.cx - 8 - c.shift : g.cx + 8 + c.shift, y = g.cy + c.dy;
       /* the box the text really fills at this size: about 12.5px above its baseline and 3.5px below */
-      const r = { x0: o.anchor === "end" ? o.x - w : o.x, x1: o.anchor === "end" ? o.x : o.x + w, y0: o.y - 12.5, y1: o.y + 3.5 };
+      const r = { x0: c.anchor === "end" ? x - w : x, x1: c.anchor === "end" ? x : x + w, y0: y - 12.5, y1: y + 3.5 };
       if (r.x0 < box.x0 || r.x1 > box.x1 || r.y0 < box.y0 || r.y1 > box.y1) continue;
       if (marks.some((q, qi) => qi !== gi && hits(r, q))) continue;
       if ((extra || []).some((q) => hits(r, q))) continue;
-      if (placed.some((q) => hits(r, q.rect))) continue;
+      if ([...placed.values()].some((q) => hits(r, q.rect))) continue;
       if (lines.some((P) => crosses(r, P))) continue;
-      placed.push({ id: g.id, text: g.text, anchor: o.anchor, x: o.x, y: o.y, rect: r });
-      break;
+      const it = { ...c, x, y, r };
+      if (!apart) { best = it; break; }
+      if (!best || room(r) > room(best.r)) best = it;
     }
-  });
-  return placed;
+    if (!best) return;
+    const up = best.dy < 0, lead = apart ?
+      { x1: g.cx + (best.anchor === "end" ? -4 : 4), y1: g.cy + (up ? -4 : 4), x2: best.anchor === "end" ? best.r.x1 - 3 : best.r.x0 + 3, y2: up ? best.r.y1 - 1 : best.r.y0 + 1 } : null;
+    placed.set(gi, { id: g.id, text: g.text, anchor: best.anchor, x: best.x, y: best.y, rect: best.r, lead });
+  };
+  for (const [spots, apart] of [[near, false], [far, true]]) goals.forEach((g, gi) => { if (!placed.has(gi)) tryAt(g, gi, spots, apart); });
+  return goals.map((g, gi) => placed.get(gi)).filter(Boolean);
 }
 
 /* the chart. cursor is { min, py } while a minute is being looked at, from the pointer, the keyboard or the list below
@@ -2242,6 +2260,7 @@ function XgWorm({ tl, sides, idx, cursor, setCursor, linked }) {
       L.goals.map((g) => (g.og ?
         h("g", { key: g.id, className: "wgoal og" }, h("circle", { className: "wm-back", cx: g.cx, cy: g.cy, r: 7 }), h("circle", { className: "wm-open " + cls[g.side], cx: g.cx, cy: g.cy, r: 4.5 })) :
         h("circle", { key: g.id, className: "wgoal wm " + cls[g.side], cx: g.cx, cy: g.cy, r: 5 }))),
+      L.labels.map((l) => l.lead ? h("path", { key: "lead" + l.id, className: "wlead", d: "M" + l.lead.x1.toFixed(1) + "," + l.lead.y1.toFixed(1) + " L" + l.lead.x2.toFixed(1) + "," + l.lead.y2.toFixed(1) }) : null),
       L.labels.map((l) => h("text", { key: l.id, className: "wn", x: l.x, y: l.y, textAnchor: l.anchor }, l.text)),
       ["h", "a"].map((sd) => h("text", { key: "l" + sd, className: "we", x: L.ends[sd].x + 10, y: L.ly[sd] + 4 },
         L.narrow ? null : h("tspan", null, sides[sd].short),
@@ -2590,15 +2609,70 @@ const TEAM_COLS = [
   { key: "xgpm", label: "xG / match", num: true, get: (r) => r.xgpm, fmt: f2 },
 ];
 
-function TeamsView({ s, agg }) {
+function TeamsView({ s, idx, agg }) {
+  const [sel, setSel] = useState(null);
   const rows = useMemo(() => Object.keys(agg.teams).map((id) => {
     const d = agg.teams[id];
     return { id, name: tname(s.teams, id), mp: d.mp, gf: d.g + d.ogf, ga: d.ga + d.oga, sh: d.sh, sot: d.sot, xg: d.xg, sha: d.sha, xga: d.xga, xgd: d.xg - d.xga, xgpm: d.mp ? d.xg / d.mp : null };
   }), [agg, s.teams]);
   if (!rows.length) return h(NoShotsYet, { what: "each club's shots and xG for and against" });
+  const picked = sel && agg.teams[sel] ? rows.find((r) => r.id === sel) : null;
+  /* as on Players and Keepers: the public page says how to use the table first, the tracker under it */
+  const hint = h("p", { className: "sub table-hint" }, "Click a club to see every shot it took this season. Click a column heading to sort.");
   return h("div", { className: "stack" },
-    h(SortTable, { cols: TEAM_COLS, rows, initial: { key: "xgd", dir: -1 }, rowKey: (r) => r.id, caption: "Club totals" }),
+    READER ? hint : null,
+    picked ? h(TeamDetail, { s, idx, r: picked, close: () => setSel(null) }) : null,
+    h(SortTable, { cols: TEAM_COLS, rows, initial: { key: "xgd", dir: -1 }, rowKey: (r) => r.id, onRow: (id) => setSel(sel === id ? null : id), selKey: sel, caption: "Club totals" }),
+    READER ? null : hint,
     h("p", { className: "sub" }, (READER ? "Only finished matches are counted." : "Only matches you have tagged are counted.") + " Goals include own goals; xG never does."));
+}
+
+/* a club's season: its numbers, every shot it took on one map (on the public page in its colour, and pointing at a shot shows
+   where it ended up), and its matches one by one. Pointing at a match, or tapping it, picks out that match's shots on the map. */
+function TeamDetail({ s, idx, r, close }) {
+  const games = useMemo(() => sortedMatches(s.matches)
+    .filter(({ m }) => (m.home === r.id || m.away === r.id) && ((m.shots || []).length || (m.og || []).length))
+    .map(({ id, m }) => {
+      const side = m.home === r.id ? "h" : "a", sc = Stats.score(m), sum = Stats.matchSummary(m)[side];
+      return { id, m, side, opp: side === "h" ? m.away : m.home, gf: sc[side], ga: sc[otherSide(side)], sh: sum.sh, xg: sum.xg, shots: m.shots.filter((x) => x.t === side) };
+    }), [s.matches, r.id]);
+  const [hot, setHot] = useState(null);
+  /* a shot's id is only unique within its match, so a map across matches names each mark by both */
+  const marks = useMemo(() => games.flatMap((gm) => gm.shots.map((x) => {
+    const v = Model.xg(x), opp = tshort(s.teams, gm.opp), who = pname(idx, x.p);
+    return { id: gm.id + "/" + x.id, x: x.x, y: x.y, v, goal: x.out === "goal", cls: "home", value: f2(v) + " xG", end: READER ? shotEnd(x) : null,
+      lines: [who + (x.min != null ? " \u00b7 " + x.min + "\u2032" : ""), "v " + opp + ", " + fmtDate(gm.m.date), shotLine(x)],
+      aria: who + ", against " + opp + (x.min != null ? ", minute " + x.min : "") + ", " + shotLine(x) + ", " + f2(v) + " expected goals" };
+  })), [games, idx, s.teams]);
+  const lit = hot ? marks.filter((k) => k.id.indexOf(hot + "/") === 0).map((k) => k.id) : null;
+  const cc = READER ? ClubColours.club(r.id) : null;
+  return h("div", { className: "card stack" + (cc ? " club-colors" : ""), style: cc || undefined },
+    h("div", { className: "toolbar" },
+      h("div", null, h("h2", { className: "h2" }, r.name), h("p", { className: "sub" }, "Every shot " + (READER ? "in its finished matches" : "tagged") + " this season")),
+      h("button", { type: "button", className: "btn", onClick: close }, "Close")),
+    h("div", { className: "kpis" }, h(Kpi, { v: r.mp, k: "Matches" }), h(Kpi, { v: r.gf, k: "Goals" }), h(Kpi, { v: r.sh, k: "Shots" }), h(Kpi, { v: r.sot, k: "On target" }),
+      h(Kpi, { v: f2(r.xg), k: "xG" }), h(Kpi, { v: f2(r.xgpm), k: "xG / match" })),
+    marks.length ? h("div", { className: "detail-grid" },
+      h("div", null, h(PitchMap, { marks, lit, label: "Shot map for " + r.name + ": every shot this season" }),
+        h("div", { className: "legend" }, h("span", null, h("i", { className: "dot home" }), "Goal"), h("span", null, h("i", { className: "dot soft" }), "No goal"), h("span", null, "Bigger means higher xG"),
+          READER ? h("span", null, "Hover over a shot to see where it ended up") : null)),
+      h("div", { className: "stack tight" },
+        h("p", { className: "sub" }, "Point at a match, or tap it, to pick out its shots on the map."),
+        h("div", { className: "tbl-wrap tall" }, h("table", { className: "tbl team-games" },
+          h("caption", { className: "sr" }, r.name + ", match by match"),
+          h("thead", null, h("tr", null, h("th", { scope: "col" }, "Match"), h("th", { className: "num", scope: "col" }, "Score"), h("th", { className: "num", scope: "col" }, "Shots"), h("th", { className: "num", scope: "col" }, "xG"))),
+          h("tbody", null, games.map((gm) => h("tr", {
+            key: gm.id, "data-match": gm.id, tabIndex: 0, className: "click" + (hot === gm.id ? " sel" : ""),
+            onPointerEnter: (e) => { if (e.pointerType === "mouse") setHot(gm.id); },
+            onPointerLeave: (e) => { const row = e.currentTarget; if (e.pointerType === "mouse" && document.activeElement !== row) setHot((v) => (v === gm.id ? null : v)); },
+            onFocus: () => setHot(gm.id),
+            onBlur: () => setHot((v) => (v === gm.id ? null : v)),
+          },
+            h("td", null, "v " + tshort(s.teams, gm.opp) + ", " + fmtDate(gm.m.date)),
+            h("td", { className: "num" }, gm.gf + "\u2013" + gm.ga),
+            h("td", { className: "num" }, gm.sh),
+            h("td", { className: "num" }, f2(gm.xg))))))))) :
+      h("p", { className: "sub" }, "No shots yet."));
 }
 
 /* ============================================================
@@ -2822,6 +2896,8 @@ const TABS = [["matches", "Matches"], ["players", "Players"], ["keepers", "Keepe
 const ROUTE_KEY = READER ? "islxg.public.route" : "islxg.route";
 /* the public page goes by its own name; the tracker keeps its working name */
 const SITE_NAME = READER ? PAGE_NAMES.reader : PAGE_NAMES.tracker;
+/* the season sits beside the name, unless the name already says it (the public page is called "ISL 2026-27") */
+const SEASON_LABEL = PAGE_NAMES.season || "2026-27";
 /* "Updated 9 Oct 2026" from the moment the public page was saved, in the reader's own time zone */
 function updatedLabel(iso) {
   const d = new Date(iso);
@@ -2888,13 +2964,13 @@ function App({ initial }) {
   else if (route.tab === "matches") view = route.matchId ? h(MatchView, { s, idx, matchId: route.matchId, view: route.view, onView: (v) => go({ tab: "matches", matchId: route.matchId, view: v }), back: () => go({ tab: "matches", matchId: null }) }) : h(MatchesView, { s, agg, open: (id) => go({ tab: "matches", matchId: id }) });
   else if (route.tab === "players") view = h(PlayersView, { s, idx, agg });
   else if (route.tab === "keepers") view = h(KeepersView, { s, idx, agg });
-  else if (route.tab === "teams") view = h(TeamsView, { s, agg });
+  else if (route.tab === "teams") view = h(TeamsView, { s, idx, agg });
   else if (route.tab === "squads") view = h(SquadsView, { s });
   else view = h(MethodView, { s, idx, agg });
 
   return h("div", { className: "wrap" },
     h("header", { className: "mast" },
-      h("div", { className: "brand" }, h("h1", null, SITE_NAME), h("span", { className: "season" }, "2026-27")),
+      h("div", { className: "brand" }, h("h1", null, SITE_NAME), SITE_NAME.indexOf(SEASON_LABEL) < 0 ? h("span", { className: "season" }, SEASON_LABEL) : null),
       h("div", { role: "status", "aria-live": "polite" }, sync)),
     h("nav", { className: "tabs", "aria-label": "Sections" }, TABS.map(([id, label]) => h("button", {
       key: id, type: "button", className: "tab" + (route.tab === id ? " on" : ""), "aria-current": route.tab === id ? "page" : undefined,
