@@ -251,6 +251,15 @@ textarea.input { min-height: 110px; resize: vertical; }
 @media (prefers-reduced-motion: no-preference) { .trail { transition: opacity 0.12s ease; } }
 .lkey { display: inline-block; flex: none; width: 18px; height: 0; border-top: 2px solid var(--ink-2); }
 .lkey.wood { border-top-style: dashed; }
+/* a match's map on the public page: the whole pitch with the two sides at opposite ends, each named at the end it attacks.
+   Lying across it is drawn about as large per yard as a half pitch; standing upright on a phone it fills the width. */
+.viz.full.across { max-width: 800px; }
+.viz.full.upright { max-width: 420px; }
+.pitch-wrap { display: flex; flex-direction: column; gap: 6px; }
+.pitch-wrap .ends { display: flex; justify-content: space-between; gap: 12px; width: 100%; margin-inline: auto; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.pitch-wrap.across .ends { max-width: 800px; padding-inline: 3.5%; }
+.pitch-wrap.upright .ends { max-width: 420px; justify-content: center; }
+.end-name { display: inline-flex; align-items: center; gap: 6px; min-width: 0; overflow-wrap: anywhere; }
 /* picking where a shot hit the woodwork: the frame is the thing to click */
 .viz.frame-pick .frame { stroke: var(--accent); }
 /* the small copy of the match's shot map that shows in the corner while a shot is picked out and the map is off screen.
@@ -1386,27 +1395,61 @@ function svgPoint(svg, e) {
 }
 
 const PITCH_VB = { x: -3, y: -4.5, w: 86, h: 67 };
-/* the attacking half, goal at the top. Across the screen is pitch width (0 to 80), down the screen is distance from the goal line.
+/* the whole pitch, for a match's map with the two sides at opposite ends. "across" has the goals at the left and right, the home
+   side attacking the left goal so its shots sit on the same side as its name on the scoreboard; "upright" stands it up for a
+   narrow screen, home attacking the top goal. place(side, x, y) turns a tagged spot (always recorded attacking the goal at
+   x = 120) into the drawing. Both are turns of the pitch, never mirror images, so a shooter's left stays on his left. */
+const FULL_PITCH = {
+  across: { vb: { x: -4.5, y: -3, w: 129, h: 86 }, place: (sd, x, y) => (sd === "a" ? [x, y] : [120 - x, 80 - y]) },
+  upright: { vb: { x: -3, y: -4.5, w: 86, h: 129 }, place: (sd, x, y) => (sd === "a" ? [80 - y, x] : [y, 120 - x]) },
+};
+/* the whole pitch's markings, laid across (goal lines at x = 0 and 120); the upright map turns this same drawing a quarter round */
+function FullPitchLines() {
+  const end = (gx, dir) => {   // one end: its goal line at gx, the pitch running away from it in direction dir (1 or -1)
+    const box = (deep, half) => h("path", { className: "pl", d: "M" + gx + "," + (40 - half) + " H" + (gx + dir * deep) + " V" + (40 + half) + " H" + gx });
+    return h(Frag, null,
+      box(18, 22), box(6, 10),
+      h("rect", { className: "pl", x: dir > 0 ? gx - 2.4 : gx, y: 36, width: 2.4, height: 8 }),
+      h("path", { className: "pl", d: "M" + (gx + dir * 18) + ",32 A10,10 0 0 " + (dir > 0 ? 1 : 0) + " " + (gx + dir * 18) + ",48" }),
+      h("circle", { className: "pl-dot", cx: gx + dir * 12, cy: 40, r: 0.5 }));
+  };
+  return h(Frag, null,
+    h("rect", { className: "turf", x: 0, y: 0, width: 120, height: 80 }),
+    h("rect", { className: "pl", x: 0, y: 0, width: 120, height: 80 }),
+    h("path", { className: "pl", d: "M60,0 V80" }),
+    h("circle", { className: "pl", cx: 60, cy: 40, r: 10 }),
+    h("circle", { className: "pl-dot", cx: 60, cy: 40, r: 0.5 }),
+    end(0, 1), end(120, -1),
+    h("path", { className: "pl", d: "M1,0 A1,1 0 0 1 0,1 M119,0 A1,1 0 0 0 120,1 M0,79 A1,1 0 0 1 1,80 M119,80 A1,1 0 0 1 120,79" }));
+}
+/* a shot map. By default the attacking half, goal at the top: across the screen is pitch width (0 to 80), down the screen is
+   distance from the goal line. full ("across" or "upright", see FULL_PITCH) draws the whole pitch instead, each mark at the end
+   its side (sd) attacks.
    Linked to other views (onHover given), the page decides which shots are lit and which one shows its tooltip (tipId).
-   depth (yards from the goal line, 60 by default) cuts the drawing short for a map that only needs to reach its longest shot;
+   depth (yards from the goal line, 60 by default) cuts the half pitch short for a map that only needs to reach its longest shot;
    the side lines then run off the bottom, open, so it reads as part of a pitch. */
-function PitchMap({ marks, draft, onPick, onMark, activeId, label, lit, onHover, tipId, still, scale, depth }) {
+function PitchMap({ marks, draft, onPick, onMark, activeId, label, lit, onHover, tipId, still, scale, depth, full }) {
   const box = useRef(null), svg = useRef(null);
   const width = useWidth(box, 520);
   const [ownTip, setTip] = useState(null);
+  const F = FULL_PITCH[full] || null;
   const D = depth > 0 && depth < 60 ? depth : 60;
-  const vbH = D + 7;
-  const u = PITCH_VB.w / width;
-  const placed = useMemo(() => (marks || []).map((m) => ({ ...m, cx: m.y, cy: 120 - m.x })), [marks]);
+  const vb = F ? F.vb : { x: PITCH_VB.x, y: PITCH_VB.y, w: PITCH_VB.w, h: D + 7 };
+  const u = vb.w / width;
+  const at = (m, x, y) => (F ? F.place(m.sd, x, y) : [y, 120 - x]);
+  const placed = useMemo(() => (marks || []).map((m) => { const [cx, cy] = at(m, m.x, m.y); return { ...m, cx, cy }; }), [marks, full]);
   const litSet = lit && lit.length ? new Set(lit) : null;
   /* the public page's lines from a shot to where it ended (marks carry end, from shotEnd): drawn under every shot,
      solid for a shot on target, dashed for one off the woodwork; a picked-out shot's line goes on top of the others */
-  const trails = useMemo(() => placed.filter((m) => m.end).map((m) => ({ id: m.id, cls: m.cls || "home", wood: !!m.end.wood, x1: m.cx, y1: m.cy, x2: m.end.y, y2: 120 - m.end.x })), [placed]);
+  const trails = useMemo(() => placed.filter((m) => m.end).map((m) => {
+    const [x2, y2] = at(m, m.end.x, m.end.y);
+    return { id: m.id, cls: m.cls || "home", wood: !!m.end.wood, x1: m.cx, y1: m.cy, x2, y2 };
+  }), [placed]);
   const trailsDrawn = litSet ? trails.filter((t) => !litSet.has(t.id)).concat(trails.filter((t) => litSet.has(t.id))) : trails;
   let tip = ownTip;
   if (onHover || still) {
     const pm = tipId != null && !still ? placed.find((x) => x.id === tipId) : null;
-    tip = pm ? { id: pm.id, px: (pm.cx - PITCH_VB.x) / u, py: (pm.cy - PITCH_VB.y) / u, value: pm.value, lines: pm.lines } : null;
+    tip = pm ? { id: pm.id, px: (pm.cx - vb.x) / u, py: (pm.cy - vb.y) / u, value: pm.value, lines: pm.lines } : null;
   }
   const click = (e) => {
     if (!onPick) return;
@@ -1437,22 +1480,23 @@ function PitchMap({ marks, draft, onPick, onMark, activeId, label, lit, onHover,
   };
   const away = (e) => { if (e.pointerType === "mouse" && near.current != null) { near.current = null; onHover(null); } };
   const pointing = linked ? { onPointerMove: point, onPointerDown: point, onPointerLeave: away } : {};
-  return h("div", { className: "viz" + (onPick ? " pickable" : "") + (onMark || onHover ? " linked" : "") + (litSet ? " dim" : "") + (linked && tip ? " pointing" : ""), ref: box },
-    h("svg", Object.assign({ ref: svg, viewBox: PITCH_VB.x + " " + PITCH_VB.y + " " + PITCH_VB.w + " " + vbH, role: still ? "img" : "group", "aria-label": label || "Shot map", onClick: click }, pointing),
-      h("rect", { className: "turf", x: 0, y: 0, width: 80, height: D }),
-      D >= 60 ? h("rect", { className: "pl", x: 0, y: 0, width: 80, height: 60 }) : h("path", { className: "pl", d: "M0," + D + " V0 H80 V" + D }),
-      h("rect", { className: "pl", x: 18, y: 0, width: 44, height: 18 }),
-      h("rect", { className: "pl", x: 30, y: 0, width: 20, height: 6 }),
-      h("rect", { className: "pl", x: 36, y: -2.4, width: 8, height: 2.4 }),
-      h("path", { className: "pl", d: "M32,18 A10,10 0 0 0 48,18" }),
-      D >= 60 ? h("path", { className: "pl", d: "M30,60 A10,10 0 0 1 50,60" }) : null,
-      h("path", { className: "pl", d: "M1,0 A1,1 0 0 1 0,1" }),
-      h("path", { className: "pl", d: "M79,0 A1,1 0 0 0 80,1" }),
-      h("circle", { className: "pl-dot", cx: 40, cy: 12, r: 0.5 }),
+  return h("div", { className: "viz" + (F ? " full " + full : "") + (onPick ? " pickable" : "") + (onMark || onHover ? " linked" : "") + (litSet ? " dim" : "") + (linked && tip ? " pointing" : ""), ref: box },
+    h("svg", Object.assign({ ref: svg, viewBox: vb.x + " " + vb.y + " " + vb.w + " " + vb.h, role: still ? "img" : "group", "aria-label": label || "Shot map", onClick: click }, pointing),
+      F ? (full === "upright" ? h("g", { transform: "matrix(0 1 -1 0 80 0)" }, h(FullPitchLines)) : h(FullPitchLines)) : h(Frag, null,
+        h("rect", { className: "turf", x: 0, y: 0, width: 80, height: D }),
+        D >= 60 ? h("rect", { className: "pl", x: 0, y: 0, width: 80, height: 60 }) : h("path", { className: "pl", d: "M0," + D + " V0 H80 V" + D }),
+        h("rect", { className: "pl", x: 18, y: 0, width: 44, height: 18 }),
+        h("rect", { className: "pl", x: 30, y: 0, width: 20, height: 6 }),
+        h("rect", { className: "pl", x: 36, y: -2.4, width: 8, height: 2.4 }),
+        h("path", { className: "pl", d: "M32,18 A10,10 0 0 0 48,18" }),
+        D >= 60 ? h("path", { className: "pl", d: "M30,60 A10,10 0 0 1 50,60" }) : null,
+        h("path", { className: "pl", d: "M1,0 A1,1 0 0 1 0,1" }),
+        h("path", { className: "pl", d: "M79,0 A1,1 0 0 0 80,1" }),
+        h("circle", { className: "pl-dot", cx: 40, cy: 12, r: 0.5 })),
       trails.length ? h("g", { className: "trails", "aria-hidden": "true" }, trailsDrawn.map((t) => h("line", {
         key: t.id, className: "trail " + t.cls + (t.wood ? " wood" : "") + (litSet && litSet.has(t.id) ? " lit" : ""), x1: t.x1, y1: t.y1, x2: t.x2, y2: t.y2,
       }))) : null,
-      h(Marks, { marks: placed, u, activeId, onMark, tipId: tip && tip.id, setTip, vb: PITCH_VB, lit: litSet, onHover, still, scale }),
+      h(Marks, { marks: placed, u, activeId, onMark, tipId: tip && tip.id, setTip, vb, lit: litSet, onHover, still, scale }),
       draft && draft.x != null ? h("g", { pointerEvents: "none" },
         h("circle", { className: "mk-ring", cx: draft.y, cy: 120 - draft.x, r: 10 * u }),
         h("circle", { className: "draft-ring", cx: draft.y, cy: 120 - draft.x, r: 8 * u }),
@@ -2192,16 +2236,15 @@ function MatchTimeline({ s, idx, m, can, withMap }) {
   const marks = useMemo(() => (linked ? m.shots.map((x) => {
     const v = Model.xg(x), who = pname(idx, x.p);
     return {
-      id: x.id, x: x.x, y: x.y, v, goal: x.out === "goal", cls: x.t === "h" ? "home" : "away", value: f2(v) + " xG", end: shotEnd(x),
+      id: x.id, x: x.x, y: x.y, sd: x.t, v, goal: x.out === "goal", cls: x.t === "h" ? "home" : "away", value: f2(v) + " xG", end: shotEnd(x),
       lines: [who + (x.min != null ? " \u00b7 " + x.min + "\u2032" : ""), shotLine(x)],
       aria: who + (x.min != null ? ", minute " + x.min : "") + ", " + shotLine(x) + ", " + f2(v) + " expected goals",
     };
   }) : []), [linked, m.shots, idx]);
-  /* the map reaches a little past the longest shot (32 yards at least, the whole half at most), so it is not mostly empty grass */
-  const depth = useMemo(() => {
-    const far = (m.shots || []).reduce((a, x) => Math.max(a, 120 - x.x), 0);
-    return Math.min(60, Math.max(32, Math.ceil((far + 4) / 4) * 4));
-  }, [m.shots]);
+  /* the map is the whole pitch, the two sides at opposite ends: lying across where the card is wide enough for that to read
+     (home attacking the left goal), standing upright on a narrow screen (home attacking the top one) */
+  const cardW = useWidth(mapRef, typeof window !== "undefined" && window.innerWidth ? window.innerWidth - 40 : 1000);
+  const orient = cardW >= 640 ? "across" : "upright";
   /* how the last press came: a mouse click lands on a row the pointer has already picked out, so only a tap toggles it */
   useEffect(() => {
     if (!linked) return undefined;
@@ -2255,13 +2298,18 @@ function MatchTimeline({ s, idx, m, can, withMap }) {
   /* pin: picked out by a tap, which holds until another tap; a mouse hover lasts only while the pointer is over the row */
   const rowFocus = (r, pin) => ({ min: r.min, py: null, key: r.kind + r.id, shot: r.kind === "shot" ? r.id : null, src: "list", pin: !!pin });
 
+  /* each side is named at the end it attacks: both above the pitch when it lies across, home above and away below when upright */
+  const endName = (sd) => h("span", { className: "end-name " + (sd === "h" ? "home" : "away") }, h("i", { className: "dot " + (sd === "h" ? "home" : "away") }), sides[sd].name);
+  const ends = orient === "across" ? ["left", "right"] : ["top", "bottom"];
   const shotMap = linked ? h("div", { className: "card stack shotmap-card", ref: mapRef },
     h("div", { className: "step" }, h("h2", { className: "h2" }, "Shot map"),
       h("span", { className: "hint" }, "Every shot, sized by its xG, with a line to where it ended if it was on target or hit the woodwork. Hover over a shot here, on the worm or in the list to see it in all three.")),
-    h(PitchMap, { marks, lit, depth, onHover: hoverMark, tipId: cursor && cursor.src === "map" ? cursor.shot : null, label: "Shot map for this match. Each shot also shows on the worm and in the list below." }),
+    h("div", { className: "pitch-wrap " + orient },
+      h("div", { className: "ends" }, endName("h"), orient === "across" ? endName("a") : null),
+      h(PitchMap, { marks, lit, full: orient, onHover: hoverMark, tipId: cursor && cursor.src === "map" ? cursor.shot : null,
+        label: "Shot map for this match. " + sides.h.name + " attack the " + ends[0] + " goal, " + sides.a.name + " the " + ends[1] + ". Each shot also shows on the worm and in the list below." }),
+      orient === "upright" ? h("div", { className: "ends" }, endName("a")) : null),
     h("div", { className: "legend" },
-      h("span", null, h("i", { className: "dot home" }), sides.h.name),
-      h("span", null, h("i", { className: "dot away" }), sides.a.name),
       h("span", null, h("i", { className: "dot solid" }), "Goal"),
       h("span", null, h("i", { className: "dot hollow" }), "No goal"),
       trailKeys(marks),
@@ -2273,7 +2321,7 @@ function MatchTimeline({ s, idx, m, can, withMap }) {
     const one = lit.length === 1 ? marks.find((k) => k.id === lit[0]) : null;
     peek = h("div", { className: "peek", "aria-hidden": "true" },
       h("div", { className: "peek-h" }, "Shot map"),
-      h(PitchMap, { marks, lit, depth, still: true, scale: 0.62, label: "Shot map" }),
+      h(PitchMap, { marks, lit, full: "across", still: true, scale: 0.62, label: "Shot map" }),
       h("div", { className: "peek-cap" }, one ? h(Frag, null, h("strong", null, one.lines[0]), h("br"), one.lines[1] + " \u00b7 " + one.value) :
         lit.length + " shots at " + cursor.min + "\u2032"));
   }
