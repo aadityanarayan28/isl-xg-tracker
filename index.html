@@ -178,6 +178,13 @@ textarea.input { min-height: 110px; resize: vertical; }
 .board .xgl { font-variant-numeric: tabular-nums; color: var(--ink-2); font-size: 13.5px; }
 .board .xgl.h { text-align: right; }
 .board .mid { text-align: center; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+/* the public page's scorers, between the score and the xG: home under home, away under away, a line per scorer */
+.board .scorers { list-style: none; margin: 4px 0 8px; padding: 0; min-width: 0; align-self: start; font-size: 14px; line-height: 1.45; color: var(--ink); overflow-wrap: anywhere; }
+.board .scorers.h { text-align: right; }
+.board .scorers li + li { margin-top: 2px; }
+.board .scorers .who { font-weight: 500; }
+.board .scorers .min { color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+@media (max-width: 560px) { .board .scorers li + li { margin-top: 6px; } }
 .meta { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; justify-content: center; color: var(--ink-2); font-size: 13px; }
 .keepers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; }
 @media (max-width: 560px) { .keepers { grid-template-columns: minmax(0, 1fr); } }
@@ -295,6 +302,11 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: 13.5px; }
 .cmp td:first-child { text-align: right; font-weight: 600; width: 34%; }
 .cmp td:nth-child(2) { text-align: center; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; }
 .cmp td:last-child { font-weight: 600; width: 34%; }
+/* team names over the columns, where the table stands in its own card on the public page */
+.cmp th { padding: 0 8px 7px; border-bottom: 1px solid var(--line); font-size: 12.5px; font-weight: 600; letter-spacing: 0.04em; color: var(--ink-2); text-align: center; }
+.cmp th:first-child { text-align: right; }
+.cmp th:last-child { text-align: left; }
+.totals-card .cmp { max-width: 560px; margin-inline: auto; }
 .detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 18px; align-items: start; }
 @media (max-width: 880px) { .detail-grid { grid-template-columns: minmax(0, 1fr); } }
 .kpis { display: flex; flex-wrap: wrap; gap: 8px 26px; }
@@ -444,6 +456,25 @@ const Stats = (() => {
     return out;
   }
 
+  /* who scored for each side, in the order they first scored. A player's goals share one entry, and so do the own goals
+     given to a side. A goal saved without a minute gets an entry of its own after the rest, as it has no minute to show. */
+  function scorers(match) {
+    const goals = [];
+    (match.shots || []).forEach((s, i) => { if (s.out === "goal") goals.push({ t: s.t, p: s.p, og: false, min: s.min == null ? null : s.min, pen: s.sit === "pen", rank: 0, order: i }); });
+    (match.og || []).forEach((o, i) => goals.push({ t: o.t, p: null, og: true, min: o.min == null ? null : o.min, pen: false, rank: 1, order: i }));
+    const late = (g) => (g.min == null ? 1 : 0);
+    goals.sort((a, b) => late(a) - late(b) || (a.min || 0) - (b.min || 0) || a.rank - b.rank || a.order - b.order);
+    const out = { h: [], a: [] }, seen = {};
+    for (const g of goals) {
+      if (!out[g.t]) continue;
+      const key = g.t + "|" + (g.og ? "og" : "p:" + g.p) + (g.min == null ? "|untimed" : "");
+      let e = seen[key];
+      if (!e) { e = seen[key] = { p: g.p, og: g.og, timed: g.min != null, goals: [] }; out[g.t].push(e); }
+      e.goals.push({ min: g.min, pen: g.pen });
+    }
+    return out;
+  }
+
   /* one match in the order it happened: every shot and own goal, with each side's running xG and the score after it.
      A shot or own goal saved without a minute cannot be placed in time, so those come back separately.
      steps holds, for each side, the running xG after every minute in which that side had a shot. */
@@ -550,7 +581,7 @@ const Stats = (() => {
     return { players: P, keepers: K, teams: T, check, totals };
   }
 
-  return { score, matchSummary, timeline, timelineAt, aggregate };
+  return { score, matchSummary, scorers, timeline, timelineAt, aggregate };
 })();
 
 /* ============================================================
@@ -1426,6 +1457,39 @@ function PublicPagePanel({ s, pub, close }) {
 
 const blankDraft = (t) => ({ id: null, t, p: null, min: "", x: null, y: null, out: null, body: "foot", sit: "open", ast: "none", ap: null, oo: false, og: false, gy: null, gz: null, k: undefined });
 
+/* one line of a team's scorers: "Borja Martinez 22\u2032, 75\u2032", "Sunil Chhetri 45\u2032 (pen)", "Own goal 32\u2032".
+   The name is the one printed beside goals on the worm. A goal with no minute shows the name, and a count if there are more. */
+function scorerLine(idx, e) {
+  const n = e.goals.length;
+  const who = e.og ? (n > 1 ? "Own goals" : "Own goal") : goalName(pname(idx, e.p));
+  const mins = e.timed ? e.goals.map((g) => g.min + "\u2032" + (g.pen ? " (pen)" : "")) : n > 1 ? ["(" + n + ")"] : [];
+  return { who, mins };
+}
+function ScorerList({ idx, list, side, label }) {
+  if (!list.length) return h("div", { className: "scorers " + side });
+  return h("ul", { className: "scorers " + side, "aria-label": label },
+    list.map((e, i) => {
+      const l = scorerLine(idx, e);
+      return h("li", { key: i }, h("span", { className: "who" }, l.who),
+        l.mins.map((t, j) => h(Frag, { key: j }, " ", h("span", { className: "min" }, t + (j < l.mins.length - 1 ? "," : "")))));
+    }));
+}
+
+/* the match totals: home on the left, away on the right, what is counted in the middle.
+   heads names the two teams above the columns, for where the table stands apart from the scoreboard. */
+function totalsTable(sc, sum, heads) {
+  const row = (label, a, b) => h("tr", { key: label }, h("td", null, a), h("td", null, label), h("td", null, b));
+  return h("table", { className: "cmp" },
+    heads ? h("caption", { className: "sr" }, "Match totals, " + heads.h + " then " + heads.a) : null,
+    heads ? h("thead", null, h("tr", null,
+      h("th", { scope: "col" }, h("span", { className: "tchip" }, heads.h, h("i", { className: "dot home" }))),
+      h("th", { scope: "col" }, h("span", { className: "sr" }, "Measure")),
+      h("th", { scope: "col" }, h("span", { className: "tchip" }, h("i", { className: "dot away" }), heads.a)))) : null,
+    h("tbody", null,
+      row("Goals", sc.h, sc.a), row("Shots", sum.h.sh, sum.a.sh), row("On target", sum.h.sot, sum.a.sot),
+      row("xG", f2(sum.h.xg), f2(sum.a.xg)), row("xG on target", f2(sum.h.xgot), f2(sum.a.xgot))));
+}
+
 function MatchView({ s, idx, matchId, back, view, onView }) {
   const backBtn = h("button", { type: "button", className: "btn quiet back", onClick: back }, "\u2190 All matches");
   if (!s.matches[matchId]) return h("div", { className: "stack" }, backBtn, h("div", { className: "empty" }, h("strong", null, "Match not found"), "It may have been deleted."));
@@ -1516,11 +1580,17 @@ function MatchBody({ s, idx, matchId, back, backBtn, view, onView }) {
     h("span", null, h("i", { className: "dot hollow" }), "No goal"),
     h("span", null, "Bigger means higher xG"));
 
+  /* the public page lists who scored under the score, with the xG underneath */
+  const scored = s.reader ? Stats.scorers(m) : null;
   const header = h("div", { className: "card stack" },
     h("div", { className: "board" },
       h("div", { className: "side h" }, h("span", null, tname(s.teams, m.home)), h("i", { className: "dot home" })),
       h("div", { className: "score", "aria-label": "Score " + sc.h + " to " + sc.a }, sc.h + "\u2013" + sc.a),
       h("div", { className: "side" }, h("i", { className: "dot away" }), h("span", null, tname(s.teams, m.away))),
+      scored && (scored.h.length || scored.a.length) ? h(Frag, null,
+        h(ScorerList, { idx, list: scored.h, side: "h", label: tname(s.teams, m.home) + " goals" }),
+        h("div", { className: "scorers-gap", "aria-hidden": "true" }),
+        h(ScorerList, { idx, list: scored.a, side: "a", label: tname(s.teams, m.away) + " goals" })) : null,
       h("div", { className: "xgl h" }, f2(sum.h.xg)),
       h("div", { className: "mid" }, "xG"),
       h("div", { className: "xgl" }, f2(sum.a.xg))),
@@ -1584,14 +1654,11 @@ function MatchBody({ s, idx, matchId, back, backBtn, view, onView }) {
     h("div", { className: "card stack" }, h("h2", { className: "h2" }, "Shot map"),
       m.shots.length ? h(Frag, null, h(PitchMap, { marks, label: "Shot map for this match" }), legend) : h("div", { className: "empty" }, h("strong", null, "No shots tagged yet"), "This match has not been tagged."));
 
-  const cmpRow = (label, a, b) => h("tr", { key: label }, h("td", null, a), h("td", null, label), h("td", null, b));
   const shotsCard = h("div", { className: "card stack" },
     h("div", { className: "detail-grid" },
       h("div", { className: "stack tight" },
         h("h2", { className: "h2" }, "Match totals"),
-        h("table", { className: "cmp" }, h("tbody", null,
-          cmpRow("Goals", sc.h, sc.a), cmpRow("Shots", sum.h.sh, sum.a.sh), cmpRow("On target", sum.h.sot, sum.a.sot),
-          cmpRow("xG", f2(sum.h.xg), f2(sum.a.xg)), cmpRow("xG on target", f2(sum.h.xgot), f2(sum.a.xgot))))),
+        totalsTable(sc, sum, null)),
       h("div", { className: "stack tight" },
         h("h2", { className: "h2" }, "Own goals"),
         m.og.length ? m.og.map((o) => h("div", { key: o.id, className: "row", style: { alignItems: "center" } },
@@ -1629,8 +1696,13 @@ function MatchBody({ s, idx, matchId, back, backBtn, view, onView }) {
   const views = [{ value: "tag", label: can ? "Tag shots" : "Shot map" }, { value: "timeline", label: "Timeline" }];
   const viewBar = h("div", { className: "seg", role: "group", "aria-label": "Match view" },
     views.map((v) => h("button", { key: v.value, type: "button", className: "seg-btn" + (view === v.value ? " on" : ""), "aria-pressed": view === v.value, onClick: () => onView(v.value) }, v.label)));
-  /* the public page shows a match as its timeline and nothing else */
-  if (s.reader) return h("div", { className: "stack" }, backBtn, header, h(MatchTimeline, { s, idx, m, can: false }));
+  /* the public page shows a match as its totals and its timeline, nothing else */
+  if (s.reader) {
+    const totalsCard = h("div", { className: "card stack tight totals-card" },
+      h("h2", { className: "h2" }, "Match totals"),
+      totalsTable(sc, sum, { h: tshort(s.teams, m.home), a: tshort(s.teams, m.away) }));
+    return h("div", { className: "stack" }, backBtn, header, totalsCard, h(MatchTimeline, { s, idx, m, can: false }));
+  }
   return h("div", { className: "stack" }, backBtn, header, viewBar,
     view === "timeline" ? h(MatchTimeline, { s, idx, m, can }) : h(Frag, null, tagger, shotsCard));
 }
