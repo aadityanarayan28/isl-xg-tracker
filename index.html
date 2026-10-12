@@ -54,6 +54,14 @@
   color-scheme: dark;
 }
 
+/* the public page's club colours: a match (or a player's or keeper's card) sets --ch-l, --ch-d, --ca-l and --ca-d for
+   its two sides in both modes, and the home and away colours inside it follow. Without them the standard blue and orange stay. */
+.club-colors { --home: var(--ch-l, #2a78d6); --away: var(--ca-l, #eb6834); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .club-colors { --home: var(--ch-d, #3987e5); --away: var(--ca-d, #d95926); }
+}
+:root[data-theme="dark"] .club-colors { --home: var(--ch-d, #3987e5); --away: var(--ca-d, #d95926); }
+
 * { box-sizing: border-box; }
 /* the public page stands alone, without the frame Claude wraps around the tracker, so the basics are set here too */
 body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 14px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
@@ -692,6 +700,54 @@ const Reader = (() => {
 
   return { MARK, data, counts, page, site };
 })();
+
+/* ============================================================
+   CLUB COLOURS (the public page)
+   Each club's own colour, and a change colour for when two clubs' colours are too alike to tell apart, each as
+   [light page, dark page]. They were checked with the colour validator for every one of the 156 home/away pairings,
+   in both modes: lightness within the band, strength above the grey floor, and the two sides of every match apart
+   by at least 8 (OKLab \u0394E) under red-green colour blindness and 15 with full colour vision.
+   The home side always wears its own colour. The away side wears its own too, except in the pairings listed in
+   CLUB_SWITCH (home|away), where it wears its change colour, as a club does with a clashing kit.
+   A club not listed here (one added later) leaves the match in the page's standard blue and orange.
+   ============================================================ */
+const CLUB_COLOURS = {
+  bfc:    { own: ["#1541b6", "#3461c9"], change: ["#bd615b", "#cd7670"] },   // Bengaluru FC: royal blue; change soft red
+  cfc:    { own: ["#168be1", "#4098e3"], change: ["#7e5e01", "#8c6801"] },   // Chennaiyin FC: blue; change dark gold
+  cbfc:   { own: ["#b10412", "#c1332f"], change: ["#2b9667", "#4ca77b"] },   // Churchill Brothers: red; change green
+  scd:    { own: ["#8b2241", "#a23954"], change: ["#258651", "#54a674"] },   // SC Delhi: maroon; change green
+  ebfc:   { own: ["#c8942d", "#bb881a"], change: ["#93126b", "#d663a9"] },   // East Bengal: gold; change magenta
+  mbsg:   { own: ["#2d8c57", "#4ca871"], change: ["#8a3346", "#a45160"] },   // Mohun Bagan: green; change maroon
+  mcfc:   { own: ["#32a5d4", "#3a9ec8"], change: ["#483eb5", "#5f5dcb"] },   // Mumbai City: sky blue; change indigo
+  fcg:    { own: ["#cf5604", "#e36927"], change: ["#348ff9", "#4293f5"] },   // FC Goa: orange; change blue
+  ikfc:   { own: ["#e1901f", "#c97f14"], change: ["#207fe8", "#4293f5"] },   // Inter Kashi: saffron; change blue
+  pfc:    { own: ["#f3821d", "#da720d"], change: ["#348ff9", "#4293f5"] },   // Punjab FC: tangerine; change blue
+  kbfc:   { own: ["#b79e04", "#a99202"], change: ["#348ff9", "#166dcc"] },   // Kerala Blasters: yellow; change blue
+  neufc:  { own: ["#ea3037", "#d73337"], change: ["#0599df", "#099ce4"] },   // NorthEast United: bright red; change blue
+  ofc:    { own: ["#663a99", "#734ba4"], change: ["#a17904", "#b88a06"] },   // Odisha FC: purple; change gold
+};
+const CLUB_SWITCH = new Set([
+  "bfc|ofc", "cbfc|fcg", "cbfc|neufc", "cbfc|pfc", "cbfc|scd", "cfc|mcfc", "ebfc|fcg", "ebfc|ikfc",
+  "ebfc|kbfc", "ebfc|neufc", "ebfc|pfc", "fcg|cbfc", "fcg|ebfc", "fcg|ikfc", "fcg|kbfc", "fcg|neufc",
+  "fcg|pfc", "ikfc|ebfc", "ikfc|fcg", "ikfc|kbfc", "ikfc|pfc", "kbfc|ebfc", "kbfc|fcg", "kbfc|ikfc",
+  "kbfc|mbsg", "kbfc|pfc", "mbsg|kbfc", "mbsg|mcfc", "mcfc|cfc", "mcfc|mbsg", "neufc|cbfc", "neufc|ebfc",
+  "neufc|fcg", "neufc|pfc", "neufc|scd", "ofc|bfc", "pfc|cbfc", "pfc|ebfc", "pfc|fcg", "pfc|ikfc",
+  "pfc|kbfc", "pfc|neufc", "scd|cbfc", "scd|neufc",
+]);
+const ClubColours = {
+  /* the two colours a match is drawn in, as CSS custom properties for the page around it; null keeps blue and orange */
+  match(homeId, awayId) {
+    const H = CLUB_COLOURS[homeId], A = CLUB_COLOURS[awayId];
+    if (!H || !A || homeId === awayId) return null;
+    const away = CLUB_SWITCH.has(homeId + "|" + awayId) ? A.change : A.own;
+    return { "--ch-l": H.own[0], "--ch-d": H.own[1], "--ca-l": away[0], "--ca-d": away[1] };
+  },
+  /* one club on its own (a player's or a keeper's shot map): its own colour, in the home slot */
+  club(id) {
+    const C = CLUB_COLOURS[id];
+    return C ? { "--ch-l": C.own[0], "--ch-d": C.own[1] } : null;
+  },
+};
 
 /* ============================================================
    THE STATSBOMB LOGO
@@ -1802,7 +1858,9 @@ function MatchBody({ s, idx, matchId, back, backBtn, view, onView }) {
     const totalsCard = h("div", { className: "card stack tight totals-card" },
       h("h2", { className: "h2" }, "Match totals"),
       totalsTable(sc, sum, { h: tshort(s.teams, m.home), a: tshort(s.teams, m.away) }));
-    return h("div", { className: "stack" }, backBtn, header, totalsCard, h(MatchTimeline, { s, idx, m, can: false, withMap: true }));
+    /* the public page draws the two clubs in their own colours (see clubs.js): every dot, line and key on it follows */
+    const cc = ClubColours.match(m.home, m.away);
+    return h("div", { className: "stack" + (cc ? " club-colors" : ""), style: cc || undefined }, backBtn, header, totalsCard, h(MatchTimeline, { s, idx, m, can: false, withMap: true }));
   }
   return h("div", { className: "stack" }, backBtn, header, viewBar,
     view === "timeline" ? h(MatchTimeline, { s, idx, m, can }) : h(Frag, null, tagger, shotsCard));
@@ -2238,7 +2296,9 @@ function PlayerDetail({ s, idx, r, close }) {
     const opp = tshort(s.teams, x.t === "h" ? m.away : m.home);
     return { id: x.id, x: x.x, y: x.y, v, goal: x.out === "goal", cls: "home", value: f2(v) + " xG", lines: ["v " + opp + ", " + fmtDate(m.date) + (x.min != null ? " \u00b7 " + x.min + "\u2032" : ""), shotLine(x)], aria: "Against " + opp + ", " + shotLine(x) + ", " + f2(v) + " expected goals" };
   });
-  return h("div", { className: "card stack" },
+  /* on the public page a player's shots are drawn in his club's colour */
+  const cc = READER ? ClubColours.club(r.team) : null;
+  return h("div", { className: "card stack" + (cc ? " club-colors" : ""), style: cc || undefined },
     h("div", { className: "toolbar" },
       h("div", null, h("h2", { className: "h2" }, r.name), h("p", { className: "sub" }, tname(s.teams, r.team) + (r.pens ? " \u00b7 " + r.pg + " of " + r.pens + " penalties scored" : ""))),
       h("button", { type: "button", className: "btn", onClick: close }, "Close")),
@@ -2313,7 +2373,9 @@ function KeeperDetail({ s, idx, r, close }) {
     }
     return out;
   }, [s.matches, r.id, idx, s.teams]);
-  return h("div", { className: "card stack" },
+  /* and a keeper's chart in his club's colour */
+  const cc = READER ? ClubColours.club(r.team) : null;
+  return h("div", { className: "card stack" + (cc ? " club-colors" : ""), style: cc || undefined },
     h("div", { className: "toolbar" },
       h("div", null, h("h2", { className: "h2" }, r.name), h("p", { className: "sub" }, tname(s.teams, r.team))),
       h("button", { type: "button", className: "btn", onClick: close }, "Close")),
