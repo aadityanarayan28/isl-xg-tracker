@@ -219,9 +219,31 @@ textarea.input { min-height: 110px; resize: vertical; }
 .mk.goal .mk-dot { fill-opacity: 1; stroke: none; }
 .mk-hit { fill: transparent; stroke: none; cursor: default; outline: none; }
 .viz.linked .mk-hit { cursor: pointer; }
+/* a map linked to the worm and the list picks shots by nearness on the drawing itself, so its circles take no pointer
+   (they still take keyboard focus) */
+.shotmap-card .viz .mk-hit { pointer-events: none; }
+.shotmap-card .viz.pointing svg { cursor: pointer; }
 .mk:hover .mk-dot, .mk.focus .mk-dot { fill-opacity: 0.55; }
 .mk.goal:hover .mk-dot, .mk.goal.focus .mk-dot { fill-opacity: 0.8; }
 .mk.focus .mk-ring, .mk.active .mk-ring { fill: var(--ink); }
+/* a shot picked out from the worm or the list (or pointed at here): ringed in ink, every other shot faded back */
+.mk.lit .mk-ring { fill: var(--ink); }
+.mk.lit .mk-dot { fill-opacity: 0.55; }
+.mk.lit.goal .mk-dot { fill-opacity: 1; }
+.viz.dim .mk:not(.lit) { opacity: 0.22; }
+@media (prefers-reduced-motion: no-preference) { .mk { transition: opacity 0.12s ease; } }
+/* the small copy of the match's shot map that shows in the corner while a shot is picked out and the map is off screen.
+   It never takes a click or a tap: everything under it keeps working. */
+.peek { position: fixed; right: 16px; bottom: 16px; z-index: 40; width: 280px; max-width: calc(100vw - 32px); padding: 10px 12px 12px; background: var(--surface); border: 1px solid var(--line-2); border-radius: 12px; box-shadow: var(--shadow); pointer-events: none; }
+.peek .viz { max-width: none; }
+.peek-h { font-size: 11px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.peek-cap { margin-top: 7px; font-size: 12.5px; line-height: 1.35; color: var(--ink-2); }
+.peek-cap strong { color: var(--ink); font-weight: 600; }
+@media (max-width: 560px) { .peek { width: 220px; right: 12px; bottom: 12px; padding: 8px 10px 10px; } }
+@media (prefers-reduced-motion: no-preference) {
+  .peek { animation: peek-in 0.14s ease-out; }
+  @keyframes peek-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+}
 .draft-ring { fill: none; stroke: var(--ink); stroke-width: 2.4px; vector-effect: non-scaling-stroke; }
 .draft-dot { fill: var(--ink); }
 .tip { position: absolute; z-index: 20; pointer-events: none; min-width: 130px; max-width: 220px; padding: 7px 10px; border-radius: 8px; background: var(--ink); color: var(--bg); font-size: 12.5px; line-height: 1.35; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 1px; }
@@ -1193,22 +1215,28 @@ function useWidth(ref, fallback) {
 }
 const markRadius = (v) => 4 + 9 * Math.sqrt(Math.max(v, 0));   // px; area grows with the value
 
-/* marks: [{ id, cx, cy, v, goal, cls, value, lines, aria }] in drawing units */
-function Marks({ marks, u, activeId, onMark, tipId, setTip, vb }) {
+/* marks: [{ id, cx, cy, v, goal, cls, value, lines, aria }] in drawing units.
+   Linked to other views (onHover given), the map as a whole works out which mark the pointer or finger is nearest (see
+   PitchMap) and reports it up; each mark still takes keyboard focus, and reports that. lit holds the ids the page has
+   picked out: those are ringed and drawn on top.
+   still draws the marks only, with nothing to point at or tab to. scale shrinks them for a small copy of the map. */
+function Marks({ marks, u, activeId, onMark, tipId, setTip, vb, lit, onHover, still, scale }) {
   const ordered = useMemo(() => [...marks].sort((a, b) => b.v - a.v), [marks]);
-  return h(Frag, null, ordered.map((m) => {
-    const r = markRadius(m.v) * u;
+  const drawn = lit ? ordered.filter((m) => !lit.has(m.id)).concat(ordered.filter((m) => lit.has(m.id))) : ordered;
+  return h(Frag, null, drawn.map((m) => {
+    const r = markRadius(m.v) * u * (scale || 1);
     const show = () => setTip({ id: m.id, px: (m.cx - vb.x) / u, py: (m.cy - vb.y) / u, value: m.value, lines: m.lines });
     const hide = () => setTip((t) => (t && t.id === m.id ? null : t));
-    return h("g", { key: m.id, className: "mk " + (m.cls || "home") + (m.goal ? " goal" : "") + (tipId === m.id ? " focus" : "") + (activeId === m.id ? " active" : "") },
+    const pointer = onHover ? {} : { onPointerEnter: show, onPointerLeave: hide };
+    return h("g", { key: m.id, className: "mk " + (m.cls || "home") + (m.goal ? " goal" : "") + (tipId === m.id ? " focus" : "") + (activeId === m.id ? " active" : "") + (lit && lit.has(m.id) ? " lit" : "") },
       h("circle", { className: "mk-ring", cx: m.cx, cy: m.cy, r: r + 2 * u }),
       h("circle", { className: "mk-dot", cx: m.cx, cy: m.cy, r }),
-      h("circle", {
+      still ? null : h("circle", Object.assign({
         className: "mk-hit", cx: m.cx, cy: m.cy, r: Math.max(r, 12 * u), tabIndex: 0, role: onMark ? "button" : "img", "aria-label": m.aria,
-        onPointerEnter: show, onPointerLeave: hide, onFocus: show, onBlur: hide,
+        onFocus: onHover ? () => onHover(m.id) : show, onBlur: onHover ? () => onHover(null) : hide,
         onClick: onMark ? (e) => { e.stopPropagation(); onMark(m.id); } : undefined,
         onKeyDown: onMark ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onMark(m.id); } } : undefined,
-      }));
+      }, pointer)));
   }));
 }
 function Tip({ tip, width }) {
@@ -1226,13 +1254,24 @@ function svgPoint(svg, e) {
 }
 
 const PITCH_VB = { x: -3, y: -4.5, w: 86, h: 67 };
-/* the attacking half, goal at the top. Across the screen is pitch width (0 to 80), down the screen is distance from the goal line. */
-function PitchMap({ marks, draft, onPick, onMark, activeId, label }) {
+/* the attacking half, goal at the top. Across the screen is pitch width (0 to 80), down the screen is distance from the goal line.
+   Linked to other views (onHover given), the page decides which shots are lit and which one shows its tooltip (tipId).
+   depth (yards from the goal line, 60 by default) cuts the drawing short for a map that only needs to reach its longest shot;
+   the side lines then run off the bottom, open, so it reads as part of a pitch. */
+function PitchMap({ marks, draft, onPick, onMark, activeId, label, lit, onHover, tipId, still, scale, depth }) {
   const box = useRef(null), svg = useRef(null);
   const width = useWidth(box, 520);
-  const [tip, setTip] = useState(null);
+  const [ownTip, setTip] = useState(null);
+  const D = depth > 0 && depth < 60 ? depth : 60;
+  const vbH = D + 7;
   const u = PITCH_VB.w / width;
   const placed = useMemo(() => (marks || []).map((m) => ({ ...m, cx: m.y, cy: 120 - m.x })), [marks]);
+  const litSet = lit && lit.length ? new Set(lit) : null;
+  let tip = ownTip;
+  if (onHover || still) {
+    const pm = tipId != null && !still ? placed.find((x) => x.id === tipId) : null;
+    tip = pm ? { id: pm.id, px: (pm.cx - PITCH_VB.x) / u, py: (pm.cy - PITCH_VB.y) / u, value: pm.value, lines: pm.lines } : null;
+  }
   const click = (e) => {
     if (!onPick) return;
     const p = svgPoint(svg.current, e);
@@ -1240,19 +1279,41 @@ function PitchMap({ marks, draft, onPick, onMark, activeId, label }) {
     const sx = Model.clamp(p.x, 0, 80), sy = Model.clamp(p.y, 0, 60);
     onPick({ x: Math.round((120 - sy) * 10) / 10, y: Math.round(sx * 10) / 10 });
   };
-  return h("div", { className: "viz" + (onPick ? " pickable" : "") + (onMark ? " linked" : ""), ref: box },
-    h("svg", { ref: svg, viewBox: PITCH_VB.x + " " + PITCH_VB.y + " " + PITCH_VB.w + " " + PITCH_VB.h, role: "group", "aria-label": label || "Shot map", onClick: click },
-      h("rect", { className: "turf", x: 0, y: 0, width: 80, height: 60 }),
-      h("rect", { className: "pl", x: 0, y: 0, width: 80, height: 60 }),
+  /* linked: the shot under the pointer is the one whose centre is nearest, within reach of its edge (14px at least),
+     so in a crowded box a small shot drawn on top never hides the goal beside it. The mouse picks while it moves;
+     a tap picks the nearest shot, or lets go of the map's pick when it lands on open grass. */
+  const linked = !!onHover && !still;
+  const near = useRef(null);
+  const nearest = (e) => {
+    const p = svg.current ? svgPoint(svg.current, e) : null;
+    if (!p) return null;
+    let best = null, bd = Infinity;
+    for (const pm of placed) {
+      const d = Math.hypot(pm.cx - p.x, pm.cy - p.y), reach = Math.max(markRadius(pm.v) * u * (scale || 1) + 4 * u, 14 * u);
+      if (d <= reach && d < bd) { bd = d; best = pm.id; }
+    }
+    return best;
+  };
+  const point = (e) => {
+    if (e.type !== "pointerdown" && e.pointerType !== "mouse") return;
+    const id = nearest(e);
+    if (id !== near.current || e.type === "pointerdown") { near.current = id; onHover(id); }
+  };
+  const away = (e) => { if (e.pointerType === "mouse" && near.current != null) { near.current = null; onHover(null); } };
+  const pointing = linked ? { onPointerMove: point, onPointerDown: point, onPointerLeave: away } : {};
+  return h("div", { className: "viz" + (onPick ? " pickable" : "") + (onMark || onHover ? " linked" : "") + (litSet ? " dim" : "") + (linked && tip ? " pointing" : ""), ref: box },
+    h("svg", Object.assign({ ref: svg, viewBox: PITCH_VB.x + " " + PITCH_VB.y + " " + PITCH_VB.w + " " + vbH, role: still ? "img" : "group", "aria-label": label || "Shot map", onClick: click }, pointing),
+      h("rect", { className: "turf", x: 0, y: 0, width: 80, height: D }),
+      D >= 60 ? h("rect", { className: "pl", x: 0, y: 0, width: 80, height: 60 }) : h("path", { className: "pl", d: "M0," + D + " V0 H80 V" + D }),
       h("rect", { className: "pl", x: 18, y: 0, width: 44, height: 18 }),
       h("rect", { className: "pl", x: 30, y: 0, width: 20, height: 6 }),
       h("rect", { className: "pl", x: 36, y: -2.4, width: 8, height: 2.4 }),
       h("path", { className: "pl", d: "M32,18 A10,10 0 0 0 48,18" }),
-      h("path", { className: "pl", d: "M30,60 A10,10 0 0 1 50,60" }),
+      D >= 60 ? h("path", { className: "pl", d: "M30,60 A10,10 0 0 1 50,60" }) : null,
       h("path", { className: "pl", d: "M1,0 A1,1 0 0 1 0,1" }),
       h("path", { className: "pl", d: "M79,0 A1,1 0 0 0 80,1" }),
       h("circle", { className: "pl-dot", cx: 40, cy: 12, r: 0.5 }),
-      h(Marks, { marks: placed, u, activeId, onMark, tipId: tip && tip.id, setTip, vb: PITCH_VB }),
+      h(Marks, { marks: placed, u, activeId, onMark, tipId: tip && tip.id, setTip, vb: PITCH_VB, lit: litSet, onHover, still, scale }),
       draft && draft.x != null ? h("g", { pointerEvents: "none" },
         h("circle", { className: "mk-ring", cx: draft.y, cy: 120 - draft.x, r: 10 * u }),
         h("circle", { className: "draft-ring", cx: draft.y, cy: 120 - draft.x, r: 8 * u }),
@@ -1736,7 +1797,7 @@ function MatchBody({ s, idx, matchId, back, backBtn, view, onView }) {
     const totalsCard = h("div", { className: "card stack tight totals-card" },
       h("h2", { className: "h2" }, "Match totals"),
       totalsTable(sc, sum, { h: tshort(s.teams, m.home), a: tshort(s.teams, m.away) }));
-    return h("div", { className: "stack" }, backBtn, header, totalsCard, h(MatchTimeline, { s, idx, m, can: false }));
+    return h("div", { className: "stack" }, backBtn, header, totalsCard, h(MatchTimeline, { s, idx, m, can: false, withMap: true }));
   }
   return h("div", { className: "stack" }, backBtn, header, viewBar,
     view === "timeline" ? h(MatchTimeline, { s, idx, m, can }) : h(Frag, null, tagger, shotsCard));
@@ -1854,8 +1915,10 @@ function placeGoalLabels(goals, lines, box, extra) {
   return placed;
 }
 
-/* the chart. cursor is { min, py } while a minute is being looked at, from the pointer, the keyboard or the list below. */
-function XgWorm({ tl, sides, idx, cursor, setCursor }) {
+/* the chart. cursor is { min, py } while a minute is being looked at, from the pointer, the keyboard or the list below
+   (on the public page also the shot map). A cursor with no minute, from a shot saved without one, leaves the chart alone.
+   linked: the page above puts the cursor away when somewhere else is tapped, so the chart does not do it itself. */
+function XgWorm({ tl, sides, idx, cursor, setCursor, linked }) {
   const box = useRef(null);
   const width = useWidth(box, 640);
   const L = useMemo(() => wormLayout(tl, width, sides, (r) => (r.kind === "og" ? ogName(idx, r.p) : goalName(pname(idx, r.shot.p)))), [tl, width, idx, sides.h.short, sides.a.short]);
@@ -1864,7 +1927,7 @@ function XgWorm({ tl, sides, idx, cursor, setCursor }) {
   /* on a touch screen nothing "leaves" the chart, so a tap anywhere else puts the tooltip away */
   const active = !!cursor;
   useEffect(() => {
-    if (!active) return undefined;
+    if (!active || linked) return undefined;
     const away = (e) => { if (e.pointerType !== "mouse" && box.current && !box.current.contains(e.target)) setCursor(null); };
     document.addEventListener("pointerdown", away);
     return () => document.removeEventListener("pointerdown", away);
@@ -1882,7 +1945,7 @@ function XgWorm({ tl, sides, idx, cursor, setCursor }) {
   const onKey = (e) => {
     if (e.key === "Escape") { setCursor(null); return; }
     if (!eventMins.length) return;
-    const cur = cursor ? cursor.min : eventMins[eventMins.length - 1];
+    const cur = cursor && cursor.min != null ? cursor.min : eventMins[eventMins.length - 1];
     let next = null;
     if (e.key === "ArrowLeft") next = [...eventMins].reverse().find((v) => v < cur);
     else if (e.key === "ArrowRight") next = eventMins.find((v) => v > cur);
@@ -1897,7 +1960,7 @@ function XgWorm({ tl, sides, idx, cursor, setCursor }) {
   const cls = { h: "home", a: "away" };
   const aria = "xG worm. " + sides.h.name + " " + f2(tl.placed.h) + " xG, " + sides.a.name + " " + f2(tl.placed.a) + " xG. Left and right arrow keys step through the shots. The list below has every shot.";
   let tip = null, mark = null;
-  if (cursor) {
+  if (cursor && cursor.min != null) {
     const v = Stats.timelineAt(tl, cursor.min), cx = L.x(cursor.min);
     const here = tl.timed.filter((r) => r.min === cursor.min);
     const top = Math.min(Math.max(cursor.py == null ? mg.t + ph / 2 : cursor.py, 46), H - 46);
@@ -1939,9 +2002,59 @@ function XgWorm({ tl, sides, idx, cursor, setCursor }) {
     tip);
 }
 
-function MatchTimeline({ s, idx, m, can }) {
+/* the match read back: the xG worm and the shot-by-shot list, and on the public page (withMap) a shot map above them.
+   All three share one cursor, so a shot picked out in any of them shows in the others:
+     { min, py }                         a minute on the worm, from the pointer, the keyboard or a tap
+     { min, py, key, shot, src }         one row of the list (src "list") or one shot on the map (src "map");
+                                         min is null for a shot saved without a minute, key is the row, shot the shot's id (null for an own goal)
+   The worm marks the minute, the list lights the row (or every row in the worm's minute), the map rings the shot (or every
+   shot in that minute) and fades the rest. When the map has scrolled out of sight, a small copy of it shows in the corner. */
+function MatchTimeline({ s, idx, m, can, withMap }) {
   const tl = useMemo(() => Stats.timeline(m), [m.shots, m.og]);
   const [cursor, setCursor] = useState(null);
+  const mapRef = useRef(null), wormRef = useRef(null), listRef = useRef(null), lastPointer = useRef("mouse");
+  const [mapSeen, setMapSeen] = useState(true);
+  const linked = !!withMap && (m.shots || []).length > 0;
+  const marks = useMemo(() => (linked ? m.shots.map((x) => {
+    const v = Model.xg(x), who = pname(idx, x.p);
+    return {
+      id: x.id, x: x.x, y: x.y, v, goal: x.out === "goal", cls: x.t === "h" ? "home" : "away", value: f2(v) + " xG",
+      lines: [who + (x.min != null ? " \u00b7 " + x.min + "\u2032" : ""), shotLine(x)],
+      aria: who + (x.min != null ? ", minute " + x.min : "") + ", " + shotLine(x) + ", " + f2(v) + " expected goals",
+    };
+  }) : []), [linked, m.shots, idx]);
+  /* the map reaches a little past the longest shot (32 yards at least, the whole half at most), so it is not mostly empty grass */
+  const depth = useMemo(() => {
+    const far = (m.shots || []).reduce((a, x) => Math.max(a, 120 - x.x), 0);
+    return Math.min(60, Math.max(32, Math.ceil((far + 4) / 4) * 4));
+  }, [m.shots]);
+  /* how the last press came: a mouse click lands on a row the pointer has already picked out, so only a tap toggles it */
+  useEffect(() => {
+    if (!linked) return undefined;
+    const note = (e) => { lastPointer.current = e.pointerType || "mouse"; };
+    document.addEventListener("pointerdown", note, true);
+    return () => document.removeEventListener("pointerdown", note, true);
+  }, [linked]);
+  /* on a touch screen nothing is ever "left", so a tap outside the map, the worm and the list puts the cursor away */
+  const active = !!cursor;
+  useEffect(() => {
+    if (!linked || !active) return undefined;
+    const away = (e) => {
+      if (e.pointerType === "mouse") return;
+      if ([mapRef, wormRef, listRef].some((r) => r.current && r.current.contains(e.target))) return;
+      setCursor(null);
+    };
+    document.addEventListener("pointerdown", away);
+    return () => document.removeEventListener("pointerdown", away);
+  }, [linked, active]);
+  /* whether most of the map is on screen; when it is not, the corner copy stands in for it */
+  useEffect(() => {
+    if (!linked || !mapRef.current || typeof IntersectionObserver === "undefined") return undefined;
+    const io = new IntersectionObserver((es) => { for (const e of es) setMapSeen(e.intersectionRatio >= 0.6); }, { threshold: [0, 0.2, 0.4, 0.6, 0.8, 1] });
+    io.observe(mapRef.current.querySelector(".viz") || mapRef.current);
+    return () => io.disconnect();
+  }, [linked]);
+
   const sides = { h: { name: tname(s.teams, m.home), short: tshort(s.teams, m.home) }, a: { name: tname(s.teams, m.away), short: tshort(s.teams, m.away) } };
   const rows = tl.timed.concat(tl.untimed);
   if (!rows.length) {
@@ -1957,7 +2070,40 @@ function MatchTimeline({ s, idx, m, can }) {
   }
   if (!m.done && tl.timed.length) notes.push("This match is not marked as finished, so the lines may still move.");
 
-  const worm = h("div", { className: "card stack worm-card" },
+  /* what the map lights up: the one shot picked in the list or on the map, or every shot in the minute the worm is on */
+  const lit = !cursor ? [] : cursor.key ? (cursor.shot ? [cursor.shot] : []) :
+    cursor.min != null ? tl.timed.filter((r) => r.kind === "shot" && r.min === cursor.min).map((r) => r.id) : [];
+  const hoverMark = (id) => {
+    if (id == null) { setCursor((c) => (c && c.src === "map" ? null : c)); return; }
+    const r = rows.find((x) => x.kind === "shot" && x.id === id);
+    setCursor({ min: r && r.min != null ? r.min : null, py: null, key: "shot" + id, shot: id, src: "map" });
+  };
+  /* pin: picked out by a tap, which holds until another tap; a mouse hover lasts only while the pointer is over the row */
+  const rowFocus = (r, pin) => ({ min: r.min, py: null, key: r.kind + r.id, shot: r.kind === "shot" ? r.id : null, src: "list", pin: !!pin });
+
+  const shotMap = linked ? h("div", { className: "card stack shotmap-card", ref: mapRef },
+    h("div", { className: "step" }, h("h2", { className: "h2" }, "Shot map"),
+      h("span", { className: "hint" }, "Every shot, sized by its xG. Hover over a shot here, on the worm or in the list to see it in all three.")),
+    h(PitchMap, { marks, lit, depth, onHover: hoverMark, tipId: cursor && cursor.src === "map" ? cursor.shot : null, label: "Shot map for this match. Each shot also shows on the worm and in the list below." }),
+    h("div", { className: "legend" },
+      h("span", null, h("i", { className: "dot home" }), sides.h.name),
+      h("span", null, h("i", { className: "dot away" }), sides.a.name),
+      h("span", null, h("i", { className: "dot solid" }), "Goal"),
+      h("span", null, h("i", { className: "dot hollow" }), "No goal"),
+      h("span", null, "Bigger means higher xG"))) : null;
+
+  /* the corner copy: only while something is picked out in the worm or the list and the map itself is off screen */
+  let peek = null;
+  if (linked && lit.length && !mapSeen && !(cursor && cursor.src === "map")) {
+    const one = lit.length === 1 ? marks.find((k) => k.id === lit[0]) : null;
+    peek = h("div", { className: "peek", "aria-hidden": "true" },
+      h("div", { className: "peek-h" }, "Shot map"),
+      h(PitchMap, { marks, lit, depth, still: true, scale: 0.62, label: "Shot map" }),
+      h("div", { className: "peek-cap" }, one ? h(Frag, null, h("strong", null, one.lines[0]), h("br"), one.lines[1] + " \u00b7 " + one.value) :
+        lit.length + " shots at " + cursor.min + "\u2032"));
+  }
+
+  const worm = h("div", { className: "card stack worm-card", ref: wormRef },
     h("div", { className: "step" }, h("h2", { className: "h2" }, "xG worm"),
       h("span", { className: "hint" }, "Each team's xG added up through the match. Every step is a shot.")),
     tl.timed.length ? h(Frag, null,
@@ -1966,13 +2112,13 @@ function MatchTimeline({ s, idx, m, can }) {
         h("span", null, h("i", { className: "key away" }), sides.a.name),
         h("span", null, h("i", { className: "dot solid" }), "Goal"),
         hasOg ? h("span", null, h("i", { className: "dot hollow" }), "Own goal") : null),
-      h(XgWorm, { tl, sides, idx, cursor, setCursor })) :
+      h(XgWorm, { tl, sides, idx, cursor, setCursor, linked })) :
       h("div", { className: "empty" }, h("strong", null, "No minutes yet"), "The worm needs the minute of each shot." + (can ? " Add it on the Tag shots tab." : "")),
     notes.map((n, i) => h("p", { key: i, className: "sub" }, n)));
 
   /* One table, two shapes. On a wide screen every fact has its own column. On a phone the team, outcome and score
      fold in under the player's name (the tl-* pieces below), so minute, shot and outcome all show without sideways scrolling. */
-  const list = h("div", { className: "card stack" },
+  const list = h("div", { className: "card stack", ref: listRef },
     h("h2", { className: "h2" }, "Shot by shot"),
     h("div", { className: "tbl-wrap" }, h("table", { className: "tbl tl" },
       h("caption", { className: "sr" }, "Every shot in order, with the score and each team's running xG"),
@@ -1984,10 +2130,17 @@ function MatchTimeline({ s, idx, m, can }) {
         const timed = r.min != null, og = r.kind === "og";
         const what = og ? "Own goal" : shotLine(r.shot);
         const score = r.goal && r.score ? r.score.h + "\u2013" + r.score.a : "";
-        return h("tr", {
-          key: r.kind + r.id, className: ((r.goal ? "goal" : "") + (cursor && timed && r.min === cursor.min ? " sel" : "")).trim() || undefined,
-          onMouseEnter: timed ? () => setCursor({ min: r.min, py: null }) : undefined, onMouseLeave: timed ? () => setCursor(null) : undefined,
-        },
+        const key = r.kind + r.id;
+        const sel = cursor && (cursor.key ? cursor.key === key : timed && r.min === cursor.min);
+        /* linked: the mouse picks a row out while it is over it, a tap picks it out until the next tap (a second tap on
+           the same row lets go). A row the mouse happens to rest on is not "already picked" for a tap, so the tap holds it.
+           Otherwise (the tracker's own timeline) a row with a minute moves the worm while the mouse is over it, as before. */
+        const how = linked ? {
+          onPointerEnter: (e) => { if (e.pointerType === "mouse") setCursor(rowFocus(r, false)); },
+          onPointerLeave: (e) => { if (e.pointerType === "mouse") setCursor((c) => (c && c.key === key && !c.pin ? null : c)); },
+          onClick: () => { if (lastPointer.current !== "mouse") setCursor((c) => (c && c.key === key && c.pin ? null : rowFocus(r, true))); },
+        } : { onMouseEnter: timed ? () => setCursor({ min: r.min, py: null }) : undefined, onMouseLeave: timed ? () => setCursor(null) : undefined };
+        return h("tr", Object.assign({ key, className: ((r.goal ? "goal" : "") + (sel ? " sel" : "")).trim() || undefined }, how),
           h("td", { className: "num" }, timed ? r.min + "\u2032" : h("span", { className: "faint", title: "No minute saved" }, "\u2013")),
           h("td", { className: "c-team" }, h("span", { className: "tchip" }, h("i", { className: "dot " + (r.t === "h" ? "home" : "away") }), sides[r.t].short)),
           h("td", { className: "strong who" },
@@ -2000,7 +2153,7 @@ function MatchTimeline({ s, idx, m, can }) {
           h("td", { className: "num c-run" }, r.cum ? f2(r.cum.h) + " \u2013 " + f2(r.cum.a) : ""));
       })))));
 
-  return h(Frag, null, worm, list);
+  return h(Frag, null, shotMap, worm, list, peek);
 }
 
 /* ============================================================
