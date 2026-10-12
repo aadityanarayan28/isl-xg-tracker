@@ -435,7 +435,7 @@ window.__READER__ = {"v":1,"generated":"2026-10-12T12:15:21.115Z","teams":{"bfc"
 <script>
 "use strict";
 /* The numbers behind the model. Fitted on StatsBomb Open Data, tuned to ISL 2021-22. */
-const MODEL = {"version": "2026-10-12", "xg": {"b": {"const": -6.402248, "dist": -0.235666, "log_dist": 2.515817, "angle": 2.617019, "head": -0.430032, "other_body": -0.775795, "head_dist": -0.059847, "is_fk": -1.185621, "fk_dist": 0.087061, "one_on_one": 0.616181, "open_goal": 1.388238, "a_cross": -0.229773, "a_through": 1.008587, "a_corner": -0.745249, "a_freekick": -0.234179}, "lo": 3.0, "cap": 35.0, "islA": -0.29162, "islB": 0.777577, "pen": 0.76}, "ps": {"g": {"const": 2.831653, "xg_lg": 0.85096, "ay2": -0.040263, "ay4": -0.013219, "gz": -1.01641, "gz2": 0.600174, "dc": -0.043731, "logd": -0.975422, "is_pen": -0.972346, "one_on_one": -0.549444, "open_goal": 2.016916, "ay2_logd": 0.163727, "head": 0.376018, "head_ay2": 0.08598, "head_gz": -0.712334}, "islA": 0.134056, "islB": 0.781566, "goalH": 2.67}, "n": {"pool": 45827, "isl": 3053, "psPool": 15512, "psIsl": 952}};
+const MODEL = {"version": "2026-10-12b", "xg": {"b": {"const": -6.402248, "dist": -0.235666, "log_dist": 2.515817, "angle": 2.617019, "head": -0.430032, "other_body": -0.775795, "head_dist": -0.059847, "is_fk": -1.185621, "fk_dist": 0.087061, "one_on_one": 0.616181, "open_goal": 1.388238, "a_cross": -0.229773, "a_through": 1.008587, "a_corner": -0.745249, "a_freekick": -0.234179}, "lo": 3.0, "cap": 35.0, "calA": -0.53886, "calB": 0.772215, "calFk": -0.267916, "calThrough": -0.747201, "pen": 0.7884, "penFit": 0.76}, "ps": {"g": {"const": 2.831653, "xg_lg": 0.85096, "ay2": -0.040263, "ay4": -0.013219, "gz": -1.01641, "gz2": 0.600174, "dc": -0.043731, "logd": -0.975422, "is_pen": -0.972346, "one_on_one": -0.549444, "open_goal": 2.016916, "ay2_logd": 0.163727, "head": 0.376018, "head_ay2": 0.08598, "head_gz": -0.712334}, "islA": 0.134056, "islB": 0.781566, "goalH": 2.67}, "n": {"pool": 45827, "isl": 3053, "psPool": 15512, "psIsl": 952}};
 
 /* What each page calls itself in its heading. Set in build.py, next to the browser-tab titles. */
 const PAGE_NAMES = {"tracker": "ISL xG Tracker", "reader": "ISL 2026-27", "season": "2026-27"};
@@ -478,10 +478,11 @@ const Model = (() => {
     };
   }
 
-  /* chance quality on the model's raw scale, before the ISL adjustment */
+  /* chance quality on the model's raw scale, before it is matched to the official numbers. xG on target starts from this
+     too; for a penalty it uses the penalty value it was fitted with (penFit), so matching xG changed nothing there. */
   function xgLin(s) {
     const m = MODEL.xg, b = m.b, n = norm(s);
-    if (n.pen) return Math.log(m.pen / (1 - m.pen));
+    if (n.pen) { const pf = m.penFit || m.pen; return Math.log(pf / (1 - pf)); }
     const g = geom(n.x, n.y);
     const dc = clamp(g.dist, m.lo, m.cap);
     return b.const + b.dist * dc + b.log_dist * Math.log(dc) + b.angle * g.angle
@@ -492,11 +493,13 @@ const Model = (() => {
       + (n.ast === "corner" ? b.a_corner : 0) + (n.ast === "fk" ? b.a_freekick : 0);
   }
 
-  /* expected goals: the chance of scoring before the shot is struck */
+  /* expected goals: the chance of scoring before the shot is struck, matched to the official xG of ISL goals (calA, calB),
+     less a little for a direct free kick and for a shot from a through ball, which the official numbers rate lower */
   function xg(s) {
     const m = MODEL.xg;
     if (s.sit === "pen") return m.pen;
-    return sigmoid(m.islA + m.islB * xgLin(s));
+    const n = norm(s);
+    return sigmoid(m.calA + m.calB * xgLin(s) + (m.calFk || 0) * n.fk + (n.ast === "through" ? m.calThrough || 0 : 0));
   }
 
   const onTarget = (s) => s.out === "goal" || s.out === "saved";
@@ -2642,7 +2645,7 @@ function PlayersView({ s, idx, agg }) {
       h("div", { className: "empty" }, h("strong", null, "No players match"), "Loosen the filters above."),
     READER ? null : hint,
     h(Defs, { items: [
-      ["xG", "Expected goals. Each shot is worth the chance that a shot like it is scored, from 0 to 1. A penalty is worth 0.76."],
+      ["xG", "Expected goals. Each shot is worth the chance that a shot like it is scored, from 0 to 1, matched to the official xG of ISL goals. A penalty is worth " + f2(MODEL.xg.pen) + "."],
       ["G " + MINUS + " xG", "Goals minus xG. Above zero means more goals than the chances were worth."],
       ["npxG", "xG with penalties left out."],
       ["xGOT", "xG on target. Rates each on-target shot again once you know where in the goal it went. Shots off target count zero."],
@@ -3018,7 +3021,7 @@ function MethodView({ s, idx, agg }) {
     h("section", { className: "stack tight" },
       h("h2", { className: "h2" }, "How the numbers are worked out"),
       h("div", { className: "prose" },
-        h("p", null, h("strong", null, "xG"), " is the chance that a shot is scored, judged before it is struck. It uses how far out and how central the shot is, foot or head, whether it is a direct free kick, the pass before it, and whether it is a one-on-one or an open goal. A penalty is always 0.76."),
+        h("p", null, h("strong", null, "xG"), " is the chance that a shot is scored, judged before it is struck. It uses how far out and how central the shot is, foot or head, whether it is a direct free kick, the pass before it, and whether it is a one-on-one or an open goal. Its values are matched to the official xG of ISL goals. A penalty is always " + f2(MODEL.xg.pen) + "."),
         h("p", null, h("strong", null, "xA"), " gives the player who set up a shot that shot's xG, scored or not."),
         h("p", null, h("strong", null, "The xG worm"), " on a match's Timeline tab adds up each team's xG as the match goes on. The line steps up at every shot, by that shot's xG. A shot saved without a minute cannot be placed, so it is left off the worm but still counts in every total."),
         s.reader ? h("p", null, h("strong", null, "The shot map"), " draws every shot where it was taken, sized by its xG, with each side attacking its own end. Point at a shot and a line shows where it ended up: where a shot on target crossed the goal line (or would have, without the save), the post or bar it hit, where it went out, or where it was blocked.") : null,
@@ -3029,13 +3032,14 @@ function MethodView({ s, idx, agg }) {
       h("h2", { className: "h2" }, "Where the model comes from"),
       h("div", { className: "prose" },
         h("p", null, "It was trained on ", h("strong", null, MODEL.n.pool.toLocaleString("en-IN") + " shots"), " from StatsBomb's free data: the Premier League, La Liga, Serie A and Ligue 1 in 2015-16, part of the Bundesliga that season, and six international tournaments from 2018 to 2024."),
-        h("p", null, "It was then tuned to ", h("strong", null, MODEL.n.isl.toLocaleString("en-IN") + " ISL shots from 2021-22"), ", the one ISL season with free shot-by-shot data. In that season ISL shots from distance went in more often than the same shots elsewhere, and the clearest chances a little less often, so the model builds that in."),
+        h("p", null, "Its xG is matched to the official xG of ISL goals from 2014 to 2025-26. Those sheets hold goals only, so the 2021-22 goals were matched shot for shot to StatsBomb's ", h("strong", null, MODEL.n.isl.toLocaleString("en-IN") + " ISL shots"), " from that season, and each goal counted for the shots it stands for (1 \u00f7 its official xG). Direct free kicks and shots from a through ball come out a little lower, as the official numbers rate them. A penalty is " + f2(MODEL.xg.pen) + ", the official value."),
+        h("p", null, "The official numbers run below what ISL players actually score. In 2021-22, 315 goals came from non-penalty shots this model now rates at about 249 xG, so ISL goals tend to come out at about 1.25 times xG."),
+        h("p", null, "xG on target is still tuned to the ISL's own results, from ", MODEL.n.psIsl.toLocaleString("en-IN"), " shots on target in 2021-22. A header has its own placement effect there: aimed low it is harder to save, aimed high easier."),
         h("p", null, "On that ISL season, player totals from this model line up closely with StatsBomb's own xG: a correlation of 0.97 for players with 20 or more shots and 0.99 for teams."),
-        h("p", null, "In October 2026 it was checked against the official xG and xGoT of every ISL goal from 2014 to 2025-26. Set against every 2021-22 shot, those official numbers undercount ISL goals, so they were used to test this model, not to retune it. One change came out of the check: headers have their own placement effect in xG on target, as a header aimed low is harder to save and one aimed high easier."),
         h("p", null, "Its limits: it cannot see where the defenders are, and shot locations are placed by hand. One shot can be off. Season totals are far steadier."))),
     s.reader ? null : h("section", { className: "stack tight" },
       h("h2", { className: "h2" }, "Model check on your data"),
-      h("p", { className: "sub", style: { maxWidth: "68ch" } }, "If the model fits this season, goals divided by expected goals sits near 1.00. With fewer than about 300 shots it is mostly luck. If it stays well away from 1.00 after that, the model needs re-tuning."),
+      h("p", { className: "sub", style: { maxWidth: "68ch" } }, "xG is matched to the official numbers, which run below what ISL players score, so for the xG rows goals divided by expected goals should sit near 1.25 (2021-22's figure). xG on target is tuned to ISL results, so that row should sit near 1.00. With fewer than about 300 shots it is mostly luck. If a row stays well away after that, the model needs another look."),
       c.all.n ? h("div", { className: "tbl-wrap" }, h("table", { className: "tbl" },
         h("thead", null, h("tr", null, h("th", { scope: "col" }, "Shots counted"), h("th", { className: "num", scope: "col" }, "Shots"), h("th", { className: "num", scope: "col" }, "Goals"), h("th", { className: "num", scope: "col" }, "Expected"), h("th", { className: "num", scope: "col" }, "Goals \u00f7 expected"))),
         h("tbody", null,
