@@ -1163,7 +1163,7 @@ const Store = (() => {
 /* ============================================================
    SCREEN BUILDING BLOCKS
    ============================================================ */
-const { useState, useEffect, useMemo, useRef, useSyncExternalStore } = React;
+const { useState, useEffect, useLayoutEffect, useMemo, useRef, useSyncExternalStore } = React;
 const h = React.createElement;
 const Frag = React.Fragment;
 
@@ -1382,12 +1382,63 @@ function Marks({ marks, u, activeId, onMark, tipId, setTip, vb, lit, onHover, st
       }, pointer)));
   }));
 }
-function Tip({ tip, width }) {
+/* where a shot's numbers go when a line runs from the shot to where it ended up, so the box never hides that line or the ring
+   at its end. Everything is in pixels inside the map: the shot at (px, py) with radius r, the box w by ht, the map W by H, the
+   line [x1, y1, x2, y2]. Eight spots around the shot are scored: covering the line, its end or the shot itself rules a spot
+   out first; then spilling off the map counts against it; then the spot most nearly opposite the line wins. */
+function tipSpot(px, py, r, w, ht, W, H, line) {
+  const [x1, y1, x2, y2] = line;
+  const gap = r + 10, d = gap * 0.75;
+  const spots = [
+    [0, -1, px - w / 2, py - gap - ht], [0, 1, px - w / 2, py + gap], [-1, 0, px - gap - w, py - ht / 2], [1, 0, px + gap, py - ht / 2],
+    [-1, -1, px - d - w, py - d - ht], [1, -1, px + d, py - d - ht], [-1, 1, px - d - w, py + d], [1, 1, px + d, py + d],
+  ];
+  const lx = x2 - x1, ly = y2 - y1, len = Math.hypot(lx, ly) || 1;
+  /* whether the line passes through the box, grown by a few pixels: an end inside it, or the line crossing one of its sides */
+  const cuts = (b) => {
+    const inside = (x, y) => x > b.x0 && x < b.x1 && y > b.y0 && y < b.y1;
+    if (inside(x1, y1) || inside(x2, y2)) return true;
+    const cross = (ax, ay, bx, by, cx, cy, ex, ey) => {
+      const den = (bx - ax) * (ey - cy) - (by - ay) * (ex - cx);
+      if (!den) return false;
+      const t = ((cx - ax) * (ey - cy) - (cy - ay) * (ex - cx)) / den, u = ((cx - ax) * (by - ay) - (cy - ay) * (bx - ax)) / den;
+      return t >= 0 && t <= 1 && u >= 0 && u <= 1;
+    };
+    return [[b.x0, b.y0, b.x1, b.y0], [b.x1, b.y0, b.x1, b.y1], [b.x1, b.y1, b.x0, b.y1], [b.x0, b.y1, b.x0, b.y0]].some((e) => cross(x1, y1, x2, y2, e[0], e[1], e[2], e[3]));
+  };
+  let best = null;
+  for (const [dx, dy, l0, top] of spots) {
+    const left = Math.min(Math.max(l0, 2), Math.max(W - w - 2, 2));
+    const b = { x0: left - 4, x1: left + w + 4, y0: top - 4, y1: top + ht + 4 };
+    const covers = cuts(b) || (x2 > b.x0 - 6 && x2 < b.x1 + 6 && y2 > b.y0 - 6 && y2 < b.y1 + 6);
+    const onShot = px + r > b.x0 && px - r < b.x1 && py + r > b.y0 && py - r < b.y1;
+    const spill = Math.max(0, -top) + Math.max(0, top + ht - H);
+    const away = -(dx * lx + dy * ly) / len / Math.hypot(dx, dy);
+    const score = (covers ? 1000 : 0) + (onShot ? 500 : 0) + spill * 2 - away * 40;
+    if (!best || score < best.score) best = { score, left, top };
+  }
+  return best;
+}
+/* a shot's numbers. With no line to keep clear: centred above the shot, or below it near the top edge. With one (line, from
+   the map), the box is measured once it is drawn and moved to the best spot (tipSpot) before the screen shows it. */
+function Tip({ tip, width, height, line, r }) {
+  const box = useRef(null);
+  const [spot, setSpot] = useState(null);
+  const key = tip && line ? [tip.id, Math.round(tip.px), Math.round(tip.py), Math.round(width), Math.round(height)].concat(line.map(Math.round)).join("|") : "";
+  useLayoutEffect(() => {
+    if (!key || !box.current) return;
+    const s = tipSpot(tip.px, tip.py, r || 8, box.current.offsetWidth, box.current.offsetHeight, width, height, line);
+    setSpot({ key, left: s.left, top: s.top });
+  }, [key]);
   if (!tip) return null;
+  const body = [h("strong", { key: "v" }, tip.value), (tip.lines || []).map((l, i) => h("span", { key: i }, l))];
+  if (key) {
+    const ready = spot && spot.key === key;
+    return h("div", { className: "tip", ref: box, style: ready ? { left: spot.left, top: spot.top } : { left: 0, top: 0, visibility: "hidden" } }, body);
+  }
   const left = Math.min(Math.max(tip.px, 80), Math.max(width - 80, 80));
   const below = tip.py < 84;
-  return h("div", { className: "tip", style: { left, top: tip.py, transform: below ? "translate(-50%, 16px)" : "translate(-50%, calc(-100% - 14px))" } },
-    h("strong", null, tip.value), (tip.lines || []).map((l, i) => h("span", { key: i }, l)));
+  return h("div", { className: "tip", style: { left, top: tip.py, transform: below ? "translate(-50%, 16px)" : "translate(-50%, calc(-100% - 14px))" } }, body);
 }
 function svgPoint(svg, e) {
   const pt = svg.createSVGPoint();
@@ -1511,7 +1562,14 @@ function PitchMap({ marks, draft, draftEnd, onPick, onMark, activeId, label, lit
         h("circle", { className: "mk-ring", cx: draft.y, cy: 120 - draft.x, r: 10 * u }),
         h("circle", { className: "draft-ring", cx: draft.y, cy: 120 - draft.x, r: 8 * u }),
         h("circle", { className: "draft-dot", cx: draft.y, cy: 120 - draft.x, r: 2.2 * u })) : null),
-    h(Tip, { tip, width }));
+    h(Tip, Object.assign({ tip, width, height: vb.h / u }, tipLine(tip))));
+  /* the line drawn for the shot whose numbers are up, in pixels inside the map, so the numbers can keep clear of it */
+  function tipLine(t) {
+    const tr = t ? trails.find((x) => x.id === t.id) : null;
+    if (!tr) return {};
+    const m = placed.find((x) => x.id === t.id);
+    return { line: [(tr.x1 - vb.x) / u, (tr.y1 - vb.y) / u, (tr.x2 - vb.x) / u, (tr.y2 - vb.y) / u], r: m ? markRadius(m.v) * (scale || 1) : 8 };
+  }
 }
 
 const GOAL_VB = { x: -0.9, y: -0.7, w: 9.8, h: 4.1 };
