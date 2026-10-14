@@ -349,11 +349,33 @@ textarea.input { min-height: 110px; resize: vertical; }
   .tl .tl-sub { display: block; text-indent: 0; font-weight: 400; color: var(--ink-2); }
   .tl tr.goal .tl-sub { font-weight: 600; color: var(--ink); }
 }
+/* the public page's list has one more column (xGOT), so it folds up the same way on screens a little wider than a phone */
+@media (min-width: 641px) and (max-width: 860px) {
+  .tl.tl-ot .c-team, .tl.tl-ot .c-what, .tl.tl-ot .c-score { display: none; }
+  .tl.tl-ot .c-run { position: absolute; width: 1px; height: 1px; padding: 0; border: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .tl.tl-ot td.who { white-space: normal; width: 100%; padding-left: 26px; text-indent: -16px; overflow-wrap: anywhere; }
+  .tl.tl-ot th:nth-child(3) { padding-left: 26px; }
+  .tl.tl-ot .tl-dot { display: inline-block; margin-right: 6px; }
+  .tl.tl-ot .tl-og { display: inline; }
+  .tl.tl-ot .tl-sub { display: block; text-indent: 0; font-weight: 400; color: var(--ink-2); }
+  .tl.tl-ot tr.goal .tl-sub { font-weight: 600; color: var(--ink); }
+}
 
 /* ---------- tables ---------- */
 .tbl-wrap { position: relative; overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 .tbl-wrap.tall { max-height: 452px; overflow-y: auto; }
 .tbl-wrap.tall thead th { position: sticky; top: 0; z-index: 1; box-shadow: 0 1px 0 var(--line); }
+/* the public page's tables keep their first column (the player, keeper, club or match) in place while the rest scroll
+   sideways under it. Borders are kept per cell, so a pinned cell keeps its line as it stays put; once the box has been
+   scrolled, a soft edge shows where the other columns pass under. */
+.tbl.pin { border-collapse: separate; border-spacing: 0; }
+.tbl.pin th:first-child, .tbl.pin td:first-child { position: sticky; left: 0; z-index: 1; background-color: var(--surface); }
+.tbl.pin tbody tr.sel td:first-child, .tbl.pin tbody tr.click:hover td:first-child { background-color: var(--accent-soft); }
+.tbl-wrap.tall .tbl.pin thead th:first-child { z-index: 2; }
+.tbl-wrap.moved .tbl.pin th:first-child, .tbl-wrap.moved .tbl.pin td:first-child { box-shadow: inset -1px 0 0 var(--line-2), 8px 0 8px -8px rgba(0, 0, 0, 0.3); }
+.tbl-wrap.tall.moved .tbl.pin thead th:first-child { box-shadow: 0 1px 0 var(--line), inset -1px 0 0 var(--line-2), 8px 0 8px -8px rgba(0, 0, 0, 0.3); }
+/* on a phone a long name wraps onto a second line, so the pinned column leaves most of the width to the numbers */
+@media (max-width: 640px) { .tbl.pin td:first-child { white-space: normal; overflow-wrap: anywhere; min-width: 10em; } }
 table.tbl { border-collapse: collapse; width: 100%; font-size: 13.5px; }
 .tbl th, .tbl td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
 .tbl tbody tr:last-child td { border-bottom: 0; }
@@ -364,7 +386,7 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: 13.5px; }
    little closer, so it fits a laptop screen without scrolling sideways */
 .tbl.fit th { white-space: normal; }
 .tbl.fit .sortb { text-align: inherit; }
-.tbl.fit th, .tbl.fit td { padding-inline: 8px; }
+.tbl.fit th, .tbl.fit td { padding-inline: 7px; }
 .tbl td.soft { white-space: normal; min-width: 150px; }
 .tbl .sortb { appearance: none; background: none; border: 0; padding: 0; cursor: pointer; font: inherit; color: inherit; letter-spacing: inherit; text-transform: inherit; display: inline-flex; gap: 4px; align-items: center; }
 .tbl .sortb:hover { color: var(--ink); }
@@ -1696,9 +1718,19 @@ function GoalMouth({ marks, value, onPick, onMark, activeId, label, frame }) {
     h(Tip, { tip, width }));
 }
 
-/* ---------- a sortable table ---------- */
-/* a column can name what settles a tie in it (then: more values, each sorted the same way round), as points in a league
-   table go to goal difference and then goals scored */
+/* ---------- tables ---------- */
+/* the box a table sits in, which scrolls sideways when the table is wider than the screen. On the public page the table's
+   first column (the player, keeper, club or match) is pinned and the rest scroll under it (the "pin" class); the box notes
+   once it has been scrolled, so a soft edge can show where the columns pass under the pinned one. */
+const pinned = () => (READER ? " pin" : "");
+function TblWrap({ className, children }) {
+  const [moved, setMoved] = useState(false);
+  return h("div", { className: "tbl-wrap" + (className ? " " + className : "") + (moved ? " moved" : ""),
+    onScroll: (e) => { const m = e.currentTarget.scrollLeft > 0; if (m !== moved) setMoved(m); } }, children);
+}
+
+/* a sortable table. A column can name what settles a tie in it (then: more values, each sorted the same way round), as points
+   in a league table go to goal difference and then goals scored */
 function SortTable({ cols, rows, initial, rowKey, onRow, selKey, caption, className }) {
   const [sort, setSort] = useState(initial);
   const sorted = useMemo(() => {
@@ -1715,8 +1747,8 @@ function SortTable({ cols, rows, initial, rowKey, onRow, selKey, caption, classN
     return [...rows].sort((a, b) => { for (const k of keys) { const d = k(a, b); if (d) return d; } return 0; });
   }, [rows, sort, cols]);
   const flip = (c) => setSort((s) => (s.key === c.key ? { key: c.key, dir: -s.dir } : { key: c.key, dir: c.num ? -1 : 1 }));
-  return h("div", { className: "tbl-wrap" },
-    h("table", { className: "tbl" + (className ? " " + className : "") },
+  return h(TblWrap, null,
+    h("table", { className: "tbl" + pinned() + (className ? " " + className : "") },
       caption ? h("caption", { className: "sr" }, caption) : null,
       h("thead", null, h("tr", null, cols.map((c) => h("th", {
         key: c.key, className: c.num ? "num" : undefined, scope: "col", title: c.title,
@@ -2559,14 +2591,19 @@ function MatchTimeline({ s, idx, m, can, withMap }) {
     notes.map((n, i) => h("p", { key: i, className: "sub" }, n)));
 
   /* One table, two shapes. On a wide screen every fact has its own column. On a phone the team, outcome and score
-     fold in under the player's name (the tl-* pieces below), so minute, shot and outcome all show without sideways scrolling. */
+     fold in under the player's name (the tl-* pieces below), so minute, shot and outcome all show without sideways scrolling.
+     The public page adds each shot's xG on target beside its xG (tl-ot), for shots on target only. */
+  const withOt = !!READER;
+  const otOf = (x) => { const v = Model.onTarget(x) ? Model.xgot(x) : null; return v == null ? "" : f2(v); };
   const list = h("div", { className: "card stack", ref: listRef },
     h("h2", { className: "h2" }, "Shot by shot"),
-    h("div", { className: "tbl-wrap" }, h("table", { className: "tbl tl" },
+    h("div", { className: "tbl-wrap" }, h("table", { className: "tbl tl" + (withOt ? " tl-ot" : "") },
       h("caption", { className: "sr" }, "Every shot in order, with the score and each team's running xG"),
       h("thead", null, h("tr", null,
         h("th", { className: "num", scope: "col" }, "Min"), h("th", { className: "c-team", scope: "col" }, "Team"), h("th", { scope: "col" }, "Player"),
-        h("th", { className: "c-what", scope: "col" }, "Outcome"), h("th", { className: "num", scope: "col" }, "xG"), h("th", { className: "num c-score", scope: "col" }, "Score"),
+        h("th", { className: "c-what", scope: "col" }, "Outcome"), h("th", { className: "num", scope: "col" }, "xG"),
+        withOt ? h("th", { className: "num c-ot", scope: "col", title: "xG on target: a shot on target rated again for where in the goal it went. Only shots on target have one." }, "xGOT") : null,
+        h("th", { className: "num c-score", scope: "col" }, "Score"),
         h("th", { className: "num c-run", scope: "col", title: "Each team's xG so far, " + sides.h.short + " first" }, sides.h.short + " \u2013 " + sides.a.short + " xG"))),
       h("tbody", null, rows.map((r) => {
         const timed = r.min != null, og = r.kind === "og";
@@ -2591,6 +2628,7 @@ function MatchTimeline({ s, idx, m, can, withMap }) {
             h("span", { className: "tl-sub" }, [sides[r.t].short, og ? null : what, score || null].filter(Boolean).join(" \u00b7 "))),
           h("td", { className: "what soft c-what" }, what),
           h("td", { className: "num" }, og ? "" : f2(r.xg)),
+          withOt ? h("td", { className: "num c-ot" }, og ? "" : otOf(r.shot)) : null,
           h("td", { className: "num c-score" }, score),
           h("td", { className: "num c-run" }, r.cum ? f2(r.cum.h) + " \u2013 " + f2(r.cum.a) : ""));
       })))));
@@ -2689,7 +2727,7 @@ function PlayerDetail({ s, idx, r, close }) {
       h("div", null, h(PitchMap, { marks, label: "Shot map for " + r.name }),
         h("div", { className: "legend" }, h("span", null, h("i", { className: "dot home" }), "Goal"), h("span", null, h("i", { className: "dot soft" }), "No goal"), h("span", null, "Bigger means higher xG"),
           READER ? h("span", null, "Hover over a shot to see where it ended up") : null)),
-      h("div", { className: "tbl-wrap tall" }, h("table", { className: "tbl" },
+      h(TblWrap, { className: "tall" }, h("table", { className: "tbl" + pinned() },
         h("thead", null, h("tr", null, h("th", { scope: "col" }, "Match"), h("th", { className: "num", scope: "col" }, "Min"), h("th", { scope: "col" }, "What happened"), h("th", { className: "num", scope: "col" }, "xG"))),
         h("tbody", null, shots.map(({ x, m }) => h("tr", { key: x.id },
           h("td", null, "v " + tshort(s.teams, x.t === "h" ? m.away : m.home) + ", " + fmtDate(m.date)),
@@ -2782,12 +2820,12 @@ const TEAM_COLS = [
   { key: "sh", label: "Shots", num: true, get: (r) => r.sh },
   { key: "sot", label: "On target", num: true, get: (r) => r.sot },
   { key: "xg", label: "xG", num: true, get: (r) => r.xg, fmt: f2 },
+  /* the public page has the club's total xG on target beside its xG; the tracker has xG per match at the end instead */
+  ...(READER ? [{ key: "xgot", label: "xGOT", num: true, get: (r) => r.xgot, fmt: f2, title: "xG on target: the club's shots on target, each rated again for where in the goal it went. Shots that missed or were blocked count zero." }] : []),
   { key: "sha", label: "Shots against", num: true, get: (r) => r.sha },
   { key: "xga", label: "xG against", num: true, get: (r) => r.xga, fmt: f2 },
   { key: "xgd", label: "xG difference", num: true, get: (r) => r.xgd, fmt: signed, title: "xG for minus xG against" },
-  /* the last column: the club's total xG on target on the public page, xG per match in the tracker */
-  READER ? { key: "xgot", label: "xGOT", num: true, get: (r) => r.xgot, fmt: f2, title: "xG on target: the club's shots on target, each rated again for where in the goal it went. Shots that missed or were blocked count zero." }
-    : { key: "xgpm", label: "xG / match", num: true, get: (r) => r.xgpm, fmt: f2 },
+  ...(READER ? [] : [{ key: "xgpm", label: "xG / match", num: true, get: (r) => r.xgpm, fmt: f2 }]),
 ];
 
 function TeamsView({ s, idx, agg }) {
@@ -2841,7 +2879,7 @@ function TeamDetail({ s, idx, r, close }) {
           READER ? h("span", null, "Hover over a shot to see where it ended up") : null)),
       h("div", { className: "stack tight" },
         h("p", { className: "sub" }, "Point at a match, or tap it, to pick out its shots on the map."),
-        h("div", { className: "tbl-wrap tall" }, h("table", { className: "tbl team-games" },
+        h(TblWrap, { className: "tall" }, h("table", { className: "tbl team-games" + pinned() },
           h("caption", { className: "sr" }, r.name + ", match by match"),
           h("thead", null, h("tr", null, h("th", { scope: "col" }, "Match"), h("th", { className: "num", scope: "col" }, "Score"), h("th", { className: "num", scope: "col" }, "Shots"), h("th", { className: "num", scope: "col" }, "xG"))),
           h("tbody", null, games.map((gm) => h("tr", {
