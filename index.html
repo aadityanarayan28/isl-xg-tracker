@@ -123,6 +123,7 @@ textarea.input { min-height: 110px; resize: vertical; }
 .dot.hollow { background: transparent; box-shadow: inset 0 0 0 2px var(--muted); }
 .dot.solid { background: var(--muted); }
 .dot.soft { background: color-mix(in srgb, var(--home) 24%, transparent); box-shadow: inset 0 0 0 1.5px var(--home); }
+.dot.soft.away { background: color-mix(in srgb, var(--away) 24%, transparent); box-shadow: inset 0 0 0 1.5px var(--away); }
 /* a club's crest (the public page only): a square box sized where it is used, the crest inside it at its own shape.
    On the dark page, crests whose outer edge is dark get a thin light outline so they do not sink into the background. */
 .crest { flex: none; display: block; object-fit: contain; }
@@ -302,6 +303,7 @@ textarea.input { min-height: 110px; resize: vertical; }
 .tip span { opacity: 0.85; }
 .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; justify-content: center; font-size: 12.5px; color: var(--ink-2); margin-top: 8px; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend .dots { gap: 3px; }
 
 /* ---------- match timeline: the xG worm ---------- */
 .worm { position: relative; width: 100%; }
@@ -423,6 +425,20 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: 13.5px; }
 .cmp th, .top th { line-height: 18px; }
 .detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 18px; align-items: start; }
 @media (max-width: 880px) { .detail-grid { grid-template-columns: minmax(0, 1fr); } }
+/* a club's card on the public page: the whole pitch, with its matches beside it on a wide screen and under it otherwise.
+   Beside it the match names wrap before the date, so the four columns fit without scrolling sideways. */
+.team-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (min-width: 1100px) {
+  .team-grid { grid-template-columns: minmax(0, 1fr) 360px; }
+  .team-grid .team-games td:first-child { white-space: normal; }
+}
+.team-games .when { white-space: nowrap; }
+/* on a phone the pinned match column may wrap down to its date, as the rest are short pairs of numbers, and the cells sit a
+   little closer, so the four columns fit even a small phone without scrolling sideways */
+@media (max-width: 640px) {
+  .tbl.pin.team-games td:first-child { min-width: 0; }
+  .tbl.pin.team-games th, .tbl.pin.team-games td { padding-inline: 7px; }
+}
 /* own goals already saved, each with Edit and Remove; the one being changed is tinted while it sits in the form */
 .og-row { gap: 6px 12px; padding: 3px 6px; margin-inline: -6px; border-radius: 8px; }
 .og-row .acts { display: inline-flex; gap: 2px; align-items: center; margin-left: auto; }
@@ -677,7 +693,8 @@ const Stats = (() => {
     }));
     /* a keeper: shots on target faced (sotf), goals from them (ga), own goals let in while he was in goal (oga), xGOT faced */
     const kp = (kid, tid) => (K[kid] || (K[kid] = { team: rosterTeam[kid] || tid, sotf: 0, ga: 0, oga: 0, xgotf: 0, _m: new Set() }));
-    const tm = (tid) => (T[tid] || (T[tid] = { mp: 0, sh: 0, sot: 0, g: 0, xg: 0, xgot: 0, sha: 0, sota: 0, ga: 0, xga: 0, ogf: 0, oga: 0 }));
+    /* a club: its own shots, on target, goals, xG and xGOT, and the same conceded (sha, sota, ga, xga, xgota) */
+    const tm = (tid) => (T[tid] || (T[tid] = { mp: 0, sh: 0, sot: 0, g: 0, xg: 0, xgot: 0, sha: 0, sota: 0, ga: 0, xga: 0, xgota: 0, ogf: 0, oga: 0 }));
 
     const mk = () => ({ n: 0, g: 0, xg: 0 });
     const check = { all: mk(), np: mk(), inbox: mk(), outbox: mk(), head: mk(), pen: mk(), ot: mk() };
@@ -729,7 +746,7 @@ const Stats = (() => {
 
         const t = tm(tid), o = tm(opp);
         t.sh += 1; t.sot += on ? 1 : 0; t.g += goal; t.xg += xg; t.xgot += xgot;
-        o.sha += 1; o.sota += on ? 1 : 0; o.ga += goal; o.xga += xg;
+        o.sha += 1; o.sota += on ? 1 : 0; o.ga += goal; o.xga += xg; o.xgota += xgot;
 
         totals.shots += 1; totals.goals += goal; totals.xg += xg;
 
@@ -858,6 +875,13 @@ const CLUB_SWITCH = new Set([
   "neufc|fcg", "neufc|pfc", "neufc|scd", "ofc|bfc", "pfc|cbfc", "pfc|ebfc", "pfc|fcg", "pfc|ikfc",
   "pfc|kbfc", "pfc|neufc", "scd|cbfc", "scd|neufc",
 ]);
+/* the shots a club conceded, on its own card's map on the Teams tab: one warm grey for every club, [light page, dark page].
+   The two ends of the pitch already keep them apart from the club's own shots, and the grey was still checked against every
+   club's own colour with the same validator: at least 15 apart with full colour vision in both modes, at least 8 under
+   red-green colour blindness on the dark page and 7.1 on the light one (within the band that is fine with a second cue, here
+   the end of the pitch), and 3:1 or more against the pitch in both. A plain grey cannot clear all that on the light page,
+   hence the touch of warmth. */
+const CONCEDED = ["#72646b", "#b9a9ad"];
 const ClubColours = {
   /* the two colours a match is drawn in, as CSS custom properties for the page around it; null keeps blue and orange */
   match(homeId, awayId) {
@@ -870,6 +894,11 @@ const ClubColours = {
   club(id) {
     const C = CLUB_COLOURS[id];
     return C ? { "--ch-l": C.own[0], "--ch-d": C.own[1] } : null;
+  },
+  /* a club's season on its card: its own colour in the home slot for the shots it took, the grey in the away slot for the
+     shots it conceded. A club with no colours keeps the standard blue for its own. */
+  season(id) {
+    return Object.assign({}, ClubColours.club(id) || {}, { "--ca-l": CONCEDED[0], "--ca-d": CONCEDED[1] });
   },
 };
 
@@ -2833,55 +2862,97 @@ function TeamsView({ s, idx, agg }) {
   const res = useMemo(() => Stats.results(s.matches), [s.matches]);
   const rows = useMemo(() => Object.keys(agg.teams).map((id) => {
     const d = agg.teams[id], gf = d.g + d.ogf, ga = d.ga + d.oga;
-    return { id, name: tname(s.teams, id), mp: d.mp, gf, ga, gd: gf - ga, pts: res[id] ? res[id].pts : 0, sh: d.sh, sot: d.sot, xg: d.xg, xgot: d.xgot, sha: d.sha, xga: d.xga, xgd: d.xg - d.xga, xgpm: d.mp ? d.xg / d.mp : null };
+    return { id, name: tname(s.teams, id), mp: d.mp, gf, ga, gd: gf - ga, pts: res[id] ? res[id].pts : 0, sh: d.sh, sot: d.sot, xg: d.xg, xgot: d.xgot,
+      sha: d.sha, sota: d.sota, xga: d.xga, xgota: d.xgota, xgd: d.xg - d.xga, xgpm: d.mp ? d.xg / d.mp : null };
   }), [agg, s.teams, res]);
   if (!rows.length) return h(NoShotsYet, { what: "each club's shots and xG for and against" });
   const picked = sel && agg.teams[sel] ? rows.find((r) => r.id === sel) : null;
   /* as on Players and Keepers: the public page says how to use the table first, the tracker under it */
-  const hint = h("p", { className: "sub table-hint" }, "Click a club to see every shot it took this season. Click a column heading to sort.");
+  const hint = h("p", { className: "sub table-hint" }, "Click a club to see every shot it " + (READER ? "took and conceded" : "took") + " this season. Click a column heading to sort.");
   return h("div", { className: "stack" },
     READER ? hint : null,
-    picked ? h(TeamDetail, { s, idx, r: picked, close: () => setSel(null) }) : null,
+    picked ? h(TeamDetail, { key: picked.id, s, idx, r: picked, close: () => setSel(null) }) : null,
     h(SortTable, { cols: TEAM_COLS, rows, initial: { key: "xgd", dir: -1 }, rowKey: (r) => r.id, onRow: (id) => setSel(sel === id ? null : id), selKey: sel, caption: "Club totals", className: READER ? "fit" : undefined }),
     READER ? null : hint,
     h("p", { className: "sub" }, (READER ? "Only finished matches are counted." : "Only matches you have tagged are counted.") + " Goals include own goals; xG never does."));
 }
 
-/* a club's season: its numbers, every shot it took on one map (on the public page in its colour, and pointing at a shot shows
-   where it ended up), and its matches one by one. Pointing at a match, or tapping it, picks out that match's shots on the map. */
+/* a club's season: its numbers, its shots on one map, and its matches one by one. Pointing at a match, or tapping it, picks out
+   that match's shots on the map.
+   On the public page the map is the whole pitch: the shots the club took attack one end, in its colour, and the shots it
+   conceded attack the other, in grey (CONCEDED); pointing at a shot shows where it ended up. Its conceded numbers sit beside
+   its own along the top, and each match's row gives shots and xG for and against, like the score. The tracker keeps a half
+   pitch of the club's own shots. */
 function TeamDetail({ s, idx, r, close }) {
+  const both = !!READER;
   const games = useMemo(() => sortedMatches(s.matches)
     .filter(({ m }) => (m.home === r.id || m.away === r.id) && ((m.shots || []).length || (m.og || []).length))
     .map(({ id, m }) => {
-      const side = m.home === r.id ? "h" : "a", sc = Stats.score(m), sum = Stats.matchSummary(m)[side];
-      return { id, m, side, opp: side === "h" ? m.away : m.home, gf: sc[side], ga: sc[otherSide(side)], sh: sum.sh, xg: sum.xg, shots: m.shots.filter((x) => x.t === side) };
+      const side = m.home === r.id ? "h" : "a", sc = Stats.score(m), sum = Stats.matchSummary(m), own = sum[side], vs = sum[otherSide(side)];
+      return { id, m, side, opp: side === "h" ? m.away : m.home, gf: sc[side], ga: sc[otherSide(side)], sh: own.sh, xg: own.xg, sha: vs.sh, xga: vs.xg,
+        shots: m.shots.filter((x) => x.t === side), against: m.shots.filter((x) => x.t !== side) };
     }), [s.matches, r.id]);
   const [hot, setHot] = useState(null);
+  /* the whole pitch lies across the card where it is wide enough for that to read, and stands upright on a narrow screen,
+     as a match's does: the club's own shots attack the left goal, or the top one, and the shots it conceded the other */
+  const mapRef = useRef(null);
+  const mapW = useWidth(mapRef, typeof window !== "undefined" && window.innerWidth ? (window.innerWidth >= 1100 ? 700 : window.innerWidth - 66) : 1000);
+  const orient = mapW >= 640 ? "across" : "upright";
   /* a shot's id is only unique within its match, so a map across matches names each mark by both */
-  const marks = useMemo(() => games.flatMap((gm) => gm.shots.map((x) => {
-    const v = Model.xg(x), opp = tshort(s.teams, gm.opp), who = pname(idx, x.p), nb = shotNumbers(x, !!READER);
-    return { id: gm.id + "/" + x.id, x: x.x, y: x.y, v, goal: x.out === "goal", cls: "home", value: nb.value, end: READER ? shotEnd(x) : null,
-      lines: [who + (x.min != null ? " \u00b7 " + x.min + "\u2032" : ""), "v " + opp + ", " + fmtDate(gm.m.date), shotLine(x)],
-      aria: who + ", against " + opp + (x.min != null ? ", minute " + x.min : "") + ", " + shotLine(x) + ", " + nb.aria };
-  })), [games, idx, s.teams]);
+  const marks = useMemo(() => games.flatMap((gm) => {
+    const opp = tshort(s.teams, gm.opp), when = fmtDate(gm.m.date);
+    const mark = (x, mine) => {
+      const v = Model.xg(x), who = pname(idx, x.p), nb = shotNumbers(x, both), min = x.min != null ? x.min : null;
+      return { id: gm.id + "/" + x.id, x: x.x, y: x.y, sd: mine ? "h" : "a", v, goal: x.out === "goal", cls: mine ? "home" : "away", value: nb.value, end: both ? shotEnd(x) : null,
+        lines: [who + (min != null ? " \u00b7 " + min + "\u2032" : ""), (mine ? "v " : "For ") + opp + ", " + when, shotLine(x)],
+        aria: (mine ? who + ", against " : "Conceded: " + who + ", for ") + opp + (min != null ? ", minute " + min : "") + ", " + shotLine(x) + ", " + nb.aria };
+    };
+    return gm.shots.map((x) => mark(x, true)).concat(both ? gm.against.map((x) => mark(x, false)) : []);
+  }), [games, idx, s.teams, both]);
   const lit = hot ? marks.filter((k) => k.id.indexOf(hot + "/") === 0).map((k) => k.id) : null;
-  const cc = READER ? ClubColours.club(r.id) : null;
+  const cc = both ? ClubColours.season(r.id) : null;
+
+  /* the top row: the club's own numbers, then the same conceded. On a narrow screen the conceded ones start a line of their own. */
+  const kpis = both ? h("div", { className: "kpis" },
+    h("div", { className: "kpis" }, h(Kpi, { v: r.mp, k: "Matches" }), h(Kpi, { v: r.gf, k: "Goals" }), h(Kpi, { v: r.sh, k: "Shots" }), h(Kpi, { v: r.sot, k: "On target" }),
+      h(Kpi, { v: f2(r.xg), k: "xG" }), h(Kpi, { v: f2(r.xgot), k: "xGOT" })),
+    h("div", { className: "kpis" }, h(Kpi, { v: r.sha, k: "Shots against" }), h(Kpi, { v: r.sota, k: "On target against" }), h(Kpi, { v: f2(r.xga), k: "xG against" }),
+      h(Kpi, { v: f2(r.xgota), k: "xGOT against" }))) :
+    h("div", { className: "kpis" }, h(Kpi, { v: r.mp, k: "Matches" }), h(Kpi, { v: r.gf, k: "Goals" }), h(Kpi, { v: r.sh, k: "Shots" }), h(Kpi, { v: r.sot, k: "On target" }),
+      h(Kpi, { v: f2(r.xg), k: "xG" }), h(Kpi, { v: f2(r.xgpm), k: "xG / match" }));
+
+  /* each end is named where it is drawn: both above the pitch when it lies across, taken above and conceded below when upright */
+  const endName = (mine) => h("span", { className: "end-name " + (mine ? "home" : "away") }, h("i", { className: "dot " + (mine ? "home" : "away") }), mine ? "Shots taken" : "Shots conceded");
+  const ends = orient === "across" ? ["left", "right"] : ["top", "bottom"];
+  const map = both ? h("div", { className: "pitch-wrap " + orient },
+    h("div", { className: "ends" }, endName(true), orient === "across" ? endName(false) : null),
+    h(PitchMap, { marks, lit, full: orient, label: "Shot map for " + r.name + ": the shots it took attack the " + ends[0] + " goal, the shots it conceded the " + ends[1] + " goal" }),
+    orient === "upright" ? h("div", { className: "ends" }, endName(false)) : null) :
+    h(PitchMap, { marks, lit, label: "Shot map for " + r.name + ": every shot this season" });
+  /* goal or not reads the same at both ends, so the key shows each in both colours */
+  const legend = both ? h("div", { className: "legend" },
+    h("span", null, h("span", { className: "dots" }, h("i", { className: "dot home" }), h("i", { className: "dot away" })), "Goal"),
+    h("span", null, h("span", { className: "dots" }, h("i", { className: "dot soft" }), h("i", { className: "dot soft away" })), "No goal"),
+    h("span", null, "Bigger means higher xG"), h("span", null, "Hover over a shot to see where it ended up")) :
+    h("div", { className: "legend" }, h("span", null, h("i", { className: "dot home" }), "Goal"), h("span", null, h("i", { className: "dot soft" }), "No goal"), h("span", null, "Bigger means higher xG"));
+  const pair = (a, b) => a + "\u2013" + b;
+
   return h("div", { className: "card stack" + (cc ? " club-colors" : ""), style: cc || undefined },
     h("div", { className: "toolbar" },
       h("div", { className: "card-head" }, h(Crest, { id: r.id, size: 40 }),
-        h("div", null, h("h2", { className: "h2" }, r.name), h("p", { className: "sub" }, "Every shot " + (READER ? "in its finished matches" : "tagged") + " this season"))),
+        h("div", null, h("h2", { className: "h2" }, r.name), h("p", { className: "sub" }, both ? "Every shot it took and conceded in its finished matches this season" : "Every shot tagged this season"))),
       h("button", { type: "button", className: "btn", onClick: close }, "Close")),
-    h("div", { className: "kpis" }, h(Kpi, { v: r.mp, k: "Matches" }), h(Kpi, { v: r.gf, k: "Goals" }), h(Kpi, { v: r.sh, k: "Shots" }), h(Kpi, { v: r.sot, k: "On target" }),
-      h(Kpi, { v: f2(r.xg), k: "xG" }), READER ? h(Kpi, { v: f2(r.xgot), k: "xGOT" }) : h(Kpi, { v: f2(r.xgpm), k: "xG / match" })),
-    marks.length ? h("div", { className: "detail-grid" },
-      h("div", null, h(PitchMap, { marks, lit, label: "Shot map for " + r.name + ": every shot this season" }),
-        h("div", { className: "legend" }, h("span", null, h("i", { className: "dot home" }), "Goal"), h("span", null, h("i", { className: "dot soft" }), "No goal"), h("span", null, "Bigger means higher xG"),
-          READER ? h("span", null, "Hover over a shot to see where it ended up") : null)),
+    kpis,
+    marks.length ? h("div", { className: both ? "team-grid" : "detail-grid" },
+      h("div", { ref: mapRef }, map, legend),
       h("div", { className: "stack tight" },
-        h("p", { className: "sub" }, "Point at a match, or tap it, to pick out its shots on the map."),
+        h("p", { className: "sub" }, both ? "Point at a match, or tap it, to pick out its shots at both ends of the map. Shots and xG are for and against, like the score." :
+          "Point at a match, or tap it, to pick out its shots on the map."),
         h(TblWrap, { className: "tall" }, h("table", { className: "tbl team-games" + pinned() },
           h("caption", { className: "sr" }, r.name + ", match by match"),
-          h("thead", null, h("tr", null, h("th", { scope: "col" }, "Match"), h("th", { className: "num", scope: "col" }, "Score"), h("th", { className: "num", scope: "col" }, "Shots"), h("th", { className: "num", scope: "col" }, "xG"))),
+          h("thead", null, h("tr", null, h("th", { scope: "col" }, "Match"), h("th", { className: "num", scope: "col" }, "Score"),
+            h("th", { className: "num", scope: "col", title: both ? "Shots taken and conceded" : undefined }, "Shots"),
+            h("th", { className: "num", scope: "col", title: both ? "xG for and against" : undefined }, "xG"))),
           h("tbody", null, games.map((gm) => h("tr", {
             key: gm.id, "data-match": gm.id, tabIndex: 0, className: "click" + (hot === gm.id ? " sel" : ""),
             onPointerEnter: (e) => { if (e.pointerType === "mouse") setHot(gm.id); },
@@ -2889,10 +2960,10 @@ function TeamDetail({ s, idx, r, close }) {
             onFocus: () => setHot(gm.id),
             onBlur: () => setHot((v) => (v === gm.id ? null : v)),
           },
-            h("td", null, "v " + tshort(s.teams, gm.opp) + ", " + fmtDate(gm.m.date)),
-            h("td", { className: "num" }, gm.gf + "\u2013" + gm.ga),
-            h("td", { className: "num" }, gm.sh),
-            h("td", { className: "num" }, f2(gm.xg))))))))) :
+            h("td", null, "v " + tshort(s.teams, gm.opp) + ", ", h("span", { className: "when" }, fmtDate(gm.m.date))),
+            h("td", { className: "num" }, pair(gm.gf, gm.ga)),
+            h("td", { className: "num" }, both ? pair(gm.sh, gm.sha) : gm.sh),
+            h("td", { className: "num" }, both ? pair(f2(gm.xg), f2(gm.xga)) : f2(gm.xg))))))))) :
       h("p", { className: "sub" }, "No shots yet."));
 }
 
@@ -3074,7 +3145,7 @@ function MethodView({ s, idx, agg }) {
         h("p", null, h("strong", null, "xG"), " is the chance that a shot is scored, judged before it is struck. It uses how far out and how central the shot is, foot or head, whether it is a direct free kick, the pass before it, and whether it is a one-on-one or an open goal. Its values are matched to the official xG of ISL goals. A penalty is always " + f2(MODEL.xg.pen) + "."),
         h("p", null, h("strong", null, "xA"), " gives the player who set up a shot that shot's xG, scored or not."),
         h("p", null, h("strong", null, "The xG worm"), " on a match's Timeline tab adds up each team's xG as the match goes on. The line steps up at every shot, by that shot's xG. A shot saved without a minute cannot be placed, so it is left off the worm but still counts in every total."),
-        s.reader ? h("p", null, h("strong", null, "The shot map"), " draws every shot where it was taken, sized by its xG, with each side attacking its own end. Point at a shot and a line shows where it ended up: where a shot on target crossed the goal line (or would have, without the save), the post or bar it hit, where it went out, or where it was blocked. The box that comes up gives the shot's xG and, for a shot on target, its xGOT.") : null,
+        s.reader ? h("p", null, h("strong", null, "The shot map"), " draws every shot where it was taken, sized by its xG, with each side attacking its own end. Point at a shot and a line shows where it ended up: where a shot on target crossed the goal line (or would have, without the save), the post or bar it hit, where it went out, or where it was blocked. The box that comes up gives the shot's xG and, for a shot on target, its xGOT. A club's map on the Teams tab does the same for its whole season: the shots it took at one end, in its colour, and the shots it conceded at the other, in grey.") : null,
         h("p", null, h("strong", null, "xG on target"), " (xGOT) rates a shot again once you know where in the goal it was heading. A shot into the top corner is worth more than one straight at the keeper. Headers differ on height: a header aimed low is harder to save than one aimed high."),
         h("p", null, h("strong", null, "Expected saves"), " is what an average goalkeeper would save from the same shots: shots on target faced minus xG on target faced. ", h("strong", null, "Saves above expected"), " is real saves minus that, the same number as goals prevented."))),
     /* the model's background stays in the tracker; the public page credits StatsBomb in the line at the foot of every tab */
