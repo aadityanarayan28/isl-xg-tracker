@@ -2905,15 +2905,16 @@ const PLAYED_DEF = ["Matches, Minutes", "From each match's line-ups and substitu
 
 const PLAYER_COLS = [
   { key: "name", label: "Player", get: (r) => r.name, strong: true },
-  ...PLAYED_COLS,
   { key: "club", label: "Club", get: (r) => r.club },
+  ...PLAYED_COLS,
   { key: "sh", label: "Shots", num: true, get: (r) => r.sh, title: "Every shot taken, penalties included" },
   { key: "sot", label: "On target", num: true, get: (r) => r.sot, title: "Shots that were scored or saved by the keeper" },
   { key: "g", label: "Goals", num: true, get: (r) => r.g, title: "Goals scored, penalties included" },
   { key: "xg", label: "xG", num: true, get: (r) => r.xg, fmt: f2, title: "Expected goals from all shots" },
   { key: "diff", label: "G " + MINUS + " xG", num: true, get: (r) => r.diff, fmt: signed, title: "Goals minus expected goals" },
   { key: "npxg", label: "npxG", num: true, get: (r) => r.npxg, fmt: f2, title: "Expected goals without penalties" },
-  { key: "per", label: "npxG / shot", num: true, get: (r) => r.per, fmt: f2, title: "Average chance quality, penalties left out" },
+  /* npxG per shot stays in the tracker; the public page leaves it out */
+  ...(READER ? [] : [{ key: "per", label: "npxG / shot", num: true, get: (r) => r.per, fmt: f2, title: "Average chance quality, penalties left out" }]),
   { key: "xgot", label: "xGOT", num: true, get: (r) => r.xgot, fmt: f2, title: "Expected goals on target: chance of scoring given where each shot was placed" },
   { key: "kp", label: "Key passes", num: true, get: (r) => r.kp, title: "Passes that led straight to a shot" },
   { key: "a", label: "Assists", num: true, get: (r) => r.a, title: "Key passes that ended in a goal" },
@@ -2990,18 +2991,20 @@ function PlayerDetail({ s, idx, r, close }) {
       h("p", { className: "sub" }, "No shots of their own yet. Their numbers come from setting up others."));
 }
 
+/* what the public page calls the expected-saves numbers, wherever they appear there; the tracker keeps the longer names */
+const KEEPER_NAMES = READER ? { xsv: "xSaves", sae: "Goals Prevented", xsvp: "xSave %" } : { xsv: "Expected saves", sae: "Saves above expected", xsvp: "Expected save %" };
 const KEEPER_COLS = [
   { key: "name", label: "Keeper", get: (r) => r.name, strong: true },
-  ...PLAYED_COLS,
   { key: "club", label: "Club", get: (r) => r.club },
+  ...PLAYED_COLS,
   { key: "sotf", label: "On target faced", num: true, get: (r) => r.sotf, title: "Shots on target this keeper faced" },
   { key: "ga", label: "Goals against", num: true, get: (r) => r.ga, title: "Every goal conceded while in goal, own goals included" },
   { key: "sv", label: "Saves", num: true, get: (r) => r.sv, title: "Shots on target saved" },
   { key: "svp", label: "Save %", num: true, get: (r) => r.svp, fmt: pct },
   { key: "xgotf", label: "xGOT faced", num: true, get: (r) => r.xgotf, fmt: f2, title: "Goals an average keeper would concede from the same shots" },
-  { key: "xsv", label: "Expected saves", num: true, get: (r) => r.xsv, fmt: f2, title: "Saves an average keeper would make from the same shots" },
-  { key: "sae", label: "Saves above expected", num: true, get: (r) => r.sae, fmt: signed, title: "Saves minus expected saves. Also called goals prevented. Own goals are left out." },
-  { key: "xsvp", label: "Expected save %", num: true, get: (r) => r.xsvp, fmt: pct },
+  { key: "xsv", label: KEEPER_NAMES.xsv, num: true, get: (r) => r.xsv, fmt: f2, title: "Saves an average keeper would make from the same shots" },
+  { key: "sae", label: KEEPER_NAMES.sae, num: true, get: (r) => r.sae, fmt: signed, title: READER ? "Saves minus xSaves: the goals kept out beyond an average keeper. Own goals are left out." : "Saves minus expected saves. Also called goals prevented. Own goals are left out." },
+  { key: "xsvp", label: KEEPER_NAMES.xsvp, num: true, get: (r) => r.xsvp, fmt: pct },
 ];
 
 function KeepersView({ s, idx, agg }) {
@@ -3032,9 +3035,14 @@ function KeepersView({ s, idx, agg }) {
     h(Defs, { items: [
       ["Goals against", "Every goal conceded while he was in goal, own goals included. Saves and the numbers below count shots on target only, so an own goal never counts against his shot-stopping."],
       ["xGOT faced", "For every shot on target, the chance it goes in given where it was struck from and where in the goal it was heading. Added up, it is the goals an average keeper would concede."],
+    ].concat(READER ? [
+      ["xSaves", "Expected saves: shots on target faced minus xGOT faced. The saves an average keeper would make."],
+      ["Goals Prevented", "Saves minus xSaves. Above zero is better than average shot-stopping."],
+      PLAYED_DEF,
+    ] : [
       ["Expected saves", "Shots on target faced minus xGOT faced: the saves an average keeper would make."],
       ["Saves above expected", "Saves minus expected saves. It is the same number as goals prevented. Above zero is better than average shot-stopping."],
-    ].concat(READER ? [PLAYED_DEF] : []) }));
+    ]) }));
 }
 
 function KeeperDetail({ s, idx, r, close }) {
@@ -3055,7 +3063,7 @@ function KeeperDetail({ s, idx, r, close }) {
       h("div", { className: "card-head" }, h(Crest, { id: r.team, size: 40 }),
         h("div", null, h("h2", { className: "h2" }, r.name), h("p", { className: "sub" }, tname(s.teams, r.team)))),
       h("button", { type: "button", className: "btn", onClick: close }, "Close")),
-    h("div", { className: "kpis" }, h(Kpi, { v: r.sotf, k: "On target faced" }), h(Kpi, { v: r.sv, k: "Saves" }), h(Kpi, { v: f2(r.xsv), k: "Expected saves" }), h(Kpi, { v: signed(r.sae), k: "Saves above expected" })),
+    h("div", { className: "kpis" }, h(Kpi, { v: r.sotf, k: "On target faced" }), h(Kpi, { v: r.sv, k: "Saves" }), h(Kpi, { v: f2(r.xsv), k: KEEPER_NAMES.xsv }), h(Kpi, { v: signed(r.sae), k: KEEPER_NAMES.sae })),
     h(GoalMouth, { marks, label: "Shots on target faced by " + r.name }),
     h("div", { className: "legend" }, h("span", null, h("i", { className: "dot home" }), "Goal conceded"), h("span", null, h("i", { className: "dot soft" }), "Saved"), h("span", null, "Bigger means harder to save")));
 }
@@ -3375,7 +3383,8 @@ function MethodView({ s, idx, agg }) {
         h("p", null, h("strong", null, "The xG worm"), " on a match's Timeline tab adds up each team's xG as the match goes on. The line steps up at every shot, by that shot's xG. A shot saved without a minute cannot be placed, so it is left off the worm but still counts in every total."),
         s.reader ? h("p", null, h("strong", null, "The shot map"), " draws every shot where it was taken, sized by its xG, with each side attacking its own end. Point at a shot and a line shows where it ended up: where a shot on target crossed the goal line (or would have, without the save), the post or bar it hit, where it went out, or where it was blocked. The box that comes up gives the shot's xG and, for a shot on target, its xGOT. A club's map on the Teams tab does the same for its whole season: the shots it took at one end, in its colour, and the shots it conceded at the other, in grey.") : null,
         h("p", null, h("strong", null, "xG on target"), " (xGOT) rates a shot again once you know where in the goal it was heading. A shot into the top corner is worth more than one straight at the keeper. Headers differ on height: a header aimed low is harder to save than one aimed high."),
-        h("p", null, h("strong", null, "Expected saves"), " is what an average goalkeeper would save from the same shots: shots on target faced minus xG on target faced. ", h("strong", null, "Saves above expected"), " is real saves minus that, the same number as goals prevented."))),
+        s.reader ? h("p", null, h("strong", null, "xSaves"), " (expected saves) is what an average goalkeeper would save from the same shots: shots on target faced minus xG on target faced. ", h("strong", null, "Goals Prevented"), " is real saves minus that.") :
+          h("p", null, h("strong", null, "Expected saves"), " is what an average goalkeeper would save from the same shots: shots on target faced minus xG on target faced. ", h("strong", null, "Saves above expected"), " is real saves minus that, the same number as goals prevented."))),
     /* the model's background stays in the tracker; the public page credits StatsBomb in the line at the foot of every tab */
     s.reader ? null : h("section", { className: "stack tight" },
       h("h2", { className: "h2" }, "Where the model comes from"),
