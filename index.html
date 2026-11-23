@@ -1541,6 +1541,9 @@ function shotLine(s) {
   }
   return bits.join(", ");
 }
+/* the public page's lists give a shot's outcome alone (goal, saved, off target, blocked or woodwork), with "(Penalty)" after
+   it for a penalty, where the tracker describes the shot in full (shotLine) */
+const shotOutcome = (s) => (OUT[s.out] || s.out) + (s.sit === "pen" ? " (Penalty)" : "");
 /* a shot's numbers for its pop-up on a pitch map, and the same in words for screen readers: its xG and, where withOt is set
    (the public page), its xG on target as well when it was on target and its spot in the goal is recorded */
 function shotNumbers(s, withOt) {
@@ -2971,7 +2974,7 @@ function MatchTimeline({ s, idx, m, can, withMap }) {
         h("th", { className: "num c-run", scope: "col", title: "Each team's xG so far, " + sides.h.short + " first" }, sides.h.short + " \u2013 " + sides.a.short + " xG"))),
       h("tbody", null, shown.map((r) => {
         const timed = r.min != null, og = r.kind === "og";
-        const what = og ? "Own goal" : brief ? (OUT[r.shot.out] || r.shot.out) + (r.shot.sit === "pen" ? " (Penalty)" : "") : shotLine(r.shot);
+        const what = og ? "Own goal" : brief ? shotOutcome(r.shot) : shotLine(r.shot);
         const ap = brief && !og && r.shot.ap ? pname(idx, r.shot.ap) : "";
         const score = r.goal && r.score ? r.score.h + "\u2013" + r.score.a : "";
         const key = r.kind + r.id;
@@ -3099,6 +3102,12 @@ function PlayerDetail({ s, idx, r, close }) {
     for (const { id, m } of sortedMatches(s.matches)) for (const x of m.shots) if (x.p === r.id) out.push({ x, mid: id, m });
     return out;
   }, [s.matches, r.id]);
+  /* on the public page, pointing at a shot in the list picks it out on the map: the other shots fade and a line runs to where
+     it ended up. ptr: the row under the mouse. foc: the row focused, by the keyboard, a tap or a click, which stays picked out
+     once the pointer has gone, until something else is clicked or tapped. The row under the mouse wins. */
+  const [ptr, setPtr] = useState(null);
+  const [foc, setFoc] = useState(null);
+  const pick = READER ? ptr || foc : null;
   /* a shot's id is only unique within its match, so a map across matches names each mark by both */
   const marks = shots.map(({ x, mid, m }) => {
     const v = Model.xg(x), nb = shotNumbers(x, !!READER);   // on the public page a shot on target also gives its xG on target
@@ -3118,16 +3127,26 @@ function PlayerDetail({ s, idx, r, close }) {
         h(Kpi, { v: f2(r.xg), k: "xG" }), h(Kpi, { v: r.a, k: "Assists" }), h(Kpi, { v: f2(r.xa), k: "xA" }), h(Kpi, { v: r.bcc, k: "Big chances created" })) :
       h("div", { className: "kpis" }, h(Kpi, { v: r.sh, k: "Shots" }), h(Kpi, { v: r.sot, k: "On target" }), h(Kpi, { v: r.g, k: "Goals" }), h(Kpi, { v: f2(r.xg), k: "xG" }), h(Kpi, { v: r.a, k: "Assists" }), h(Kpi, { v: f2(r.xa), k: "xA" })),
     shots.length ? h("div", { className: "detail-grid" },
-      h("div", null, h(PitchMap, { marks, label: "Shot map for " + r.name }),
+      h("div", null, h(PitchMap, { marks, lit: pick ? [pick] : null, label: "Shot map for " + r.name }),
         h("div", { className: "legend" }, h("span", null, h("i", { className: "dot home" }), "Goal"), h("span", null, h("i", { className: "dot soft" }), "No goal"), h("span", null, "Bigger means higher xG"),
           READER ? h("span", null, "Hover over a shot to see where it ended up") : null)),
       h(TblWrap, { className: "tall" }, h("table", { className: "tbl" + pinned() },
         h("thead", null, h("tr", null, h("th", { scope: "col" }, "Match"), h("th", { className: "num", scope: "col" }, "Min"), h("th", { scope: "col" }, "What happened"), h("th", { className: "num", scope: "col" }, "xG"))),
-        h("tbody", null, shots.map(({ x, m }) => h("tr", { key: x.id },
-          h("td", null, "v " + tshort(s.teams, x.t === "h" ? m.away : m.home) + ", " + fmtDate(m.date)),
-          h("td", { className: "num" }, x.min != null ? x.min + "\u2032" : ""),
-          h("td", null, shotLine(x)),
-          h("td", { className: "num" }, f2(Model.xg(x))))))))) :
+        /* each row is the shot's mark on the map (data-shot), and on the public page it says only how the shot ended */
+        h("tbody", null, shots.map(({ x, mid, m }) => {
+          const id = mid + "/" + x.id;
+          return h("tr", Object.assign({ key: id }, READER ? {
+            "data-shot": id, tabIndex: 0, className: pick === id ? "sel" : undefined,
+            onPointerEnter: (e) => { if (e.pointerType === "mouse") setPtr(id); },
+            onPointerLeave: (e) => { if (e.pointerType === "mouse") setPtr((v) => (v === id ? null : v)); },
+            onFocus: () => setFoc(id),
+            onBlur: () => setFoc((v) => (v === id ? null : v)),
+          } : null),
+            h("td", null, "v " + tshort(s.teams, x.t === "h" ? m.away : m.home) + ", " + fmtDate(m.date)),
+            h("td", { className: "num" }, x.min != null ? x.min + "\u2032" : ""),
+            h("td", null, READER ? shotOutcome(x) : shotLine(x)),
+            h("td", { className: "num" }, f2(Model.xg(x))));
+        }))))) :
       h("p", { className: "sub" }, "No shots of their own yet. Their numbers come from setting up others."));
 }
 
