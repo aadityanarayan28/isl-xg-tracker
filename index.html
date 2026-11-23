@@ -3630,27 +3630,17 @@ function VisualiserView({ s, idx, agg }) {
     { key: "q", label: "Profile", get: (r) => ARCH[archQuad(r, cut)].name },
   ];
   const n = rows.length;
+  /* the title and the chart, the four lists, then the button that opens the table: nothing written above the chart or below the button */
   return h("div", { className: "stack" },
-    h("p", { className: "sub table-hint" }, "Point at a player for their numbers, and click to see their shot map. From " + matchesWord(agg.totals.matches) + "."),
     h("div", { className: "card stack" },
-      h("div", { className: "stack tight" },
-        h("h2", { className: "h2" }, "Goal threat and chance creation"),
-        h("p", { className: "sub ar-lede" }, "Every regular outfield player, placed by the chances they get (non-penalty xG per 90, up) and the chances they create for others (xA per 90, across). The dashed lines mark the 82nd percentile of these " +
-          n + " players for each measure: " + cut.y.toFixed(2) + " npxG and " + cut.x.toFixed(2) + " xA per 90. In the bottom left, only the top 20% are drawn.")),
+      h("h2", { className: "h2" }, "Goal threat and chance creation"),
       h("div", Object.assign({ className: "ar-chart", ref: boxRef, role: "img",
         "aria-label": "Chart of " + n + " players: xA per 90 across, non-penalty xG per 90 up, split at the 82nd percentile of each into " + ARCH_ORDER.map((k) => ARCH[k].name + " (" + (chart ? chart.counts[k] : 0) + ")").join(", ") + "; only the top 20% of the bottom left are drawn. The table below lists every player." }, pointing),
         chart ? h("div", { className: "ar-svg", dangerouslySetInnerHTML: { __html: chart.html } }) : null, ring, tipEl)),
     quads,
     h("details", { className: "card ar-all" },
       h("summary", null, "All " + n + " players as a table"),
-      h(SortTable, { cols: COLS, rows, initial: { key: "npxg90", dir: -1 }, rowKey: (r) => r.id, onRow: (id) => { const r = rows.find((x) => x.id === id); if (r && r.card) nav.go({ tab: "players", item: id }); }, rowHref: (id) => { const r = rows.find((x) => x.id === id); return r && r.card && nav ? nav.href({ tab: "players", item: id }) : null; }, caption: "Every player on the chart" })),
-    h(Defs, { items: [
-      ["npxG per 90", "Non-penalty expected goals for every 90 minutes played: the quality of the chances a player gets, penalties left out."],
-      ["xA per 90", "Expected assists for every 90 minutes played: the xG of the shots a player sets up."],
-      ["On the chart", "Outfield players with at least " + ARCH_MIN + " minutes, or a third of their club's minutes once that is more. Keepers are left out."],
-      ["The dashed lines", "The 82nd percentile of the players on the chart, for each measure. Above a line is high, below it low."],
-      ["Bottom left", "Only the top 20% of the players there are drawn, ranked by npxG and xA per 90, each against its line. The table lists everyone."],
-    ] }));
+      h(SortTable, { cols: COLS, rows, initial: { key: "npxg90", dir: -1 }, rowKey: (r) => r.id, onRow: (id) => { const r = rows.find((x) => x.id === id); if (r && r.card) nav.go({ tab: "players", item: id }); }, rowHref: (id) => { const r = rows.find((x) => x.id === id); return r && r.card && nav ? nav.href({ tab: "players", item: id }) : null; }, caption: "Every player on the chart" })));
 }
 
 /* ============================================================
