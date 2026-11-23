@@ -389,6 +389,13 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: 13.5px; }
 .tbl.fit th { white-space: normal; }
 .tbl.fit .sortb { text-align: inherit; }
 .tbl.fit th, .tbl.fit td { padding-inline: 7px; }
+/* a long heading given as short lines, stacked: the column is no wider than its longest line (Players' big-chance columns).
+   Its 1px width only stops the table handing it spare room; it grows to fit the heading and the numbers. */
+.tbl th.stack-h { width: 1px; }
+.tbl .sortb .lns { display: inline-block; white-space: nowrap; }
+.tbl .sortb .ln { display: block; }
+/* and when it is the one sorted by, the arrow sits beside its last line, as it does beside a one-line heading */
+.tbl .sortb.stacked { align-items: flex-end; }
 .tbl td.soft { white-space: normal; min-width: 150px; }
 .tbl .sortb { appearance: none; background: none; border: 0; padding: 0; cursor: pointer; font: inherit; color: inherit; letter-spacing: inherit; text-transform: inherit; display: inline-flex; gap: 4px; align-items: center; }
 .tbl .sortb:hover { color: var(--ink); }
@@ -1875,6 +1882,7 @@ function TblWrap({ className, children }) {
 
 /* a sortable table. A column can name what settles a tie in it (then: more values, each sorted the same way round), as points
    in a league table go to goal difference and then goals scored */
+/* a column may give its heading as lines (c.lines): stacked one under another, the column only as wide as the longest line */
 function SortTable({ cols, rows, initial, rowKey, onRow, selKey, caption, className }) {
   const [sort, setSort] = useState(initial);
   const sorted = useMemo(() => {
@@ -1895,9 +1903,11 @@ function SortTable({ cols, rows, initial, rowKey, onRow, selKey, caption, classN
     h("table", { className: "tbl" + pinned() + (className ? " " + className : "") },
       caption ? h("caption", { className: "sr" }, caption) : null,
       h("thead", null, h("tr", null, cols.map((c) => h("th", {
-        key: c.key, className: c.num ? "num" : undefined, scope: "col", title: c.title,
+        key: c.key, className: [c.num ? "num" : "", c.lines ? "stack-h" : ""].filter(Boolean).join(" ") || undefined, scope: "col", title: c.title,
         "aria-sort": sort.key === c.key ? (sort.dir === 1 ? "ascending" : "descending") : undefined,
-      }, h("button", { type: "button", className: "sortb", onClick: () => flip(c) }, c.label, sort.key === c.key ? h("span", { "aria-hidden": "true" }, sort.dir === 1 ? "\u2191" : "\u2193") : null))))),
+      }, h("button", { type: "button", className: "sortb" + (c.lines ? " stacked" : ""), onClick: () => flip(c) },
+        c.lines ? h("span", { className: "lns" }, c.lines.map((t, i) => h(Frag, { key: i }, i ? " " : null, h("span", { className: "ln" }, t)))) : c.label,
+        sort.key === c.key ? h("span", { "aria-hidden": "true" }, sort.dir === 1 ? "\u2191" : "\u2193") : null))))),
       h("tbody", null, sorted.map((r) => {
         const k = rowKey(r);
         return h("tr", {
@@ -2919,13 +2929,13 @@ const PLAYER_COLS = [
   { key: "sot", label: "On target", num: true, get: (r) => r.sot, title: "Shots that were scored or saved by the keeper" },
   { key: "g", label: "Goals", num: true, get: (r) => r.g, title: "Goals scored, penalties included" },
   { key: "xg", label: "xG", num: true, get: (r) => r.xg, fmt: f2, title: "Expected goals from all shots" },
-  READER ? { key: "bcm", label: "Big chances missed", num: true, get: (r) => r.bcm, title: "Big chances this player had and did not score: shots worth more than 0.20 xG" } :
+  READER ? { key: "bcm", label: "Big chances missed", lines: ["Big", "chances", "missed"], num: true, get: (r) => r.bcm, title: "Big chances this player had and did not score: shots worth more than 0.20 xG" } :
     { key: "diff", label: "G " + MINUS + " xG", num: true, get: (r) => r.diff, fmt: signed, title: "Goals minus expected goals" },
   { key: "npxg", label: "npxG", num: true, get: (r) => r.npxg, fmt: f2, title: "Expected goals without penalties" },
   /* npxG per shot stays in the tracker; the public page leaves it out */
   ...(READER ? [] : [{ key: "per", label: "npxG / shot", num: true, get: (r) => r.per, fmt: f2, title: "Average chance quality, penalties left out" }]),
   { key: "xgot", label: "xGOT", num: true, get: (r) => r.xgot, fmt: f2, title: "Expected goals on target: chance of scoring given where each shot was placed" },
-  READER ? { key: "bcc", label: "Big chances created", num: true, get: (r) => r.bcc, title: "Big chances this player set up with the pass before the shot" } :
+  READER ? { key: "bcc", label: "Big chances created", lines: ["Big", "chances", "created"], num: true, get: (r) => r.bcc, title: "Big chances this player set up with the pass before the shot" } :
     { key: "kp", label: "Key passes", num: true, get: (r) => r.kp, title: "Passes that led straight to a shot" },
   { key: "a", label: "Assists", num: true, get: (r) => r.a, title: "Key passes that ended in a goal" },
   { key: "xa", label: "xA", num: true, get: (r) => r.xa, fmt: f2, title: "Expected assists: the xG of the shots this player set up" },
