@@ -502,6 +502,42 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: 13.5px; }
 .sb img { display: block; height: 20px; width: auto; }
 .prose a { color: var(--accent); }
 @media (prefers-reduced-motion: no-preference) { .btn, .seg-btn, .fx, .tab { transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease; } }
+
+/* ---------- the Visualiser (the public page) ---------- */
+.ar-chart { position: relative; width: 100%; touch-action: pan-y; }
+.ar-svg svg { display: block; width: 100%; height: auto; overflow: visible; }
+.ar-hot { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.ar-grid { stroke: var(--line); stroke-width: 1; shape-rendering: crispEdges; }
+.ar-axis { stroke: var(--line-2); stroke-width: 1; shape-rendering: crispEdges; }
+.ar-tick { fill: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.ar-title { fill: var(--ink-2); font-size: 12.5px; font-weight: 500; }
+.ar-cut { stroke: var(--ink-2); stroke-width: 1.5; stroke-dasharray: 6 5; fill: none; }
+.ar-cutl { fill: var(--ink-2); font-size: 11.5px; font-weight: 500; paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
+.ar-qname { fill: var(--ink); font-family: var(--font-display); font-weight: 600; letter-spacing: 0.02em; paint-order: stroke; stroke: var(--surface); stroke-width: 5px; stroke-linejoin: round; }
+.ar-qcount { fill: var(--muted); font-size: 11.5px; paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
+.ar-qpill { fill: var(--surface); opacity: 0.9; }
+.ar-pt { fill: var(--home); stroke: var(--surface); stroke-width: 2; }
+.ar-chart a .ar-pt { cursor: pointer; }
+.ar-ring { fill: var(--home); stroke: var(--ink); stroke-width: 2.5; }
+.ar-lab { fill: var(--ink-2); font-size: 12px; font-weight: 500; paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; pointer-events: none; }
+.ar-tip { min-width: 190px; max-width: 250px; }
+.ar-tip strong { font-size: 13.5px; }
+.ar-tip .ar-row { display: flex; justify-content: space-between; gap: 12px; font-variant-numeric: tabular-nums; }
+.ar-tip .ar-row b { font-weight: 600; }
+.ar-tip .ar-soft { opacity: 0.72; }
+.ar-tip .ar-q { margin-top: 4px; font-weight: 600; }
+.ar-tip .ar-go { margin-top: 4px; opacity: 0.72; font-size: 12px; }
+.ar-quads { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 640px) { .ar-quads { grid-template-columns: minmax(0, 1fr); } }
+.ar-quad ol { margin: 2px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 2px; }
+.ar-quad li a { color: inherit; font-weight: 600; text-decoration: none; }
+.ar-quad li a:hover { text-decoration: underline; }
+.ar-quad li span:first-child { font-weight: 600; }
+.ar-quad .ar-meta { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.ar-all { padding: 0; }
+.ar-all > summary { cursor: pointer; padding: 14px 16px; font-weight: 600; }
+.ar-all[open] > summary { border-bottom: 1px solid var(--line); }
+.ar-all .tbl-wrap { border: 0; border-radius: 0 0 12px 12px; }
 </style>
 </head>
 <body>
@@ -856,7 +892,7 @@ const Stats = (() => {
     const played = (d, id) => { d.mp = apps[id] ? apps[id].mp : null; d.mins = apps[id] ? apps[id].mins : null; };
     for (const [id, d] of Object.entries(P)) { d.m = d._m.size; delete d._m; played(d, id); }
     for (const [id, d] of Object.entries(K)) { d.m = d._m.size; delete d._m; played(d, id); }
-    return { players: P, keepers: K, teams: T, check, totals };
+    return { players: P, keepers: K, teams: T, check, totals, played: apps };
   }
 
   return { BIG_CHANCE, isBig, score, results, matchSummary, matchPlayers, scorers, timeline, timelineAt, minutes, aggregate };
@@ -879,9 +915,9 @@ const Reader = (() => {
   const hasLineups = (m) => !!m && !!m.lu && ["h", "a"].some((sd) => { const L = m.lu[sd]; return !!L && ((L.xi || []).length > 0 || (L.subs || []).length > 0); });
 
   /* what goes public: finished matches only, every club's name, and only the players who appear in those matches
-     (shooters, the players who set them up, keepers, and anyone who put the ball into his own net). A match's line-ups go
-     too, where they are in, so the public page can count matches and minutes; the names of players who only appear in a
-     line-up stay private, as the page never shows them. */
+     (shooters, the players who set them up, keepers, anyone who put the ball into his own net, and anyone in a line-up). A
+     match's line-ups go too, where they are in, so the public page can count matches and minutes, and the Visualiser can
+     place every regular player, those who never shot included. */
   function data(teams, matches, now) {
     const outM = {}, used = new Set();
     for (const id of Object.keys(matches)) {
@@ -897,6 +933,12 @@ const Reader = (() => {
       if (gk.a) used.add(gk.a);
       for (const s of m.shots || []) { used.add(s.p); if (s.ap) used.add(s.ap); if (s.k) used.add(s.k); }
       for (const o of m.og || []) if (o.p) used.add(o.p);
+      if (outM[id].lu) for (const sd of ["h", "a"]) {
+        const l = outM[id].lu[sd];
+        if (!l) continue;
+        for (const pid of l.xi || []) used.add(pid);
+        for (const u of l.subs || []) { if (u.on) used.add(u.on); if (u.off) used.add(u.off); }
+      }
     }
     const outT = {};
     for (const id of Object.keys(teams)) {
@@ -3315,6 +3357,316 @@ function TeamDetail({ s, idx, r, close }) {
 }
 
 /* ============================================================
+   VISUALISER (the public page only): every regular outfield player placed by the chances they get (non-penalty xG per 90, up
+   the chart) and the chances they create for others (xA per 90, across), and split into four profiles by two dashed lines at
+   the league average of the players shown (or, at the reader's choice, the 75th percentile).
+   Who is on it: outfield players (anyone who kept goal in a match is left off) with at least 270 minutes, or a third of their
+   club's minutes once that is more, so the bar rises with the season. A player the page has no name for (a public file saved
+   before line-up players were named) is left off too.
+   Both axes start on a square-root scale, which spreads out the many players near zero; each player's profile is the same on
+   either scale. Pointing at a dot shows the player's numbers; clicking it (on a touch screen, a second tap) opens their card on
+   Players, and each dot is a real link to that card, so the browser can open it in a new tab.
+   ============================================================ */
+const ARCH = {
+  HH: { name: "Complete attackers", what: "High xG, high xA", where: "Top right" },
+  HL: { name: "Goalscorers", what: "High xG, low xA", where: "Top left" },
+  LH: { name: "Chance creators", what: "Low xG, high xA", where: "Bottom right" },
+  LL: { name: "Low attacking output", what: "Low xG, low xA", where: "Bottom left" },
+};
+const ARCH_ORDER = ["HH", "HL", "LH", "LL"];
+const ARCH_MIN = 270;
+const ARCH_R = 4.5;                                          // a dot's radius
+const archQuad = (r, c) => (r.npxg90 >= c.y ? "H" : "L") + (r.xa90 >= c.x ? "H" : "L");
+
+/* the players on the chart, from the season totals: minutes from the line-ups (agg.played), xG and xA from the shots */
+function archetypeRows(s, idx, agg) {
+  const keepers = new Set(Object.keys(agg.keepers));
+  for (const m of Object.values(s.matches)) if (m.gk) { if (m.gk.h) keepers.add(m.gk.h); if (m.gk.a) keepers.add(m.gk.a); }
+  const out = [];
+  for (const [id, a] of Object.entries(agg.played || {})) {
+    if (keepers.has(id) || !idx[id] || !a.mins) continue;
+    const d = agg.players[id], team = d ? d.team : idx[id].team;
+    const clubMins = agg.teams[team] ? agg.teams[team].mp * 90 : 0;
+    if (a.mins < Math.max(ARCH_MIN, clubMins / 3)) continue;
+    const npxg = d ? d.npxg : 0, xa = d ? d.xa : 0;
+    out.push({ id, name: idx[id].name, team, short: tshort(s.teams, team), club: tname(s.teams, team), mins: a.mins, npxg, xa,
+      npxg90: (npxg / a.mins) * 90, xa90: (xa / a.mins) * 90, sh: d ? d.sh : 0, card: !!d });
+  }
+  return out;
+}
+/* where the dashed lines go: the league average of the players on the chart, or their 75th percentile */
+function archCuts(rows) {
+  const xs = rows.map((r) => r.xa90), ys = rows.map((r) => r.npxg90);
+  const mean = (a) => a.reduce((t, v) => t + v, 0) / a.length;
+  const quant = (a, p) => { const v = [...a].sort((x, y) => x - y), k = (v.length - 1) * p, f = Math.floor(k), c = Math.min(f + 1, v.length - 1); return v[f] + (v[c] - v[f]) * (k - f); };
+  return { mean: { x: mean(xs), y: mean(ys), name: "league average", tag: "Average", short: "Avg" },
+    p75: { x: quant(xs, 0.75), y: quant(ys, 0.75), name: "75th percentile", tag: "75th percentile", short: "75th pct" } };
+}
+/* the name beside a dot: a nickname where there is one, otherwise the name, or its first initial and surname when long */
+function archShortName(n) {
+  const nick = /\(([^)]+)\)/.exec(n);
+  if (nick) return nick[1];
+  if (n.length <= 14) return n;
+  const p = n.split(" ");
+  return p[0][0] + ". " + p.slice(1).join(" ");
+}
+const archMeasure = (() => { let c = null; return (t, font) => { if (!c) c = document.createElement("canvas").getContext("2d"); c.font = font; return c.measureText(t).width; }; })();
+const archEsc = (t) => String(t).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+
+/* the chart as SVG markup, drawn for a width W: gridlines, the two dashed lines, the four profiles' names in their corners,
+   a dot per player (a link to their card where they have one), and names for the standouts placed clear of everything else */
+function archChart(rows, cut, scale, W, hrefOf) {
+  const cs = getComputedStyle(document.documentElement);
+  const BODY = getComputedStyle(document.body).fontFamily || "sans-serif", DISPLAY = cs.getPropertyValue("--font-display").trim() || BODY;
+  const R = ARCH_R, narrow = W < 600;
+  const H = Math.round(narrow ? W * 1.18 : Math.min(W * 0.64, 700));
+  const m = { l: narrow ? 46 : 62, r: narrow ? 8 : 14, t: 12, b: narrow ? 46 : 54 };
+  const pw = W - m.l - m.r, ph = H - m.t - m.b;
+  const XMAX = Math.max(0.2, Math.ceil(Math.max(...rows.map((r) => r.xa90)) * 10.4) / 10);
+  const YMAX = Math.max(0.2, Math.ceil(Math.max(...rows.map((r) => r.npxg90)) * 10.4) / 10);
+  const tf = scale === "sqrt" ? Math.sqrt : (v) => v;
+  const sx = (v) => m.l + (tf(Math.max(0, v)) / tf(XMAX)) * pw;
+  const sy = (v) => m.t + ph - (tf(Math.max(0, v)) / tf(YMAX)) * ph;
+  const f2 = (v) => v.toFixed(2);
+  const cx = sx(cut.x), cy = sy(cut.y);
+  const out = [];
+  out.push('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + " " + H + '" width="' + W + '" height="' + H + '" aria-hidden="true">');
+
+  /* gridlines and ticks: every 0.1 on the linear scale, more where the square root opens them out near zero */
+  const ticks = (max) => (scale === "sqrt" ? [0, 0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.2, 1.5, 2] : Array.from({ length: Math.round(max * 10) + 1 }, (_, i) => i / 10)).filter((v) => v <= max + 1e-9);
+  const thin = (ts, s, gap) => { const keep = []; let last = -1e9; for (const v of ts) { const p = s(v); if (Math.abs(p - last) >= gap || v === 0) { keep.push(v); last = p; } } return keep; };
+  const xt = thin(ticks(XMAX), sx, narrow ? 30 : 38), yt = thin(ticks(YMAX).reverse(), sy, 20).reverse();
+  const tl = (v) => (v === 0 ? "0" : v < 0.1 ? v.toFixed(2) : String(+v.toFixed(1)).replace(/^(\d)$/, "$1.0"));
+  for (const v of xt) out.push('<line class="ar-grid" x1="' + sx(v) + '" x2="' + sx(v) + '" y1="' + m.t + '" y2="' + (m.t + ph) + '"/>');
+  for (const v of yt) out.push('<line class="ar-grid" x1="' + m.l + '" x2="' + (m.l + pw) + '" y1="' + sy(v) + '" y2="' + sy(v) + '"/>');
+  out.push('<line class="ar-axis" x1="' + m.l + '" x2="' + (m.l + pw) + '" y1="' + (m.t + ph) + '" y2="' + (m.t + ph) + '"/>');
+  out.push('<line class="ar-axis" x1="' + m.l + '" x2="' + m.l + '" y1="' + m.t + '" y2="' + (m.t + ph) + '"/>');
+  for (const v of xt) out.push('<text class="ar-tick" x="' + sx(v) + '" y="' + (m.t + ph + 17) + '" text-anchor="middle">' + tl(v) + "</text>");
+  for (const v of yt) out.push('<text class="ar-tick" x="' + (m.l - 8) + '" y="' + (sy(v) + 4) + '" text-anchor="end">' + tl(v) + "</text>");
+  out.push('<text class="ar-title" x="' + (m.l + pw / 2) + '" y="' + (H - 8) + '" text-anchor="middle">Expected assists per 90 (xA/90) &#8594;</text>');
+  out.push('<text class="ar-title" transform="translate(' + (narrow ? 13 : 16) + " " + (m.t + ph / 2) + ') rotate(-90)" text-anchor="middle">Non-penalty xG per 90 (npxG/90) &#8594;</text>');
+  out.push('<line class="ar-cut" x1="' + cx + '" x2="' + cx + '" y1="' + m.t + '" y2="' + (m.t + ph) + '"/>');
+  out.push('<line class="ar-cut" x1="' + m.l + '" x2="' + (m.l + pw) + '" y1="' + cy + '" y2="' + cy + '"/>');
+
+  /* what is already taken, so whatever is placed later keeps clear of it */
+  const taken = [];
+  const hit = (b) => taken.some((o) => b.x0 < o.x1 && b.x1 > o.x0 && b.y0 < o.y1 && b.y1 > o.y0);
+  const dots = rows.map((r) => ({ r, x: sx(r.xa90), y: sy(r.npxg90), q: archQuad(r, cut), href: hrefOf(r) }));
+  const onDot = (b, except) => dots.some((d) => d !== except && Math.hypot(Math.min(Math.max(d.x, b.x0), b.x1) - d.x, Math.min(Math.max(d.y, b.y0), b.y1) - d.y) < R + 1.5);
+  const inPlot = (b) => b.x0 >= m.l + 3 && b.x1 <= m.l + pw - 3 && b.y0 >= m.t + 2 && b.y1 <= m.t + ph - 3;
+
+  /* each profile's name and count, in its outer corner where that is clear of players, else as close to it as it fits; where
+     its quadrant is too narrow for the name on one line, it takes two. A name that has to sit over players goes over them, on a
+     pale ground, once the dots are in. */
+  const counts = { HH: 0, HL: 0, LH: 0, LL: 0 };
+  for (const d of dots) counts[d.q] += 1;
+  const regions = { HL: [m.l, m.t, cx, cy], HH: [cx, m.t, m.l + pw, cy], LL: [m.l, cy, cx, m.t + ph], LH: [cx, cy, m.l + pw, m.t + ph] };
+  const qfont = narrow ? 14 : 17, qline = qfont + 1, qf = "600 " + qfont + "px " + DISPLAY, late = [];
+  for (const k of ARCH_ORDER) {
+    const [x0, y0, x1, y1] = regions[k];
+    const name = ARCH[k].name, cnt = counts[k] + (counts[k] === 1 ? " player" : " players");
+    let lines = [name];
+    if (archMeasure(name, qf) > x1 - x0 - 14) { const sp = name.lastIndexOf(" "); lines = sp > 0 ? [name.slice(0, sp), name.slice(sp + 1)] : [name]; }
+    const w = Math.max(...lines.map((l) => archMeasure(l, qf)), archMeasure(cnt, "400 11.5px " + BODY)) + 4, hgt = lines.length * qline + 15;
+    const right = k === "HH" || k === "LH", top = k === "HH" || k === "HL";
+    let best = null;
+    for (let i = 0; i < 40 && !best; i++) {
+      for (let j = 0; j < 10 && !best; j++) {
+        const bx0 = right ? x1 - 6 - w - j * 18 : x0 + 6 + j * 18, by0 = top ? y0 + 5 + i * 10 : y1 - 5 - hgt - i * 10;
+        const b = { x0: bx0, x1: bx0 + w, y0: by0, y1: by0 + hgt };
+        if (b.x0 < x0 + 2 || b.x1 > x1 - 2 || b.y0 < y0 + 2 || b.y1 > y1 - 2) continue;
+        if (!hit(b) && !onDot(b, null)) best = b;
+      }
+    }
+    let dest = out;
+    if (!best) {
+      const bx0 = right ? x1 - 6 - w : x0 + 6, by0 = top ? y0 + 5 : y1 - 5 - hgt;
+      best = { x0: bx0, x1: bx0 + w, y0: by0, y1: by0 + hgt };
+      dest = late;
+      late.push('<rect class="ar-qpill" x="' + (best.x0 - 4) + '" y="' + (best.y0 - 2) + '" width="' + (w + 8) + '" height="' + (hgt + 4) + '" rx="6"/>');
+    }
+    taken.push(best);
+    const tx = right ? best.x1 - 2 : best.x0 + 2, anchor = right ? "end" : "start";
+    lines.forEach((l, i) => dest.push('<text class="ar-qname" x="' + tx + '" y="' + (best.y0 + qfont - 1 + i * qline) + '" text-anchor="' + anchor + '" style="font-size:' + qfont + 'px">' + archEsc(l) + "</text>"));
+    dest.push('<text class="ar-qcount" x="' + tx + '" y="' + (best.y0 + lines.length * qline + 11) + '" text-anchor="' + anchor + '">' + cnt + "</text>");
+  }
+
+  /* each dashed line's value where it leaves the plot (the vertical one at the top, the horizontal one at the right), moved
+     along the line until it is clear of the names */
+  const tag = narrow ? cut.short : cut.tag, lf = "500 11.5px " + BODY;
+  const vt = tag + " " + f2(cut.x), vw = archMeasure(vt, lf);
+  for (let i = 0; i < 30; i++) {
+    const yy = m.t + 2 + i * 12;
+    const o = [{ x0: cx + 5, a: "start" }, { x0: cx - 5 - vw, a: "end" }].find((c) => { const b = { x0: c.x0, x1: c.x0 + vw, y0: yy, y1: yy + 14 }; return inPlot(b) && !hit(b); });
+    if (o) { taken.push({ x0: o.x0, x1: o.x0 + vw, y0: yy, y1: yy + 14 }); out.push('<text class="ar-cutl" x="' + (o.a === "start" ? cx + 5 : cx - 5) + '" y="' + (yy + 11) + '" text-anchor="' + o.a + '">' + archEsc(vt) + "</text>"); break; }
+  }
+  const ht = tag + " " + f2(cut.y), hw = archMeasure(ht, lf);
+  for (let i = 0; i < 30; i++) {
+    const xx = m.l + pw - 4 - hw - i * 16;
+    const o = [{ y0: cy - 17 }, { y0: cy + 3 }].find((c) => { const b = { x0: xx, x1: xx + hw, y0: c.y0, y1: c.y0 + 14 }; return inPlot(b) && !hit(b); });
+    if (o) { taken.push({ x0: xx, x1: xx + hw, y0: o.y0, y1: o.y0 + 14 }); out.push('<text class="ar-cutl" x="' + xx + '" y="' + (o.y0 + 11) + '">' + archEsc(ht) + "</text>"); break; }
+  }
+
+  /* the dots, the busiest first so the standouts sit on top; each is a link to the player's card where they have one */
+  const score = (d) => Math.hypot(d.r.xa90 / cut.x, d.r.npxg90 / cut.y);
+  for (const d of dots.slice().sort((a, b) => score(a) - score(b))) {
+    const c = '<circle class="ar-pt" cx="' + d.x.toFixed(1) + '" cy="' + d.y.toFixed(1) + '" r="' + R + '"/>';
+    out.push(d.href ? '<a href="' + archEsc(d.href) + '" aria-label="' + archEsc(d.r.name) + '">' + c + "</a>" : c);
+  }
+  out.push(...late);
+
+  /* names for the standouts: the leaders of the three busier profiles first, then the furthest from the middle */
+  const lead = (q, key, n) => dots.filter((d) => d.q === q).sort((a, b) => (key ? b.r[key] - a.r[key] : score(b) - score(a))).slice(0, n);
+  const want = [...lead("HH", null, 4), ...lead("HL", "npxg90", 3), ...lead("LH", "xa90", 3), ...dots.slice().sort((a, b) => score(b) - score(a))];
+  const maxLabels = narrow ? 8 : 18, done = new Set();
+  let placed = 0;
+  for (const d of want) {
+    if (placed >= maxLabels || done.has(d)) continue;
+    done.add(d);
+    const t = archShortName(d.r.name), w = archMeasure(t, "500 12px " + BODY), hh = 14;
+    const spots = [[R + 4, -hh / 2], [-R - 4 - w, -hh / 2], [-w / 2, -R - 3 - hh], [-w / 2, R + 3], [R + 1, -R - hh + 1], [-R - 1 - w, -R - hh + 1], [R + 1, R - 1], [-R - 1 - w, R - 1]];
+    for (const [dx, dy] of spots) {
+      const b = { x0: d.x + dx, x1: d.x + dx + w, y0: d.y + dy, y1: d.y + dy + hh };
+      if (!inPlot(b) || hit(b) || onDot(b, d)) continue;
+      taken.push(b); placed += 1;
+      out.push('<text class="ar-lab" x="' + b.x0.toFixed(1) + '" y="' + (b.y0 + 11).toFixed(1) + '">' + archEsc(t) + "</text>");
+      break;
+    }
+  }
+  out.push("</svg>");
+  return { html: out.join(""), dots, counts, W, H };
+}
+
+function VisualiserView({ s, idx, agg }) {
+  const nav = useContext(NavCtx);
+  const rows = useMemo(() => archetypeRows(s, idx, agg), [s, idx, agg]);
+  const cuts = useMemo(() => (rows.length ? archCuts(rows) : null), [rows]);
+  const [split, setSplit] = useState("mean");
+  const [scale, setScale] = useState("sqrt");
+  const boxRef = useRef(null);
+  const width = useWidth(boxRef, typeof window !== "undefined" && window.innerWidth ? Math.min(1146, window.innerWidth - 66) : 1000);
+  /* the names are measured to place them, so the chart is drawn again once the page's own fonts have loaded */
+  const [fonts, setFonts] = useState(0);
+  useEffect(() => {
+    let live = true;
+    try { if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (live) setFonts((n) => n + 1); }); } catch (e) { /* drawn with what is there */ }
+    return () => { live = false; };
+  }, []);
+  const cardHref = (r) => (r.card && nav ? nav.href({ tab: "players", item: r.id }) : null);
+  const cut = cuts ? cuts[split] : null;
+  const chart = useMemo(() => (cut && width > 0 ? archChart(rows, cut, scale, Math.max(300, Math.round(width)), cardHref) : null), [rows, cut, scale, width, fonts]);
+  /* the player being pointed at (or, on a touch screen, tapped): an index into chart.dots */
+  const [tip, setTip] = useState(null);
+  const lastPointer = useRef("mouse");
+  useEffect(() => { setTip(null); }, [chart]);
+  useEffect(() => {
+    if (!tip || !tip.touch) return undefined;
+    const away = (e) => { if (e.pointerType !== "mouse" && boxRef.current && !boxRef.current.contains(e.target)) setTip(null); };
+    document.addEventListener("pointerdown", away);
+    return () => document.removeEventListener("pointerdown", away);
+  }, [tip]);
+  if (!rows.length) return h(NoShotsYet, { what: "the chart of every player's goal threat and chance creation" });
+
+  const near = (e) => {
+    const svg = boxRef.current && boxRef.current.querySelector("svg");
+    if (!svg || !chart) return -1;
+    const b = svg.getBoundingClientRect(), k = chart.W / b.width;
+    const x = (e.clientX - b.left) * k, y = (e.clientY - b.top) * k;
+    let best = -1, bd = 24 * k;
+    chart.dots.forEach((d, i) => { const dd = Math.hypot(d.x - x, d.y - y); if (dd < bd) { bd = dd; best = i; } });
+    return best;
+  };
+  const openCard = (d) => nav.go({ tab: "players", item: d.r.id });
+  const pointing = {
+    onPointerDown: (e) => { lastPointer.current = e.pointerType || "mouse"; },
+    onPointerMove: (e) => { if (e.pointerType !== "mouse") return; lastPointer.current = "mouse"; const i = near(e); setTip((t) => (i < 0 ? null : t && t.i === i ? t : { i, touch: false })); },
+    onPointerLeave: (e) => { if (e.pointerType === "mouse") setTip(null); },
+    onClick: (e) => {
+      const i = near(e);
+      if (lastPointer.current !== "mouse") {
+        /* a touch: the first tap on a player shows their numbers, a second opens their card */
+        if (i < 0) { setTip(null); return; }
+        if (!(tip && tip.i === i && tip.touch)) { e.preventDefault(); setTip({ i, touch: true }); return; }
+      }
+      if (i < 0) return;
+      const d = chart.dots[i];
+      if (!d.href) { e.preventDefault(); return; }
+      if (!plainClick(e)) { if (!e.target.closest("a")) { e.preventDefault(); openElsewhere(d.href); } return; }
+      e.preventDefault();
+      openCard(d);
+    },
+    onAuxClick: (e) => { if (e.button !== 1 || e.target.closest("a")) return; const i = near(e); if (i >= 0 && chart.dots[i].href) openElsewhere(chart.dots[i].href); },
+  };
+
+  let tipEl = null, ring = null;
+  if (chart && tip && chart.dots[tip.i]) {
+    const d = chart.dots[tip.i], r = d.r, q = ARCH[d.q];
+    const cw = boxRef.current ? boxRef.current.clientWidth : chart.W, k = cw / chart.W, px = d.x * k, py = d.y * k;
+    const left = px > cw * 0.6, below = py < 140;
+    tipEl = h("div", { className: "tip ar-tip", style: { left: px, top: py, transform: "translate(" + (left ? "calc(-100% - 14px)" : "14px") + ", " + (below ? "14px" : "calc(-100% - 12px)") + ")" } },
+      h("strong", null, r.name),
+      h("span", { className: "ar-soft" }, r.club + " \u00b7 " + r.mins.toLocaleString("en-US") + " min"),
+      h("span", { className: "ar-row" }, h("span", null, "npxG/90"), h("b", null, r.npxg90.toFixed(2))),
+      h("span", { className: "ar-row" }, h("span", null, "xA/90"), h("b", null, r.xa90.toFixed(2))),
+      h("span", { className: "ar-row ar-soft" }, h("span", null, "npxG, xA"), h("span", null, r.npxg.toFixed(2) + ", " + r.xa.toFixed(2))),
+      h("span", { className: "ar-q" }, q.name),
+      h("span", { className: "ar-soft" }, q.what),
+      d.href ? h("span", { className: "ar-go" }, (tip.touch ? "Tap again" : "Click") + " to see their " + (r.sh ? "shot map" : "numbers on Players")) : null);
+    ring = h("svg", { className: "ar-hot", viewBox: "0 0 " + chart.W + " " + chart.H, "aria-hidden": "true" }, h("circle", { className: "ar-ring", cx: d.x, cy: d.y, r: ARCH_R + 1.5 }));
+  }
+
+  /* who sits where: each profile's count and its leading players, each a link to their card */
+  const by = { HH: (r) => r.npxg90 + r.xa90, HL: (r) => r.npxg90, LH: (r) => r.xa90, LL: (r) => r.npxg90 + r.xa90 };
+  const lead = { HH: "npxG/90 + xA/90", HL: "npxG/90", LH: "xA/90", LL: "npxG/90 + xA/90" };
+  const follow = (r) => (e) => { if (!plainClick(e)) return; e.preventDefault(); nav.go({ tab: "players", item: r.id }); };
+  const quads = h("div", { className: "ar-quads" }, ARCH_ORDER.map((k) => {
+    const list = rows.filter((r) => archQuad(r, cut) === k).sort((a, b) => by[k](b) - by[k](a));
+    return h("div", { key: k, className: "card stack tight ar-quad" },
+      h("h3", { className: "h2" }, ARCH[k].name),
+      h("p", { className: "sub" }, ARCH[k].where + " \u00b7 " + ARCH[k].what + " \u00b7 " + list.length + (list.length === 1 ? " player" : " players")),
+      list.length ? h("ol", null, list.slice(0, 5).map((r) => h("li", { key: r.id },
+        r.card && nav ? h("a", { href: nav.href({ tab: "players", item: r.id }), onClick: follow(r) }, r.name) : h("span", null, r.name),
+        h("span", { className: "ar-meta" }, " " + r.short + " \u00b7 " + r.npxg90.toFixed(2) + " npxG \u00b7 " + r.xa90.toFixed(2) + " xA")))) : null,
+      list.length ? h("p", { className: "sub" }, "Leaders by " + lead[k] + ".") : h("p", { className: "sub" }, "Nobody here yet."));
+  }));
+
+  const COLS = [
+    { key: "name", label: "Player", get: (r) => r.name, strong: true },
+    { key: "short", label: "Club", get: (r) => r.short },
+    { key: "mins", label: "Minutes", num: true, get: (r) => r.mins, fmt: (v) => v.toLocaleString("en-US") },
+    { key: "npxg90", label: "npxG/90", num: true, get: (r) => r.npxg90, fmt: (v) => v.toFixed(2) },
+    { key: "xa90", label: "xA/90", num: true, get: (r) => r.xa90, fmt: (v) => v.toFixed(2) },
+    { key: "q", label: "Profile", get: (r) => ARCH[archQuad(r, cut)].name },
+  ];
+  const n = rows.length;
+  return h("div", { className: "stack" },
+    h("p", { className: "sub table-hint" }, "Point at a player for their numbers, and click to see their shot map. From " + matchesWord(agg.totals.matches) + "."),
+    h("div", { className: "card stack" },
+      h("div", { className: "stack tight" },
+        h("h2", { className: "h2" }, "Goal threat and chance creation"),
+        h("p", { className: "sub ar-lede" }, "Every regular outfield player, placed by the chances they get (non-penalty xG per 90, up) and the chances they create for others (xA per 90, across). The dashed lines mark the " +
+          cut.name + " of these " + n + " players: " + cut.y.toFixed(2) + " npxG and " + cut.x.toFixed(2) + " xA per 90.")),
+      h("div", { className: "row" },
+        h(Seg, { label: "Split at", value: split, onChange: setSplit, options: [{ value: "mean", label: "League average" }, { value: "p75", label: "75th percentile" }] }),
+        h(Seg, { label: "Axes", value: scale, onChange: setScale, options: [{ value: "sqrt", label: "Square root" }, { value: "linear", label: "Linear" }] })),
+      h("div", Object.assign({ className: "ar-chart", ref: boxRef, role: "img",
+        "aria-label": "Chart of " + n + " players: xA per 90 across, non-penalty xG per 90 up, split at the " + cut.name + " into " + ARCH_ORDER.map((k) => ARCH[k].name + " (" + (chart ? chart.counts[k] : 0) + ")").join(", ") + ". The table below lists every player." }, pointing),
+        chart ? h("div", { className: "ar-svg", dangerouslySetInnerHTML: { __html: chart.html } }) : null, ring, tipEl),
+      h("p", { className: "sub" }, scale === "sqrt" ? "Both axes use a square-root scale, which spreads out the many players near zero. Each player sits in the same quadrant on either scale." :
+        "A linear scale keeps the gaps true to size, so the players near zero bunch up.")),
+    quads,
+    h("details", { className: "card ar-all" },
+      h("summary", null, "All " + n + " players as a table"),
+      h(SortTable, { cols: COLS, rows, initial: { key: "npxg90", dir: -1 }, rowKey: (r) => r.id, onRow: (id) => { const r = rows.find((x) => x.id === id); if (r && r.card) nav.go({ tab: "players", item: id }); }, rowHref: (id) => { const r = rows.find((x) => x.id === id); return r && r.card && nav ? nav.href({ tab: "players", item: id }) : null; }, caption: "Every player on the chart" })),
+    h(Defs, { items: [
+      ["npxG per 90", "Non-penalty expected goals for every 90 minutes played: the quality of the chances a player gets, penalties left out."],
+      ["xA per 90", "Expected assists for every 90 minutes played: the xG of the shots a player sets up."],
+      ["On the chart", "Outfield players with at least " + ARCH_MIN + " minutes, or a third of their club's minutes once that is more. Keepers are left out."],
+      ["The dashed lines", "The league average of the players on the chart, or their 75th percentile. Above a line is high, below it low."],
+    ] }));
+}
+
+/* ============================================================
    SQUADS: the players of each club
    ============================================================ */
 const cleanNum = (v) => { const n = Number(v); return v === "" || v == null || !isFinite(n) || n < 0 || n > 99 ? null : Math.round(n); };
@@ -3537,8 +3889,9 @@ function MethodView({ s, idx, agg }) {
 /* ============================================================
    THE PAGE SHELL
    ============================================================ */
-/* the public page has no Squads tab: squads are a tagging tool */
-const TABS = [["matches", "Matches"], ["players", "Players"], ["keepers", "Keepers"], ["teams", "Teams"], ["squads", "Squads"], ["method", "Method"]].filter((t) => !READER || t[0] !== "squads");
+/* the public page has no Squads tab (squads are a tagging tool), and the tracker no Visualiser */
+const TABS = [["matches", "Matches"], ["players", "Players"], ["keepers", "Keepers"], ["teams", "Teams"], ["squads", "Squads"], ["visualiser", "Visualiser"], ["method", "Method"]]
+  .filter((t) => (READER ? t[0] !== "squads" : t[0] !== "visualiser"));
 const ROUTE_KEY = READER ? "islxg.public.route" : "islxg.route";
 /* the public page goes by its own name; the tracker keeps its working name */
 const SITE_NAME = READER ? PAGE_NAMES.reader : PAGE_NAMES.tracker;
@@ -3561,7 +3914,7 @@ function routeOfHash(hash) {
   let id = null;
   try { id = parts[1] ? decodeURIComponent(parts[1]) : null; } catch (e) { id = null; }
   if (tab === "matches") return { tab, matchId: id, item: null, view: "tag" };
-  return { tab, matchId: null, item: tab === "method" ? null : id, view: "tag" };
+  return { tab, matchId: null, item: tab === "players" || tab === "keepers" || tab === "teams" ? id : null, view: "tag" };
 }
 function hashOfRoute(r, s, idx) {
   const id = r.tab === "matches" ? r.matchId : r.item;
@@ -3709,6 +4062,7 @@ function App({ initial }) {
   else if (route.tab === "players") view = h(PlayersView, { s, idx, agg });
   else if (route.tab === "keepers") view = h(KeepersView, { s, idx, agg });
   else if (route.tab === "teams") view = h(TeamsView, { s, idx, agg });
+  else if (route.tab === "visualiser" && READER) view = h(VisualiserView, { s, idx, agg });
   else if (route.tab === "squads") view = h(SquadsView, { s });
   else view = h(MethodView, { s, idx, agg });
 
