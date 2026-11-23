@@ -3358,23 +3358,26 @@ function TeamDetail({ s, idx, r, close }) {
 
 /* ============================================================
    VISUALISER (the public page only): every regular outfield player placed by the chances they get (non-penalty xG per 90, up
-   the chart) and the chances they create for others (xA per 90, across), and split into four profiles by two dashed lines at
-   the league average of the players shown (or, at the reader's choice, the 75th percentile).
+   the chart) and the chances they create for others (xA per 90, across), and split into four by two dashed lines at the 82nd
+   percentile of the players on it, one for each measure. The bottom left, where most players sit, draws only its top 20% (by
+   both measures against the lines), so the chart is not crowded along its axes; the table under it lists everyone.
    Who is on it: outfield players (anyone who kept goal in a match is left off) with at least 270 minutes, or a third of their
    club's minutes once that is more, so the bar rises with the season. A player the page has no name for (a public file saved
    before line-up players were named) is left off too.
-   Both axes start on a square-root scale, which spreads out the many players near zero; each player's profile is the same on
-   either scale. Pointing at a dot shows the player's numbers; clicking it (on a touch screen, a second tap) opens their card on
+   Both axes use a square-root scale, which spreads out the many players near zero (a player's quadrant does not depend on it);
+   the page does not spell that out. There are no switches: the 82nd percentile and the square root are the chart. Pointing at a dot shows the player's numbers; clicking it (on a touch screen, a second tap) opens their card on
    Players, and each dot is a real link to that card, so the browser can open it in a new tab.
    ============================================================ */
 const ARCH = {
-  HH: { name: "Complete attackers", what: "High xG, high xA", where: "Top right" },
-  HL: { name: "Goalscorers", what: "High xG, low xA", where: "Top left" },
-  LH: { name: "Chance creators", what: "Low xG, high xA", where: "Bottom right" },
-  LL: { name: "Low attacking output", what: "Low xG, low xA", where: "Bottom left" },
+  HH: { name: "High xG, High xA", where: "Top right" },
+  HL: { name: "High xG, Low xA", where: "Top left" },
+  LH: { name: "Low xG, High xA", where: "Bottom right" },
+  LL: { name: "Low xG, Low xA", where: "Bottom left" },
 };
 const ARCH_ORDER = ["HH", "HL", "LH", "LL"];
 const ARCH_MIN = 270;
+const ARCH_PCT = 0.82;                                       // where the dashed lines go: this percentile of each measure
+const ARCH_LL_SHOWN = 0.2;                                   // the share of the bottom left drawn: its top fifth
 const ARCH_R = 4.5;                                          // a dot's radius
 const archQuad = (r, c) => (r.npxg90 >= c.y ? "H" : "L") + (r.xa90 >= c.x ? "H" : "L");
 
@@ -3394,13 +3397,17 @@ function archetypeRows(s, idx, agg) {
   }
   return out;
 }
-/* where the dashed lines go: the league average of the players on the chart, or their 75th percentile */
-function archCuts(rows) {
-  const xs = rows.map((r) => r.xa90), ys = rows.map((r) => r.npxg90);
-  const mean = (a) => a.reduce((t, v) => t + v, 0) / a.length;
+/* where the dashed lines go: the 82nd percentile of each measure across the players on the chart */
+function archCut(rows) {
   const quant = (a, p) => { const v = [...a].sort((x, y) => x - y), k = (v.length - 1) * p, f = Math.floor(k), c = Math.min(f + 1, v.length - 1); return v[f] + (v[c] - v[f]) * (k - f); };
-  return { mean: { x: mean(xs), y: mean(ys), name: "league average", tag: "Average", short: "Avg" },
-    p75: { x: quant(xs, 0.75), y: quant(ys, 0.75), name: "75th percentile", tag: "75th percentile", short: "75th pct" } };
+  return { x: quant(rows.map((r) => r.xa90), ARCH_PCT), y: quant(rows.map((r) => r.npxg90), ARCH_PCT) };
+}
+/* how far a player is towards the top right, each measure against its line: what ranks the bottom left */
+const archScore = (r, c) => r.npxg90 / c.y + r.xa90 / c.x;
+/* the bottom-left players drawn: its top fifth by that score */
+function archLLShown(rows, c) {
+  const ll = rows.filter((r) => archQuad(r, c) === "LL").sort((a, b) => archScore(b, c) - archScore(a, c));
+  return { all: ll.length, shown: new Set(ll.slice(0, Math.ceil(ll.length * ARCH_LL_SHOWN)).map((r) => r.id)) };
 }
 /* the name beside a dot: a nickname where there is one, otherwise the name, or its first initial and surname when long */
 function archShortName(n) {
@@ -3413,8 +3420,8 @@ function archShortName(n) {
 const archMeasure = (() => { let c = null; return (t, font) => { if (!c) c = document.createElement("canvas").getContext("2d"); c.font = font; return c.measureText(t).width; }; })();
 const archEsc = (t) => String(t).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
 
-/* the chart as SVG markup, drawn for a width W: gridlines, the two dashed lines, the four profiles' names in their corners,
-   a dot per player (a link to their card where they have one), and names for the standouts placed clear of everything else */
+/* the chart as SVG markup, drawn for a width W: gridlines, the two dashed lines, the four quadrants' names in their corners,
+   a dot per player drawn (a link to their card where they have one), and names for the standouts placed clear of the rest */
 function archChart(rows, cut, scale, W, hrefOf) {
   const cs = getComputedStyle(document.documentElement);
   const BODY = getComputedStyle(document.body).fontFamily || "sans-serif", DISPLAY = cs.getPropertyValue("--font-display").trim() || BODY;
@@ -3451,23 +3458,27 @@ function archChart(rows, cut, scale, W, hrefOf) {
   /* what is already taken, so whatever is placed later keeps clear of it */
   const taken = [];
   const hit = (b) => taken.some((o) => b.x0 < o.x1 && b.x1 > o.x0 && b.y0 < o.y1 && b.y1 > o.y0);
-  const dots = rows.map((r) => ({ r, x: sx(r.xa90), y: sy(r.npxg90), q: archQuad(r, cut), href: hrefOf(r) }));
+  const ll = archLLShown(rows, cut);
+  const counts = { HH: 0, HL: 0, LH: 0, LL: 0 };
+  for (const r of rows) counts[archQuad(r, cut)] += 1;
+  const dots = rows.filter((r) => archQuad(r, cut) !== "LL" || ll.shown.has(r.id)).map((r) => ({ r, x: sx(r.xa90), y: sy(r.npxg90), q: archQuad(r, cut), href: hrefOf(r) }));
   const onDot = (b, except) => dots.some((d) => d !== except && Math.hypot(Math.min(Math.max(d.x, b.x0), b.x1) - d.x, Math.min(Math.max(d.y, b.y0), b.y1) - d.y) < R + 1.5);
   const inPlot = (b) => b.x0 >= m.l + 3 && b.x1 <= m.l + pw - 3 && b.y0 >= m.t + 2 && b.y1 <= m.t + ph - 3;
 
-  /* each profile's name and count, in its outer corner where that is clear of players, else as close to it as it fits; where
-     its quadrant is too narrow for the name on one line, it takes two. A name that has to sit over players goes over them, on a
-     pale ground, once the dots are in. */
-  const counts = { HH: 0, HL: 0, LH: 0, LL: 0 };
-  for (const d of dots) counts[d.q] += 1;
+  /* each quadrant's name and count, in its outer corner where that is clear of players, else as close to it as it fits; where
+     the quadrant is too narrow for the name on one line, it takes two. A name that has to sit over players goes over them, on
+     a pale ground, once the dots are in. The bottom left also says how many of its players are drawn. */
   const regions = { HL: [m.l, m.t, cx, cy], HH: [cx, m.t, m.l + pw, cy], LL: [m.l, cy, cx, m.t + ph], LH: [cx, cy, m.l + pw, m.t + ph] };
   const qfont = narrow ? 14 : 17, qline = qfont + 1, qf = "600 " + qfont + "px " + DISPLAY, late = [];
   for (const k of ARCH_ORDER) {
     const [x0, y0, x1, y1] = regions[k];
-    const name = ARCH[k].name, cnt = counts[k] + (counts[k] === 1 ? " player" : " players");
+    const name = ARCH[k].name, cnt = counts[k] + (counts[k] === 1 ? " player" : " players") + (k === "LL" && ll.shown.size < counts[k] ? ", top " + ll.shown.size + " drawn" : "");
     let lines = [name];
-    if (archMeasure(name, qf) > x1 - x0 - 14) { const sp = name.lastIndexOf(" "); lines = sp > 0 ? [name.slice(0, sp), name.slice(sp + 1)] : [name]; }
-    const w = Math.max(...lines.map((l) => archMeasure(l, qf)), archMeasure(cnt, "400 11.5px " + BODY)) + 4, hgt = lines.length * qline + 15;
+    if (archMeasure(name, qf) > x1 - x0 - 14) { const cm = name.indexOf(", "); lines = cm > 0 ? [name.slice(0, cm + 1), name.slice(cm + 2)] : [name]; }
+    const cf = "400 11.5px " + BODY;
+    let cl = [cnt];
+    if (archMeasure(cnt, cf) > x1 - x0 - 14) { const cm = cnt.indexOf(", "); if (cm > 0) cl = [cnt.slice(0, cm + 1), cnt.slice(cm + 2)]; }
+    const w = Math.max(...lines.map((l) => archMeasure(l, qf)), ...cl.map((l) => archMeasure(l, cf))) + 4, hgt = lines.length * qline + cl.length * 13 + 2;
     const right = k === "HH" || k === "LH", top = k === "HH" || k === "HL";
     let best = null;
     for (let i = 0; i < 40 && !best; i++) {
@@ -3488,27 +3499,11 @@ function archChart(rows, cut, scale, W, hrefOf) {
     taken.push(best);
     const tx = right ? best.x1 - 2 : best.x0 + 2, anchor = right ? "end" : "start";
     lines.forEach((l, i) => dest.push('<text class="ar-qname" x="' + tx + '" y="' + (best.y0 + qfont - 1 + i * qline) + '" text-anchor="' + anchor + '" style="font-size:' + qfont + 'px">' + archEsc(l) + "</text>"));
-    dest.push('<text class="ar-qcount" x="' + tx + '" y="' + (best.y0 + lines.length * qline + 11) + '" text-anchor="' + anchor + '">' + cnt + "</text>");
-  }
-
-  /* each dashed line's value where it leaves the plot (the vertical one at the top, the horizontal one at the right), moved
-     along the line until it is clear of the names */
-  const tag = narrow ? cut.short : cut.tag, lf = "500 11.5px " + BODY;
-  const vt = tag + " " + f2(cut.x), vw = archMeasure(vt, lf);
-  for (let i = 0; i < 30; i++) {
-    const yy = m.t + 2 + i * 12;
-    const o = [{ x0: cx + 5, a: "start" }, { x0: cx - 5 - vw, a: "end" }].find((c) => { const b = { x0: c.x0, x1: c.x0 + vw, y0: yy, y1: yy + 14 }; return inPlot(b) && !hit(b); });
-    if (o) { taken.push({ x0: o.x0, x1: o.x0 + vw, y0: yy, y1: yy + 14 }); out.push('<text class="ar-cutl" x="' + (o.a === "start" ? cx + 5 : cx - 5) + '" y="' + (yy + 11) + '" text-anchor="' + o.a + '">' + archEsc(vt) + "</text>"); break; }
-  }
-  const ht = tag + " " + f2(cut.y), hw = archMeasure(ht, lf);
-  for (let i = 0; i < 30; i++) {
-    const xx = m.l + pw - 4 - hw - i * 16;
-    const o = [{ y0: cy - 17 }, { y0: cy + 3 }].find((c) => { const b = { x0: xx, x1: xx + hw, y0: c.y0, y1: c.y0 + 14 }; return inPlot(b) && !hit(b); });
-    if (o) { taken.push({ x0: xx, x1: xx + hw, y0: o.y0, y1: o.y0 + 14 }); out.push('<text class="ar-cutl" x="' + xx + '" y="' + (o.y0 + 11) + '">' + archEsc(ht) + "</text>"); break; }
+    cl.forEach((l, i) => dest.push('<text class="ar-qcount" x="' + tx + '" y="' + (best.y0 + lines.length * qline + 11 + i * 13) + '" text-anchor="' + anchor + '">' + l + "</text>"));
   }
 
   /* the dots, the busiest first so the standouts sit on top; each is a link to the player's card where they have one */
-  const score = (d) => Math.hypot(d.r.xa90 / cut.x, d.r.npxg90 / cut.y);
+  const score = (d) => archScore(d.r, cut);
   for (const d of dots.slice().sort((a, b) => score(a) - score(b))) {
     const c = '<circle class="ar-pt" cx="' + d.x.toFixed(1) + '" cy="' + d.y.toFixed(1) + '" r="' + R + '"/>';
     out.push(d.href ? '<a href="' + archEsc(d.href) + '" aria-label="' + archEsc(d.r.name) + '">' + c + "</a>" : c);
@@ -3517,7 +3512,7 @@ function archChart(rows, cut, scale, W, hrefOf) {
 
   /* names for the standouts: the leaders of the three busier profiles first, then the furthest from the middle */
   const lead = (q, key, n) => dots.filter((d) => d.q === q).sort((a, b) => (key ? b.r[key] - a.r[key] : score(b) - score(a))).slice(0, n);
-  const want = [...lead("HH", null, 4), ...lead("HL", "npxg90", 3), ...lead("LH", "xa90", 3), ...dots.slice().sort((a, b) => score(b) - score(a))];
+  const want = [...lead("HH", null, 4), ...lead("HL", "npxg90", 3), ...lead("LH", "xa90", 3), ...dots.filter((d) => d.q !== "LL").sort((a, b) => score(b) - score(a))];
   const maxLabels = narrow ? 8 : 18, done = new Set();
   let placed = 0;
   for (const d of want) {
@@ -3534,15 +3529,13 @@ function archChart(rows, cut, scale, W, hrefOf) {
     }
   }
   out.push("</svg>");
-  return { html: out.join(""), dots, counts, W, H };
+  return { html: out.join(""), dots, counts, llShown: ll.shown.size, W, H };
 }
 
 function VisualiserView({ s, idx, agg }) {
   const nav = useContext(NavCtx);
   const rows = useMemo(() => archetypeRows(s, idx, agg), [s, idx, agg]);
-  const cuts = useMemo(() => (rows.length ? archCuts(rows) : null), [rows]);
-  const [split, setSplit] = useState("mean");
-  const [scale, setScale] = useState("sqrt");
+  const cut = useMemo(() => (rows.length ? archCut(rows) : null), [rows]);
   const boxRef = useRef(null);
   const width = useWidth(boxRef, typeof window !== "undefined" && window.innerWidth ? Math.min(1146, window.innerWidth - 66) : 1000);
   /* the names are measured to place them, so the chart is drawn again once the page's own fonts have loaded */
@@ -3553,8 +3546,7 @@ function VisualiserView({ s, idx, agg }) {
     return () => { live = false; };
   }, []);
   const cardHref = (r) => (r.card && nav ? nav.href({ tab: "players", item: r.id }) : null);
-  const cut = cuts ? cuts[split] : null;
-  const chart = useMemo(() => (cut && width > 0 ? archChart(rows, cut, scale, Math.max(300, Math.round(width)), cardHref) : null), [rows, cut, scale, width, fonts]);
+  const chart = useMemo(() => (cut && width > 0 ? archChart(rows, cut, "sqrt", Math.max(300, Math.round(width)), cardHref) : null), [rows, cut, width, fonts]);
   /* the player being pointed at (or, on a touch screen, tapped): an index into chart.dots */
   const [tip, setTip] = useState(null);
   const lastPointer = useRef("mouse");
@@ -3610,12 +3602,11 @@ function VisualiserView({ s, idx, agg }) {
       h("span", { className: "ar-row" }, h("span", null, "xA/90"), h("b", null, r.xa90.toFixed(2))),
       h("span", { className: "ar-row ar-soft" }, h("span", null, "npxG, xA"), h("span", null, r.npxg.toFixed(2) + ", " + r.xa.toFixed(2))),
       h("span", { className: "ar-q" }, q.name),
-      h("span", { className: "ar-soft" }, q.what),
       d.href ? h("span", { className: "ar-go" }, (tip.touch ? "Tap again" : "Click") + " to see their " + (r.sh ? "shot map" : "numbers on Players")) : null);
     ring = h("svg", { className: "ar-hot", viewBox: "0 0 " + chart.W + " " + chart.H, "aria-hidden": "true" }, h("circle", { className: "ar-ring", cx: d.x, cy: d.y, r: ARCH_R + 1.5 }));
   }
 
-  /* who sits where: each profile's count and its leading players, each a link to their card */
+  /* who sits where: each quadrant's count and its leading players, each a link to their card */
   const by = { HH: (r) => r.npxg90 + r.xa90, HL: (r) => r.npxg90, LH: (r) => r.xa90, LL: (r) => r.npxg90 + r.xa90 };
   const lead = { HH: "npxG/90 + xA/90", HL: "npxG/90", LH: "xA/90", LL: "npxG/90 + xA/90" };
   const follow = (r) => (e) => { if (!plainClick(e)) return; e.preventDefault(); nav.go({ tab: "players", item: r.id }); };
@@ -3623,7 +3614,7 @@ function VisualiserView({ s, idx, agg }) {
     const list = rows.filter((r) => archQuad(r, cut) === k).sort((a, b) => by[k](b) - by[k](a));
     return h("div", { key: k, className: "card stack tight ar-quad" },
       h("h3", { className: "h2" }, ARCH[k].name),
-      h("p", { className: "sub" }, ARCH[k].where + " \u00b7 " + ARCH[k].what + " \u00b7 " + list.length + (list.length === 1 ? " player" : " players")),
+      h("p", { className: "sub" }, ARCH[k].where + " \u00b7 " + list.length + (list.length === 1 ? " player" : " players") + (k === "LL" && chart && chart.llShown < list.length ? ", the top " + chart.llShown + " drawn on the chart" : "")),
       list.length ? h("ol", null, list.slice(0, 5).map((r) => h("li", { key: r.id },
         r.card && nav ? h("a", { href: nav.href({ tab: "players", item: r.id }), onClick: follow(r) }, r.name) : h("span", null, r.name),
         h("span", { className: "ar-meta" }, " " + r.short + " \u00b7 " + r.npxg90.toFixed(2) + " npxG \u00b7 " + r.xa90.toFixed(2) + " xA")))) : null,
@@ -3644,16 +3635,11 @@ function VisualiserView({ s, idx, agg }) {
     h("div", { className: "card stack" },
       h("div", { className: "stack tight" },
         h("h2", { className: "h2" }, "Goal threat and chance creation"),
-        h("p", { className: "sub ar-lede" }, "Every regular outfield player, placed by the chances they get (non-penalty xG per 90, up) and the chances they create for others (xA per 90, across). The dashed lines mark the " +
-          cut.name + " of these " + n + " players: " + cut.y.toFixed(2) + " npxG and " + cut.x.toFixed(2) + " xA per 90.")),
-      h("div", { className: "row" },
-        h(Seg, { label: "Split at", value: split, onChange: setSplit, options: [{ value: "mean", label: "League average" }, { value: "p75", label: "75th percentile" }] }),
-        h(Seg, { label: "Axes", value: scale, onChange: setScale, options: [{ value: "sqrt", label: "Square root" }, { value: "linear", label: "Linear" }] })),
+        h("p", { className: "sub ar-lede" }, "Every regular outfield player, placed by the chances they get (non-penalty xG per 90, up) and the chances they create for others (xA per 90, across). The dashed lines mark the 82nd percentile of these " +
+          n + " players for each measure: " + cut.y.toFixed(2) + " npxG and " + cut.x.toFixed(2) + " xA per 90. In the bottom left, only the top 20% are drawn.")),
       h("div", Object.assign({ className: "ar-chart", ref: boxRef, role: "img",
-        "aria-label": "Chart of " + n + " players: xA per 90 across, non-penalty xG per 90 up, split at the " + cut.name + " into " + ARCH_ORDER.map((k) => ARCH[k].name + " (" + (chart ? chart.counts[k] : 0) + ")").join(", ") + ". The table below lists every player." }, pointing),
-        chart ? h("div", { className: "ar-svg", dangerouslySetInnerHTML: { __html: chart.html } }) : null, ring, tipEl),
-      h("p", { className: "sub" }, scale === "sqrt" ? "Both axes use a square-root scale, which spreads out the many players near zero. Each player sits in the same quadrant on either scale." :
-        "A linear scale keeps the gaps true to size, so the players near zero bunch up.")),
+        "aria-label": "Chart of " + n + " players: xA per 90 across, non-penalty xG per 90 up, split at the 82nd percentile of each into " + ARCH_ORDER.map((k) => ARCH[k].name + " (" + (chart ? chart.counts[k] : 0) + ")").join(", ") + "; only the top 20% of the bottom left are drawn. The table below lists every player." }, pointing),
+        chart ? h("div", { className: "ar-svg", dangerouslySetInnerHTML: { __html: chart.html } }) : null, ring, tipEl)),
     quads,
     h("details", { className: "card ar-all" },
       h("summary", null, "All " + n + " players as a table"),
@@ -3662,7 +3648,8 @@ function VisualiserView({ s, idx, agg }) {
       ["npxG per 90", "Non-penalty expected goals for every 90 minutes played: the quality of the chances a player gets, penalties left out."],
       ["xA per 90", "Expected assists for every 90 minutes played: the xG of the shots a player sets up."],
       ["On the chart", "Outfield players with at least " + ARCH_MIN + " minutes, or a third of their club's minutes once that is more. Keepers are left out."],
-      ["The dashed lines", "The league average of the players on the chart, or their 75th percentile. Above a line is high, below it low."],
+      ["The dashed lines", "The 82nd percentile of the players on the chart, for each measure. Above a line is high, below it low."],
+      ["Bottom left", "Only the top 20% of the players there are drawn, ranked by npxG and xA per 90, each against its line. The table lists everyone."],
     ] }));
 }
 
