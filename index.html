@@ -87,6 +87,11 @@ h1, h2, h3, p { margin: 0; }
 .tab { appearance: none; background: none; border: 0; padding: 8px 0 9px; margin-bottom: -1px; cursor: pointer; font-family: var(--font-display); font-weight: 600; font-size: 17px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); border-bottom: 3px solid transparent; }
 .tab:hover { color: var(--ink); }
 .tab.on { color: var(--ink); border-bottom-color: var(--ink); }
+/* the public page's tabs, matches and way back are links (so they can be opened in a new tab), dressed as before */
+a.tab, a.fx, a.btn { text-decoration: none; }
+a.tab { display: inline-block; }
+a.fx { color: inherit; }
+a.btn { display: inline-block; }
 
 /* ---------- notices ---------- */
 .note { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; padding: 10px 12px; border-radius: 8px; background: var(--sunken); color: var(--ink-2); font-size: 13.5px; }
@@ -410,6 +415,11 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: 13.5px; }
 .tbl .sortb:hover { color: var(--ink); }
 .tbl th[aria-sort="ascending"], .tbl th[aria-sort="descending"] { color: var(--ink); }
 .tbl tbody tr.click { cursor: pointer; }
+/* the public page's season tables: every cell of a row holds a link to the row's card, stretched over the whole cell, so
+   wherever the row is clicked it can be opened in a new tab; it reads exactly as the cell did */
+.tbl td.lk, .tbl.fit td.lk { padding: 0; }
+.tbl td.lk > a.cell-link { display: block; color: inherit; text-decoration: none; padding: 8px 10px; }
+.tbl.fit td.lk > a.cell-link { padding-inline: 7px; }
 .tbl tbody tr.click:hover td { background: var(--accent-soft); }
 .tbl tbody tr.sel td { background: var(--accent-soft); }
 .tbl .acts { display: flex; gap: 2px; justify-content: flex-end; }
@@ -1419,7 +1429,7 @@ const Store = (() => {
 /* ============================================================
    SCREEN BUILDING BLOCKS
    ============================================================ */
-const { useState, useEffect, useLayoutEffect, useMemo, useRef, useSyncExternalStore } = React;
+const { useState, useEffect, useLayoutEffect, useMemo, useRef, useSyncExternalStore, useContext } = React;
 const h = React.createElement;
 const Frag = React.Fragment;
 
@@ -1893,7 +1903,10 @@ function TblWrap({ className, children }) {
 /* a sortable table. A column can name what settles a tie in it (then: more values, each sorted the same way round), as points
    in a league table go to goal difference and then goals scored */
 /* a column may give its heading as lines (c.lines): stacked one under another, the column only as wide as the longest line */
-function SortTable({ cols, rows, initial, rowKey, onRow, selKey, caption, className }) {
+/* rowHref (the public page's season tables) makes every row a link to its card: each cell holds the link, stretched over the
+   cell (cell-link; its cell, lk, gives the link its padding), so wherever the row is clicked the browser can open the card in a new tab however it is asked to (middle
+   click, Ctrl or Cmd click, the right-click menu); a plain click opens it here. Only the first cell's link takes the keyboard. */
+function SortTable({ cols, rows, initial, rowKey, onRow, selKey, caption, className, rowHref }) {
   const [sort, setSort] = useState(initial);
   const sorted = useMemo(() => {
     const c = cols.find((x) => x.key === sort.key) || cols[0];
@@ -1919,14 +1932,22 @@ function SortTable({ cols, rows, initial, rowKey, onRow, selKey, caption, classN
         c.lines ? h("span", { className: "lns" }, c.lines.map((t, i) => h(Frag, { key: i }, i ? " " : null, h("span", { className: "ln" }, t)))) : c.label,
         sort.key === c.key ? h("span", { "aria-hidden": "true" }, sort.dir === 1 ? "\u2191" : "\u2193") : null))))),
       h("tbody", null, sorted.map((r) => {
-        const k = rowKey(r);
+        const k = rowKey(r), href = rowHref ? rowHref(k) : null;
         return h("tr", {
-          key: k, className: (onRow ? "click" : "") + (selKey === k ? " sel" : ""), tabIndex: onRow ? 0 : undefined,
-          onClick: onRow ? () => onRow(k) : undefined,
-          onKeyDown: onRow ? (e) => { if (e.key === "Enter") onRow(k); } : undefined,
-        }, cols.map((c) => {
-          const v = c.get(r);
-          return h("td", { key: c.key, className: (c.num ? "num" : "") + (c.strong ? " strong" : "") + (c.tone ? " " + c.tone(v) : "") }, c.fmt ? c.fmt(v, r) : v);
+          key: k, className: (onRow ? "click" : "") + (selKey === k ? " sel" : ""), tabIndex: onRow && !href ? 0 : undefined,
+          onClick: onRow ? (e) => {
+            if (href) {
+              if (!plainClick(e)) { if (!e.target.closest("a")) openElsewhere(href); return; }
+              e.preventDefault();
+            }
+            onRow(k);
+          } : undefined,
+          onAuxClick: href ? (e) => { if (e.button === 1 && !e.target.closest("a")) openElsewhere(href); } : undefined,
+          onKeyDown: onRow && !href ? (e) => { if (e.key === "Enter") onRow(k); } : undefined,
+        }, cols.map((c, i) => {
+          const v = c.get(r), body = c.fmt ? c.fmt(v, r) : v;
+          return h("td", { key: c.key, className: (c.num ? "num" : "") + (c.strong ? " strong" : "") + (c.tone ? " " + c.tone(v) : "") + (href ? " lk" : "") },
+            href ? h("a", { className: "cell-link", href, tabIndex: i ? -1 : undefined }, body) : body);
         }));
       }))));
 }
@@ -1949,6 +1970,7 @@ const r3 = (v) => (v == null ? "" : Math.round(v * 1000) / 1000);
    ============================================================ */
 function MatchesView({ s, agg, open }) {
   const reader = s.reader;
+  const nav = useContext(NavCtx);
   const [filter, setFilter] = useState("todo");
   const [team, setTeam] = useState("");
   const [adding, setAdding] = useState(false);
@@ -2032,7 +2054,9 @@ function MatchesView({ s, agg, open }) {
           d.items.map(({ id, m }) => {
             const n = m.shots.length, sc = Stats.score(m), started = n > 0 || m.og.length > 0;
             /* on the public page each club's crest sits beside its name, on the side nearer the score */
-            return h("button", { key: id, type: "button", className: "fx", onClick: () => open(id) },
+            /* on the public page each match is a link to its address, which the browser can open in a new tab */
+            return h(nav ? "a" : "button", nav ? { key: id, className: "fx", href: nav.href({ tab: "matches", matchId: id }), onClick: (e) => { if (!plainClick(e)) return; e.preventDefault(); open(id); } } :
+              { key: id, type: "button", className: "fx", onClick: () => open(id) },
               h("span", { className: "ko" }, fmtKo(m.ko) || "Time TBC"),
               h("span", { className: "tm h" }, h("span", { className: "nm" }, tname(s.teams, m.home)), h(Crest, { id: m.home, size: 22 })),
               started || reader ? h("span", { className: "sc" }, sc.h + "\u2013" + sc.a) : h("span", { className: "sc v" }, "v"),
@@ -2132,7 +2156,9 @@ function topTable(idx, list, short) {
 }
 
 function MatchView({ s, idx, matchId, back, view, onView }) {
-  const backBtn = h("button", { type: "button", className: "btn quiet back", onClick: back }, "\u2190 All matches");
+  /* on the public page a link to the list of matches, which the browser can also open in a new tab */
+  const backBtn = READER ? h("a", { className: "btn quiet back", href: "#matches", onClick: (e) => { if (!plainClick(e)) return; e.preventDefault(); back(); } }, "\u2190 All matches") :
+    h("button", { type: "button", className: "btn quiet back", onClick: back }, "\u2190 All matches");
   if (!s.matches[matchId]) return h("div", { className: "stack" }, backBtn, h("div", { className: "empty" }, h("strong", null, "Match not found"), "It may have been deleted."));
   return h(MatchBody, { key: matchId, s, idx, matchId, back, backBtn, view: view === "timeline" ? "timeline" : view === "lineups" && !s.reader ? "lineups" : "tag", onView: onView || (() => {}) });
 }
@@ -2938,6 +2964,15 @@ function MatchTimeline({ s, idx, m, can, withMap }) {
 /* ============================================================
    PLAYERS, KEEPERS AND TEAMS: the season tables
    ============================================================ */
+/* which row's card is open. On the public page the address says (#players/<id>/<name>), so a card can be linked to, opened in a
+   new tab and closed with Back, and every row is a link to its card (rowHref); in the tracker it is kept here */
+function useCard(tab) {
+  const nav = useContext(NavCtx);
+  const [own, setOwn] = useState(null);
+  if (!nav) return { sel: own, toggle: (id) => setOwn((v) => (v === id ? null : id)), close: () => setOwn(null), href: undefined };
+  const sel = nav.route.tab === tab ? nav.route.item : null;
+  return { sel, toggle: (id) => (sel === id ? nav.toList(tab) : nav.go({ tab, item: id })), close: () => nav.toList(tab), href: (id) => nav.href({ tab, item: id }) };
+}
 const NoShotsYet = ({ what }) => (READER ?
   h("div", { className: "empty" }, h("strong", null, "Nothing here yet"), "After the first finished match, " + what + " fill in here.") :
   h("div", { className: "empty" }, h("strong", null, "No shots tagged yet"), "Tag a match and " + what + " fill in here."));
@@ -2982,7 +3017,7 @@ function PlayersView({ s, idx, agg }) {
   const [team, setTeam] = useState("");
   const [q, setQ] = useState("");
   const [minSh, setMinSh] = useState(0);
-  const [sel, setSel] = useState(null);
+  const card = useCard("players"), sel = card.sel;
   const rows = useMemo(() => Object.keys(agg.players).map((id) => {
     const d = agg.players[id];
     return { id, name: pname(idx, id), mp: d.mp, mins: d.mins, club: tshort(s.teams, d.team), team: d.team, sh: d.sh, sot: d.sot, g: d.g, xg: d.xg, diff: d.g - d.xg, npxg: d.npxg, per: d.npsh ? d.npxg / d.npsh : null, xgot: d.xgot, kp: d.kp, a: d.a, xa: d.xa, pens: d.pens, pg: d.pg, bcm: d.bcm, bcc: d.bcc };
@@ -2999,9 +3034,9 @@ function PlayersView({ s, idx, agg }) {
         h("input", { id: "pl-q", className: "input", type: "search", placeholder: "Type a name", value: q, onChange: (e) => setQ(e.target.value) })),
       h(ClubSelect, { id: "pl-club", s, value: team, onChange: setTeam }),
       h(Seg, { label: "At least", value: minSh, onChange: setMinSh, options: [{ value: 0, label: "Any" }, { value: 5, label: "5 shots" }, { value: 10, label: "10" }, { value: 20, label: "20" }] })),
-    picked ? h(PlayerDetail, { s, idx, r: picked, close: () => setSel(null) }) : null,
+    picked ? h(PlayerDetail, { s, idx, r: picked, close: card.close }) : null,
     /* on the public page the long big-chance headings wrap where the room runs out, as on Teams, so the table fits a laptop */
-    shown.length ? h(SortTable, { cols: PLAYER_COLS, rows: shown, initial: { key: "xg", dir: -1 }, rowKey: (r) => r.id, onRow: (id) => setSel(sel === id ? null : id), selKey: sel, caption: "Player totals", className: READER ? "fit" : undefined }) :
+    shown.length ? h(SortTable, { cols: PLAYER_COLS, rows: shown, initial: { key: "xg", dir: -1 }, rowKey: (r) => r.id, onRow: card.toggle, rowHref: card.href, selKey: sel, caption: "Player totals", className: READER ? "fit" : undefined }) :
       h("div", { className: "empty" }, h("strong", null, "No players match"), "Loosen the filters above."),
     READER ? null : hint,
     h(Defs, { items: [
@@ -3072,7 +3107,7 @@ const KEEPER_COLS = [
 
 function KeepersView({ s, idx, agg }) {
   const [team, setTeam] = useState("");
-  const [sel, setSel] = useState(null);
+  const card = useCard("keepers"), sel = card.sel;
   /* goals against: every goal he let in, own goals included. Saves, save % and the expected numbers come from the
      shots on target he faced, so an own goal never counts against his shot-stopping. */
   const rows = useMemo(() => Object.keys(agg.keepers).map((id) => {
@@ -3091,8 +3126,8 @@ function KeepersView({ s, idx, agg }) {
     READER ? hint : null,
     warn,
     h("div", { className: "row" }, h(ClubSelect, { id: "gk-club", s, value: team, onChange: setTeam })),
-    picked ? h(KeeperDetail, { s, idx, r: picked, close: () => setSel(null) }) : null,
-    shown.length ? h(SortTable, { cols: KEEPER_COLS, rows: shown, initial: { key: "sae", dir: -1 }, rowKey: (r) => r.id, onRow: (id) => setSel(sel === id ? null : id), selKey: sel, caption: "Goalkeeper totals", className: READER ? "fit" : undefined }) :
+    picked ? h(KeeperDetail, { s, idx, r: picked, close: card.close }) : null,
+    shown.length ? h(SortTable, { cols: KEEPER_COLS, rows: shown, initial: { key: "sae", dir: -1 }, rowKey: (r) => r.id, onRow: card.toggle, rowHref: card.href, selKey: sel, caption: "Goalkeeper totals", className: READER ? "fit" : undefined }) :
       h("div", { className: "empty" }, h("strong", null, "No keepers for this club yet"), "Pick another club."),
     READER ? null : hint,
     h(Defs, { items: [
@@ -3155,7 +3190,7 @@ const TEAM_COLS = [
 ];
 
 function TeamsView({ s, idx, agg }) {
-  const [sel, setSel] = useState(null);
+  const card = useCard("teams"), sel = card.sel;
   const res = useMemo(() => Stats.results(s.matches), [s.matches]);
   const rows = useMemo(() => Object.keys(agg.teams).map((id) => {
     const d = agg.teams[id], gf = d.g + d.ogf, ga = d.ga + d.oga;
@@ -3168,8 +3203,8 @@ function TeamsView({ s, idx, agg }) {
   const hint = h("p", { className: "sub table-hint" }, "Click a club to see every shot it " + (READER ? "took and conceded" : "took") + " this season. Click a column heading to sort.");
   return h("div", { className: "stack" },
     READER ? hint : null,
-    picked ? h(TeamDetail, { key: picked.id, s, idx, r: picked, close: () => setSel(null) }) : null,
-    h(SortTable, { cols: TEAM_COLS, rows, initial: { key: "xgd", dir: -1 }, rowKey: (r) => r.id, onRow: (id) => setSel(sel === id ? null : id), selKey: sel, caption: "Club totals", className: READER ? "fit" : undefined }),
+    picked ? h(TeamDetail, { key: picked.id, s, idx, r: picked, close: card.close }) : null,
+    h(SortTable, { cols: TEAM_COLS, rows, initial: { key: "xgd", dir: -1 }, rowKey: (r) => r.id, onRow: card.toggle, rowHref: card.href, selKey: sel, caption: "Club totals", className: READER ? "fit" : undefined }),
     READER ? null : hint,
     h("p", { className: "sub" }, (READER ? "Only finished matches are counted." : "Only matches you have tagged are counted.") + " Goals include own goals; xG never does." +
       (READER ? " A big chance is a shot worth more than 0.20 xG." : "")));
@@ -3509,24 +3544,68 @@ const ROUTE_KEY = READER ? "islxg.public.route" : "islxg.route";
 const SITE_NAME = READER ? PAGE_NAMES.reader : PAGE_NAMES.tracker;
 /* the season sits beside the name, unless the name already says it (the public page is called "ISL 2026-27") */
 const SEASON_LABEL = PAGE_NAMES.season || "2026-27";
+/* ---------- the public page's addresses ----------
+   Every screen a reader can reach has its own address after the #, so the browser's Back and Forward step through them, and
+   whatever opens a screen is a real link that the browser can open in a new tab (middle click, Ctrl or Cmd click, the
+   right-click menu, a long press). #matches, #players, #keepers, #teams and #method are the tabs; #matches/<id>/<home>-v-<away>
+   is one match; #players/<id>/<name>, #keepers/<id>/<name> and #teams/<id>/<name> open a player's, keeper's or club's card.
+   Only the id counts: the words after it are there to read. Each screen also names itself in the browser's tab:
+   "ISL 2026-27: Players", "ISL 2026-27: Bengaluru FC vs SC Delhi", "ISL 2026-27: Ryan Williams".
+   The tracker keeps its own way: no addresses, one title. */
+const slugOf = (t) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+const routeKey = (r) => r.tab + "/" + ((r.tab === "matches" ? r.matchId : r.item) || "");
+function routeOfHash(hash) {
+  const parts = String(hash || "").replace(/^#/, "").split("/");
+  const tab = parts[0];
+  if (!TABS.some((x) => x[0] === tab)) return { tab: "matches", matchId: null, item: null, view: "tag" };
+  let id = null;
+  try { id = parts[1] ? decodeURIComponent(parts[1]) : null; } catch (e) { id = null; }
+  if (tab === "matches") return { tab, matchId: id, item: null, view: "tag" };
+  return { tab, matchId: null, item: tab === "method" ? null : id, view: "tag" };
+}
+function hashOfRoute(r, s, idx) {
+  const id = r.tab === "matches" ? r.matchId : r.item;
+  if (!id) return "#" + r.tab;
+  const m = r.tab === "matches" ? s.matches[id] : null;
+  const words = r.tab === "matches" ? (m ? slugOf(tshort(s.teams, m.home)) + "-v-" + slugOf(tshort(s.teams, m.away)) : "") :
+    r.tab === "teams" ? (s.teams[id] ? slugOf(tname(s.teams, id)) : "") : (idx[id] ? slugOf(pname(idx, id)) : "");
+  return "#" + r.tab + "/" + encodeURIComponent(id) + (words ? "/" + words : "");
+}
+function titleOfRoute(r, s, idx) {
+  const id = r.tab === "matches" ? r.matchId : r.item;
+  const m = r.tab === "matches" && id ? s.matches[id] : null;
+  const what = m ? tname(s.teams, m.home) + " vs " + tname(s.teams, m.away) :
+    id && r.tab === "teams" && s.teams[id] ? tname(s.teams, id) :
+      id && (r.tab === "players" || r.tab === "keepers") && idx[id] ? pname(idx, id) :
+        (TABS.find((x) => x[0] === r.tab) || TABS[0])[1];
+  return SITE_NAME + ": " + what;
+}
+/* a click that moves the page in place: a plain left click. Anything else on a link (a middle click, or Ctrl, Cmd, Shift or Alt
+   held) is left to the browser, which opens the link in a new tab or window */
+const plainClick = (e) => !(e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey);
+/* the same for a click that lands between links (a table row's edge): the browser is asked to open the address in a new tab */
+const openElsewhere = (href) => { try { window.open(new URL(href, window.location.href).href, "_blank", "noopener"); } catch (e) { /* nothing opens */ } };
+/* what the public page's screens share to make their links and move between them (null in the tracker) */
+const NavCtx = React.createContext(null);
 /* "Updated 9 Oct 2026" from the moment the public page was saved, in the reader's own time zone */
 function updatedLabel(iso) {
   const d = new Date(iso);
   if (!iso || isNaN(d.getTime())) return "";
   return "Updated " + d.getDate() + " " + MONTHS[d.getMonth()] + " " + d.getFullYear();
 }
-/* where the page opens. The tracker comes back to wherever you were. The public page always opens on its list of matches
-   (or on the tab a link names, like #players), never on the last match a visitor happened to look at. */
+/* where the page opens. The tracker comes back to wherever you were (or the tab a link names, like #players). The public page
+   opens on whatever its address names (see routeOfHash), its list of matches when it names nothing, never on the last match
+   a visitor happened to look at. */
 function firstRoute(saved) {
   const ok = (r) => r && TABS.some((t) => t[0] === r.tab);
   const keep = (r) => ({ tab: r.tab, matchId: r.matchId || null, view: r.matchId && (r.view === "timeline" || (r.view === "lineups" && !READER)) ? r.view : "tag" });
   if (saved && ok(saved.route)) return keep(saved.route);
-  const hash = String(window.location.hash || "").replace("#", "");
-  if (TABS.some((t) => t[0] === hash)) return { tab: hash, matchId: null, view: "tag" };
   if (READER) {
     try { window.localStorage.removeItem(ROUTE_KEY); } catch (e) { /* nothing was kept */ }
-    return { tab: "matches", matchId: null, view: "tag" };
+    return routeOfHash(window.location.hash);
   }
+  const hash = String(window.location.hash || "").replace("#", "");
+  if (TABS.some((t) => t[0] === hash)) return { tab: hash, matchId: null, view: "tag" };
   try {
     const r = JSON.parse(window.localStorage.getItem(ROUTE_KEY) || "null");
     if (ok(r)) return keep(r);
@@ -3548,16 +3627,70 @@ function App({ initial }) {
   const [route, setRoute] = useState(() => firstRoute(initial));
   const routeRef = useRef(route);
   routeRef.current = route;
+  /* the public page: where to scroll once a step back or forward has drawn (restore), and whether a card just opened (reveal) */
+  const restore = useRef(null), reveal = useRef(false);
   const go = (r) => {
+    if (READER) {
+      /* each move is a step in the browser's history: where the reader had scrolled to is kept with the step they leave, and the
+         new step remembers which screen it was opened from (from), so Close and All matches can step back to it */
+      r = Object.assign({ matchId: null, item: null, view: "tag" }, r);
+      restore.current = null;
+      if (routeKey(r) !== routeKey(route)) {
+        try {
+          window.history.replaceState(Object.assign({}, window.history.state, { y: window.scrollY }), "");
+          window.history.pushState({ y: 0, from: routeKey(route) }, "", hashOfRoute(r, s, idx));
+        } catch (e) { /* the page still works without */ }
+      }
+      reveal.current = !!r.item && r.item !== route.item && r.tab === route.tab;
+    }
     setRoute(r);
     if (!READER) { try { window.localStorage.setItem(ROUTE_KEY, JSON.stringify(r)); } catch (e) { /* fine without it */ } }
     if (r.tab !== route.tab || r.matchId !== route.matchId) { try { window.scrollTo(0, 0); } catch (e) { /* ignore */ } }
   };
+  /* back to a tab's list from one of its screens (a match, or a card): a step back when that is where the reader came from, so
+     the list is just where they left it; otherwise on to the list as a new step */
+  const toList = (tab) => {
+    const st = window.history.state;
+    if (READER && st && st.from === tab + "/") { try { window.history.back(); return; } catch (e) { /* step on instead */ } }
+    go({ tab });
+  };
+  /* the public page follows the browser's Back and Forward (and an address typed in), back to where that screen was scrolled */
+  useEffect(() => {
+    if (!READER) return undefined;
+    try { if ("scrollRestoration" in window.history) window.history.scrollRestoration = "manual"; } catch (e) { /* fine */ }
+    const moved = () => {
+      const r = routeOfHash(window.location.hash), st = window.history.state;
+      if (routeKey(r) === routeKey(routeRef.current)) return;   // already there: Back reports the same step twice
+      restore.current = st && typeof st.y === "number" ? st.y : 0;
+      reveal.current = false;
+      setRoute(r);
+    };
+    window.addEventListener("popstate", moved);
+    window.addEventListener("hashchange", moved);
+    return () => { window.removeEventListener("popstate", moved); window.removeEventListener("hashchange", moved); };
+  }, []);
+  useLayoutEffect(() => {
+    if (restore.current != null) {
+      const y = restore.current;
+      restore.current = null;
+      window.scrollTo(0, y);
+      requestAnimationFrame(() => window.scrollTo(0, y));   // again once the maps have measured themselves
+    } else if (reveal.current) {
+      /* a card opened from its table shows at the top of the table: brought into view when it opened above the screen */
+      reveal.current = false;
+      const c = document.querySelector("main .card");
+      const top = c ? c.getBoundingClientRect().top : 0;
+      if (top < 0) window.scrollBy(0, top - 12);
+    }
+  });
   useEffect(() => {
     try { const hot = window.claude && window.claude.hot; if (hot && typeof hot.snapshot === "function") hot.snapshot(() => ({ route: routeRef.current })); } catch (e) { /* optional */ }
   }, []);
   const idx = useMemo(() => buildIndex(s.teams), [s.teams]);
   const agg = useMemo(() => Stats.aggregate(s.teams, s.matches), [s.teams, s.matches]);
+  /* the public page names the screen in the browser's tab */
+  useEffect(() => { if (READER) { try { document.title = titleOfRoute(route, s, idx); } catch (e) { /* the page keeps its own */ } } }, [route, s, idx]);
+  const nav = READER ? { route, href: (r) => hashOfRoute(Object.assign({ matchId: null, item: null }, r), s, idx), go, toList } : null;
 
   let sync = null;
   if (s.phase === "loading") sync = h("span", { className: "sync" }, h(IconDots), "Loading");
@@ -3572,25 +3705,29 @@ function App({ initial }) {
   let view;
   if (s.phase === "loading") view = h("div", { className: "empty" }, h("strong", null, "Loading your data"), "One moment.");
   else if (s.phase === "nodb") view = route.tab === "method" ? h(MethodView, { s, idx, agg }) : h("div", { className: "empty" }, h("strong", null, "Your data cannot be reached from here"), "Open this page inside Claude while signed in, and your matches and shots will load.");
-  else if (route.tab === "matches") view = route.matchId ? h(MatchView, { s, idx, matchId: route.matchId, view: route.view, onView: (v) => go({ tab: "matches", matchId: route.matchId, view: v }), back: () => go({ tab: "matches", matchId: null }) }) : h(MatchesView, { s, agg, open: (id) => go({ tab: "matches", matchId: id }) });
+  else if (route.tab === "matches") view = route.matchId ? h(MatchView, { s, idx, matchId: route.matchId, view: route.view, onView: (v) => go({ tab: "matches", matchId: route.matchId, view: v }), back: () => (READER ? toList("matches") : go({ tab: "matches", matchId: null })) }) : h(MatchesView, { s, agg, open: (id) => go({ tab: "matches", matchId: id }) });
   else if (route.tab === "players") view = h(PlayersView, { s, idx, agg });
   else if (route.tab === "keepers") view = h(KeepersView, { s, idx, agg });
   else if (route.tab === "teams") view = h(TeamsView, { s, idx, agg });
   else if (route.tab === "squads") view = h(SquadsView, { s });
   else view = h(MethodView, { s, idx, agg });
 
-  return h("div", { className: "wrap" },
+  return h(NavCtx.Provider, { value: nav }, h("div", { className: "wrap" },
     h("header", { className: "mast" },
       h("div", { className: "brand" }, h("h1", null, SITE_NAME), SITE_NAME.indexOf(SEASON_LABEL) < 0 ? h("span", { className: "season" }, SEASON_LABEL) : null),
       h("div", { role: "status", "aria-live": "polite" }, sync)),
-    h("nav", { className: "tabs", "aria-label": "Sections" }, TABS.map(([id, label]) => h("button", {
+    /* on the public page each tab is a link to its address, which the browser can open in a new tab */
+    h("nav", { className: "tabs", "aria-label": "Sections" }, TABS.map(([id, label]) => READER ? h("a", {
+      key: id, className: "tab" + (route.tab === id ? " on" : ""), href: "#" + id, "aria-current": route.tab === id ? "page" : undefined,
+      onClick: (e) => { if (!plainClick(e)) return; e.preventDefault(); go({ tab: id }); },
+    }, label) : h("button", {
       key: id, type: "button", className: "tab" + (route.tab === id ? " on" : ""), "aria-current": route.tab === id ? "page" : undefined,
       onClick: () => go({ tab: id, matchId: null }),
     }, label))),
     s.saveError ? h(Note, { kind: "bad", action: s.saveError.denied ? null : h("button", { type: "button", className: "btn", onClick: Store.retry }, "Retry") }, s.saveError.message) : null,
     h("main", { className: "stack" }, h(Boundary, { key: route.tab + (route.matchId || "") }, view)),
     route.tab !== "method" ? h("div", { className: "credit" }, h(SbLogo),
-      h("p", { className: "foot" }, "xG model built on StatsBomb Open Data. An independent project, not affiliated with the Indian Super League or its clubs.")) : null);
+      h("p", { className: "foot" }, "xG model built on StatsBomb Open Data. An independent project, not affiliated with the Indian Super League or its clubs.")) : null));
 }
 
 (function boot() {
