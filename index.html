@@ -538,6 +538,27 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: 13.5px; }
 .ar-all > summary { cursor: pointer; padding: 14px 16px; font-weight: 600; }
 .ar-all[open] > summary { border-bottom: 1px solid var(--line); }
 .ar-all .tbl-wrap { border: 0; border-radius: 0 0 12px 12px; }
+
+/* the public page's card window (CardPop): centred over its tab, 960px wide (a club's card 1080px, so its whole pitch can lie
+   across beside its matches), never nearer than 24px to the screen's edges (8px on a phone), and scrolling inside when the
+   card is taller than the screen. The page behind turns black and white under a light shade, and is held still. */
+html.pop-open { overflow: hidden; }
+html.pop-open.pop-gutter { scrollbar-gutter: stable; }
+dialog.pop { position: fixed; inset: 0; margin: auto; padding: 0; border: 0; border-radius: 12px; background: transparent; color: inherit;
+  width: 960px; height: fit-content; max-width: calc(100% - 48px); max-height: calc(100% - 48px); overflow: auto; overscroll-behavior: contain;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35); }
+dialog.pop.wide { width: 1080px; }
+dialog.pop::backdrop { background: rgba(10, 14, 12, 0.3); -webkit-backdrop-filter: grayscale(1); backdrop-filter: grayscale(1); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) dialog.pop::backdrop { background: rgba(0, 0, 0, 0.5); }
+}
+:root[data-theme="dark"] dialog.pop::backdrop { background: rgba(0, 0, 0, 0.5); }
+/* the card's name and its Close button stay at the top of the window while the rest scrolls under them; not on a phone, where
+   they wrap onto two lines and would take too much of the screen */
+@media (min-width: 641px) {
+  dialog.pop > .card > .toolbar { position: sticky; top: 0; z-index: 5; margin-block: -16px -10px; padding-block: 16px 10px; background: var(--surface); }
+}
+@media (max-width: 640px) { dialog.pop { max-width: calc(100% - 16px); max-height: calc(100% - 16px); } }
 </style>
 </head>
 <body>
@@ -3018,6 +3039,49 @@ function useCard(tab) {
   const sel = nav.route.tab === tab ? nav.route.item : null;
   return { sel, toggle: (id) => (sel === id ? nav.toList(tab) : nav.go({ tab, item: id })), close: () => nav.toList(tab), href: (id) => nav.href({ tab, item: id }) };
 }
+/* ---------- the public page's card window ----------
+   On the public page a player's, keeper's or club's card opens in a window of its own, centred over its tab (a modal dialog).
+   The page behind turns black and white under a light shade and stays where it was scrolled, and only the window answers the
+   pointer and the keyboard. Close, Escape, a click on the shaded page, or Back put it away; the first three step back to the
+   list, as Close always has. The address still names the card (#players/<id>/<name>), so a card can be linked to, opened in
+   a new tab, and stepped to with Back and Forward. Focus goes into the window, and back to whatever opened it on the way out.
+   wide: the club's card, whose whole pitch needs the room to lie across beside its matches. children: draws the card, given
+   the one way out (leave), which steps back once however often Close, Escape or the shade are pressed before it lands. */
+function CardPop({ label, onClose, wide, children }) {
+  const ref = useRef(null), gone = useRef(false), leaving = useRef(false), downOut = useRef(false), closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  const leave = () => {
+    if (gone.current || leaving.current) return;
+    leaving.current = true;
+    setTimeout(() => { leaving.current = false; }, 1000);
+    closeRef.current();
+  };
+  useLayoutEffect(() => {
+    const d = ref.current, root = document.documentElement, back = document.activeElement;
+    gone.current = false;
+    /* the page behind is held still; where it had a scroll bar, the bar's room is kept, so nothing behind shifts */
+    root.classList.toggle("pop-gutter", window.innerWidth > root.clientWidth);
+    root.classList.add("pop-open");
+    try { if (!d.open) d.showModal(); } catch (e) { d.setAttribute("open", ""); }
+    return () => {
+      gone.current = true;
+      root.classList.remove("pop-open", "pop-gutter");
+      try { if (d.open) d.close(); } catch (e) { /* already closed */ }
+      if (back && back !== document.body && back.isConnected && typeof back.focus === "function") { try { back.focus({ preventScroll: true }); } catch (e) { /* fine */ } }
+    };
+  }, []);
+  /* a click on the shade: pressed and let go outside the window, so a drag that starts inside it never closes it */
+  const outside = (e) => { const b = ref.current.getBoundingClientRect(); return e.clientX < b.left || e.clientX > b.right || e.clientY < b.top || e.clientY > b.bottom; };
+  return h("dialog", {
+    ref, className: "pop" + (wide ? " wide" : ""), "aria-label": label,
+    onCancel: (e) => { e.preventDefault(); leave(); },
+    onClose: () => leave(),
+    onPointerDown: (e) => { downOut.current = e.target === e.currentTarget && outside(e); },
+    onClick: (e) => { const out = downOut.current && e.target === e.currentTarget && outside(e); downOut.current = false; if (out) leave(); },
+  }, children(leave));
+}
+/* a tab's card: in its window on the public page; in the tracker where it has always been, above the table */
+const cardShown = (card, picked, draw, wide) => (READER ? h(CardPop, { key: picked.id, label: picked.name, onClose: card.close, wide }, draw) : draw(card.close));
 const NoShotsYet = ({ what }) => (READER ?
   h("div", { className: "empty" }, h("strong", null, "Nothing here yet"), "After the first finished match, " + what + " fill in here.") :
   h("div", { className: "empty" }, h("strong", null, "No shots tagged yet"), "Tag a match and " + what + " fill in here."));
@@ -3079,7 +3143,7 @@ function PlayersView({ s, idx, agg }) {
         h("input", { id: "pl-q", className: "input", type: "search", placeholder: "Type a name", value: q, onChange: (e) => setQ(e.target.value) })),
       h(ClubSelect, { id: "pl-club", s, value: team, onChange: setTeam }),
       h(Seg, { label: "At least", value: minSh, onChange: setMinSh, options: [{ value: 0, label: "Any" }, { value: 5, label: "5 shots" }, { value: 10, label: "10" }, { value: 20, label: "20" }] })),
-    picked ? h(PlayerDetail, { s, idx, r: picked, close: card.close }) : null,
+    picked ? cardShown(card, picked, (close) => h(PlayerDetail, { s, idx, r: picked, close })) : null,
     /* on the public page the long big-chance headings wrap where the room runs out, as on Teams, so the table fits a laptop */
     shown.length ? h(SortTable, { cols: PLAYER_COLS, rows: shown, initial: { key: "xg", dir: -1 }, rowKey: (r) => r.id, onRow: card.toggle, rowHref: card.href, selKey: sel, caption: "Player totals", className: READER ? "fit" : undefined }) :
       h("div", { className: "empty" }, h("strong", null, "No players match"), "Loosen the filters above."),
@@ -3187,7 +3251,7 @@ function KeepersView({ s, idx, agg }) {
     READER ? hint : null,
     warn,
     h("div", { className: "row" }, h(ClubSelect, { id: "gk-club", s, value: team, onChange: setTeam })),
-    picked ? h(KeeperDetail, { s, idx, r: picked, close: card.close }) : null,
+    picked ? cardShown(card, picked, (close) => h(KeeperDetail, { s, idx, r: picked, close })) : null,
     shown.length ? h(SortTable, { cols: KEEPER_COLS, rows: shown, initial: { key: "sae", dir: -1 }, rowKey: (r) => r.id, onRow: card.toggle, rowHref: card.href, selKey: sel, caption: "Goalkeeper totals", className: READER ? "fit" : undefined }) :
       h("div", { className: "empty" }, h("strong", null, "No keepers for this club yet"), "Pick another club."),
     READER ? null : hint,
@@ -3264,7 +3328,7 @@ function TeamsView({ s, idx, agg }) {
   const hint = h("p", { className: "sub table-hint" }, "Click a club to see every shot it " + (READER ? "took and conceded" : "took") + " this season. Click a column heading to sort.");
   return h("div", { className: "stack" },
     READER ? hint : null,
-    picked ? h(TeamDetail, { key: picked.id, s, idx, r: picked, close: card.close }) : null,
+    picked ? cardShown(card, picked, (close) => h(TeamDetail, { key: picked.id, s, idx, r: picked, close }), true) : null,
     h(SortTable, { cols: TEAM_COLS, rows, initial: { key: "xgd", dir: -1 }, rowKey: (r) => r.id, onRow: card.toggle, rowHref: card.href, selKey: sel, caption: "Club totals", className: READER ? "fit" : undefined }),
     READER ? null : hint,
     h("p", { className: "sub" }, (READER ? "Only finished matches are counted." : "Only matches you have tagged are counted.") + " Goals include own goals; xG never does." +
@@ -3976,21 +4040,22 @@ function App({ initial }) {
   const [route, setRoute] = useState(() => firstRoute(initial));
   const routeRef = useRef(route);
   routeRef.current = route;
-  /* the public page: where to scroll once a step back or forward has drawn (restore), and whether a card just opened (reveal) */
-  const restore = useRef(null), reveal = useRef(false);
+  /* the public page: where to scroll once a step back or forward has drawn */
+  const restore = useRef(null);
   const go = (r) => {
     if (READER) {
       /* each move is a step in the browser's history: where the reader had scrolled to is kept with the step they leave, and the
-         new step remembers which screen it was opened from (from), so Close and All matches can step back to it */
+         new step remembers which screen it was opened from (from), so Close and All matches can step back to it. A new tab or
+         match opens at its top; a card opens in a window over its tab, so its step keeps the tab's scroll */
       r = Object.assign({ matchId: null, item: null, view: "tag" }, r);
       restore.current = null;
+      const fresh = r.tab !== route.tab || r.matchId !== route.matchId;
       if (routeKey(r) !== routeKey(route)) {
         try {
           window.history.replaceState(Object.assign({}, window.history.state, { y: window.scrollY }), "");
-          window.history.pushState({ y: 0, from: routeKey(route) }, "", hashOfRoute(r, s, idx));
+          window.history.pushState({ y: fresh ? 0 : window.scrollY, from: routeKey(route) }, "", hashOfRoute(r, s, idx));
         } catch (e) { /* the page still works without */ }
       }
-      reveal.current = !!r.item && r.item !== route.item && r.tab === route.tab;
     }
     setRoute(r);
     if (!READER) { try { window.localStorage.setItem(ROUTE_KEY, JSON.stringify(r)); } catch (e) { /* fine without it */ } }
@@ -4011,7 +4076,6 @@ function App({ initial }) {
       const r = routeOfHash(window.location.hash), st = window.history.state;
       if (routeKey(r) === routeKey(routeRef.current)) return;   // already there: Back reports the same step twice
       restore.current = st && typeof st.y === "number" ? st.y : 0;
-      reveal.current = false;
       setRoute(r);
     };
     window.addEventListener("popstate", moved);
@@ -4024,12 +4088,6 @@ function App({ initial }) {
       restore.current = null;
       window.scrollTo(0, y);
       requestAnimationFrame(() => window.scrollTo(0, y));   // again once the maps have measured themselves
-    } else if (reveal.current) {
-      /* a card opened from its table shows at the top of the table: brought into view when it opened above the screen */
-      reveal.current = false;
-      const c = document.querySelector("main .card");
-      const top = c ? c.getBoundingClientRect().top : 0;
-      if (top < 0) window.scrollBy(0, top - 12);
     }
   });
   useEffect(() => {
