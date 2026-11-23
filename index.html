@@ -753,8 +753,9 @@ const Stats = (() => {
     }));
     /* a keeper: shots on target faced (sotf), goals from them (ga), own goals let in while he was in goal (oga), xGOT faced */
     const kp = (kid, tid) => (K[kid] || (K[kid] = { team: rosterTeam[kid] || tid, sotf: 0, ga: 0, oga: 0, xgotf: 0, _m: new Set() }));
-    /* a club: its own shots, on target, goals, xG, xGOT and big chances, and the same conceded (sha, sota, ga, xga, xgota, bca) */
-    const tm = (tid) => (T[tid] || (T[tid] = { mp: 0, sh: 0, sot: 0, g: 0, xg: 0, xgot: 0, bc: 0, sha: 0, sota: 0, ga: 0, xga: 0, xgota: 0, bca: 0, ogf: 0, oga: 0 }));
+    /* a club: its own shots, on target, goals, xG, xGOT, big chances (bc) and the big chances it did not score (bcm), and the same
+       conceded (sha, sota, ga, xga, xgota, bca) */
+    const tm = (tid) => (T[tid] || (T[tid] = { mp: 0, sh: 0, sot: 0, g: 0, xg: 0, xgot: 0, bc: 0, bcm: 0, sha: 0, sota: 0, ga: 0, xga: 0, xgota: 0, bca: 0, ogf: 0, oga: 0 }));
 
     const mk = () => ({ n: 0, g: 0, xg: 0 });
     const check = { all: mk(), np: mk(), inbox: mk(), outbox: mk(), head: mk(), pen: mk(), ot: mk() };
@@ -807,7 +808,7 @@ const Stats = (() => {
         }
 
         const t = tm(tid), o = tm(opp);
-        t.sh += 1; t.sot += on ? 1 : 0; t.g += goal; t.xg += xg; t.xgot += xgot; t.bc += big;
+        t.sh += 1; t.sot += on ? 1 : 0; t.g += goal; t.xg += xg; t.xgot += xgot; t.bc += big; t.bcm += big && !goal ? 1 : 0;
         o.sha += 1; o.sota += on ? 1 : 0; o.ga += goal; o.xga += xg; o.xgota += xgot; o.bca += big;
 
         totals.shots += 1; totals.goals += goal; totals.xg += xg;
@@ -2999,7 +3000,10 @@ function PlayerDetail({ s, idx, r, close }) {
       h("div", { className: "card-head" }, h(Crest, { id: r.team, size: 40 }),
         h("div", null, h("h2", { className: "h2" }, r.name), h("p", { className: "sub" }, tname(s.teams, r.team) + (r.pens ? " \u00b7 " + r.pg + " of " + r.pens + " penalties scored" : "")))),
       h("button", { type: "button", className: "btn", onClick: close }, "Close")),
-    h("div", { className: "kpis" }, h(Kpi, { v: r.sh, k: "Shots" }), h(Kpi, { v: r.sot, k: "On target" }), h(Kpi, { v: r.g, k: "Goals" }), h(Kpi, { v: f2(r.xg), k: "xG" }), h(Kpi, { v: r.a, k: "Assists" }), h(Kpi, { v: f2(r.xa), k: "xA" })),
+    /* the public page adds his big chances: the ones he missed just before his xG, the ones he set up just after his xA */
+    READER ? h("div", { className: "kpis" }, h(Kpi, { v: r.sh, k: "Shots" }), h(Kpi, { v: r.sot, k: "On target" }), h(Kpi, { v: r.g, k: "Goals" }), h(Kpi, { v: r.bcm, k: "Big chances missed" }),
+        h(Kpi, { v: f2(r.xg), k: "xG" }), h(Kpi, { v: r.a, k: "Assists" }), h(Kpi, { v: f2(r.xa), k: "xA" }), h(Kpi, { v: r.bcc, k: "Big chances created" })) :
+      h("div", { className: "kpis" }, h(Kpi, { v: r.sh, k: "Shots" }), h(Kpi, { v: r.sot, k: "On target" }), h(Kpi, { v: r.g, k: "Goals" }), h(Kpi, { v: f2(r.xg), k: "xG" }), h(Kpi, { v: r.a, k: "Assists" }), h(Kpi, { v: f2(r.xa), k: "xA" })),
     shots.length ? h("div", { className: "detail-grid" },
       h("div", null, h(PitchMap, { marks, label: "Shot map for " + r.name }),
         h("div", { className: "legend" }, h("span", null, h("i", { className: "dot home" }), "Goal"), h("span", null, h("i", { className: "dot soft" }), "No goal"), h("span", null, "Bigger means higher xG"),
@@ -3119,7 +3123,7 @@ function TeamsView({ s, idx, agg }) {
   const res = useMemo(() => Stats.results(s.matches), [s.matches]);
   const rows = useMemo(() => Object.keys(agg.teams).map((id) => {
     const d = agg.teams[id], gf = d.g + d.ogf, ga = d.ga + d.oga;
-    return { id, name: tname(s.teams, id), mp: d.mp, gf, ga, gd: gf - ga, pts: res[id] ? res[id].pts : 0, sh: d.sh, sot: d.sot, xg: d.xg, xgot: d.xgot, bc: d.bc, bca: d.bca,
+    return { id, name: tname(s.teams, id), mp: d.mp, gf, ga, gd: gf - ga, pts: res[id] ? res[id].pts : 0, sh: d.sh, sot: d.sot, xg: d.xg, xgot: d.xgot, bc: d.bc, bcm: d.bcm, bca: d.bca,
       sha: d.sha, sota: d.sota, xga: d.xga, xgota: d.xgota, xgd: d.xg - d.xga, xgpm: d.mp ? d.xg / d.mp : null };
   }), [agg, s.teams, res]);
   if (!rows.length) return h(NoShotsYet, { what: "each club's shots and xG for and against" });
@@ -3170,10 +3174,11 @@ function TeamDetail({ s, idx, r, close }) {
   const lit = hot ? marks.filter((k) => k.id.indexOf(hot + "/") === 0).map((k) => k.id) : null;
   const cc = both ? ClubColours.season(r.id) : null;
 
-  /* the top row: the club's own numbers, then the same conceded. On a narrow screen the conceded ones start a line of their own. */
+  /* the top row: the club's own numbers, its big chances created and missed last, then the same conceded. The conceded ones start
+     a line of their own when the card is not wide enough for both. */
   const kpis = both ? h("div", { className: "kpis" },
     h("div", { className: "kpis" }, h(Kpi, { v: r.mp, k: "Matches" }), h(Kpi, { v: r.gf, k: "Goals" }), h(Kpi, { v: r.sh, k: "Shots" }), h(Kpi, { v: r.sot, k: "On target" }),
-      h(Kpi, { v: f2(r.xg), k: "xG" }), h(Kpi, { v: f2(r.xgot), k: "xGOT" })),
+      h(Kpi, { v: f2(r.xg), k: "xG" }), h(Kpi, { v: f2(r.xgot), k: "xGOT" }), h(Kpi, { v: r.bc, k: "Big chances created" }), h(Kpi, { v: r.bcm, k: "Big chances missed" })),
     h("div", { className: "kpis" }, h(Kpi, { v: r.sha, k: "Shots against" }), h(Kpi, { v: r.sota, k: "On target against" }), h(Kpi, { v: f2(r.xga), k: "xG against" }),
       h(Kpi, { v: f2(r.xgota), k: "xGOT against" }))) :
     h("div", { className: "kpis" }, h(Kpi, { v: r.mp, k: "Matches" }), h(Kpi, { v: r.gf, k: "Goals" }), h(Kpi, { v: r.sh, k: "Shots" }), h(Kpi, { v: r.sot, k: "On target" }),
