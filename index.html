@@ -592,6 +592,9 @@ const Model = (() => {
    ============================================================ */
 const Stats = (() => {
   const other = (side) => (side === "h" ? "a" : "h");
+  /* a big chance: any shot worth more than 0.20 xG (so every penalty is one) */
+  const BIG_CHANCE = 0.2;
+  const isBig = (xg) => xg > BIG_CHANCE;
 
   /* the real scoreline of one match: goals from tagged shots plus own goals */
   function score(match) {
@@ -619,16 +622,17 @@ const Stats = (() => {
     return out;
   }
 
-  /* shots, on target, goals and xG for each side of one match */
+  /* shots, on target, goals, xG and big chances (bc, and bcm for those not scored) for each side of one match */
   function matchSummary(match) {
-    const mk = () => ({ sh: 0, sot: 0, g: 0, xg: 0, xgot: 0, og: 0 });
+    const mk = () => ({ sh: 0, sot: 0, g: 0, xg: 0, xgot: 0, og: 0, bc: 0, bcm: 0 });
     const out = { h: mk(), a: mk() };
     for (const s of match.shots || []) {
-      const t = out[s.t];
+      const t = out[s.t], xg = Model.xg(s);
       t.sh += 1;
       if (Model.onTarget(s)) t.sot += 1;
       if (s.out === "goal") t.g += 1;
-      t.xg += Model.xg(s);
+      if (isBig(xg)) { t.bc += 1; if (s.out !== "goal") t.bcm += 1; }
+      t.xg += xg;
       t.xgot += Model.xgot(s) || 0;
     }
     for (const o of match.og || []) out[o.t].og += 1;
@@ -738,12 +742,12 @@ const Stats = (() => {
 
     const P = {}, K = {}, T = {};
     const pl = (pid, tid) => (P[pid] || (P[pid] = {
-      team: rosterTeam[pid] || tid, sh: 0, sot: 0, g: 0, xg: 0, npxg: 0, npsh: 0, pens: 0, pg: 0, xgot: 0, kp: 0, a: 0, xa: 0, _m: new Set(),
+      team: rosterTeam[pid] || tid, sh: 0, sot: 0, g: 0, xg: 0, npxg: 0, npsh: 0, pens: 0, pg: 0, xgot: 0, kp: 0, a: 0, xa: 0, bc: 0, bcm: 0, bcc: 0, _m: new Set(),
     }));
     /* a keeper: shots on target faced (sotf), goals from them (ga), own goals let in while he was in goal (oga), xGOT faced */
     const kp = (kid, tid) => (K[kid] || (K[kid] = { team: rosterTeam[kid] || tid, sotf: 0, ga: 0, oga: 0, xgotf: 0, _m: new Set() }));
-    /* a club: its own shots, on target, goals, xG and xGOT, and the same conceded (sha, sota, ga, xga, xgota) */
-    const tm = (tid) => (T[tid] || (T[tid] = { mp: 0, sh: 0, sot: 0, g: 0, xg: 0, xgot: 0, sha: 0, sota: 0, ga: 0, xga: 0, xgota: 0, ogf: 0, oga: 0 }));
+    /* a club: its own shots, on target, goals, xG, xGOT and big chances, and the same conceded (sha, sota, ga, xga, xgota, bca) */
+    const tm = (tid) => (T[tid] || (T[tid] = { mp: 0, sh: 0, sot: 0, g: 0, xg: 0, xgot: 0, bc: 0, sha: 0, sota: 0, ga: 0, xga: 0, xgota: 0, bca: 0, ogf: 0, oga: 0 }));
 
     const mk = () => ({ n: 0, g: 0, xg: 0 });
     const check = { all: mk(), np: mk(), inbox: mk(), outbox: mk(), head: mk(), pen: mk(), ot: mk() };
@@ -769,18 +773,20 @@ const Stats = (() => {
         const tid = side[s.t], opp = side[other(s.t)];
         const xg = Model.xg(s);
         let xgot = Model.xgot(s);
-        const on = Model.onTarget(s), goal = s.out === "goal" ? 1 : 0, pen = s.sit === "pen";
+        const on = Model.onTarget(s), goal = s.out === "goal" ? 1 : 0, pen = s.sit === "pen", big = isBig(xg) ? 1 : 0;
         if (xgot == null) { totals.noplace += 1; xgot = 0; }
 
+        /* bc: big chances a player had, bcm: those he did not score, bcc: big chances he set up (with the same pass a key pass is) */
         const p = pl(s.p, tid);
         p._m.add(mid);
         p.sh += 1; p.sot += on ? 1 : 0; p.g += goal; p.xg += xg; p.xgot += xgot;
+        p.bc += big; p.bcm += big && !goal ? 1 : 0;
         if (pen) { p.pens += 1; p.pg += goal; } else { p.npxg += xg; p.npsh += 1; }
 
         if ((s.sit || "open") === "open" && s.ap) {
           const a = pl(s.ap, tid);
           a._m.add(mid);
-          a.kp += 1; a.a += goal; a.xa += xg;
+          a.kp += 1; a.a += goal; a.xa += xg; a.bcc += big;
         }
 
         if (on) {
@@ -794,8 +800,8 @@ const Stats = (() => {
         }
 
         const t = tm(tid), o = tm(opp);
-        t.sh += 1; t.sot += on ? 1 : 0; t.g += goal; t.xg += xg; t.xgot += xgot;
-        o.sha += 1; o.sota += on ? 1 : 0; o.ga += goal; o.xga += xg; o.xgota += xgot;
+        t.sh += 1; t.sot += on ? 1 : 0; t.g += goal; t.xg += xg; t.xgot += xgot; t.bc += big;
+        o.sha += 1; o.sota += on ? 1 : 0; o.ga += goal; o.xga += xg; o.xgota += xgot; o.bca += big;
 
         totals.shots += 1; totals.goals += goal; totals.xg += xg;
 
@@ -826,7 +832,7 @@ const Stats = (() => {
     return { players: P, keepers: K, teams: T, check, totals };
   }
 
-  return { score, results, matchSummary, matchPlayers, scorers, timeline, timelineAt, minutes, aggregate };
+  return { BIG_CHANCE, isBig, score, results, matchSummary, matchPlayers, scorers, timeline, timelineAt, minutes, aggregate };
 })();
 
 /* ============================================================
@@ -2086,6 +2092,8 @@ function totalsTable(sc, sum, heads) {
       h("th", { scope: "col" }, h("span", { className: "tchip" }, h("i", { className: "dot away" }), heads.a)))) : null,
     h("tbody", null,
       row("Goals", sc.h, sc.a), row("Shots", sum.h.sh, sum.a.sh), row("On target", sum.h.sot, sum.a.sot),
+      /* the public page also counts each side's big chances (shots worth more than 0.20 xG) and the ones it missed */
+      ...(READER ? [row("Big chances created", sum.h.bc, sum.a.bc), row("Big chances missed", sum.h.bcm, sum.a.bcm)] : []),
       row("xG", f2(sum.h.xg), f2(sum.a.xg)), row("xG on target", f2(sum.h.xgot), f2(sum.a.xgot))));
 }
 
@@ -2911,12 +2919,14 @@ const PLAYER_COLS = [
   { key: "sot", label: "On target", num: true, get: (r) => r.sot, title: "Shots that were scored or saved by the keeper" },
   { key: "g", label: "Goals", num: true, get: (r) => r.g, title: "Goals scored, penalties included" },
   { key: "xg", label: "xG", num: true, get: (r) => r.xg, fmt: f2, title: "Expected goals from all shots" },
-  { key: "diff", label: "G " + MINUS + " xG", num: true, get: (r) => r.diff, fmt: signed, title: "Goals minus expected goals" },
+  READER ? { key: "bcm", label: "Big chances missed", num: true, get: (r) => r.bcm, title: "Big chances this player had and did not score: shots worth more than 0.20 xG" } :
+    { key: "diff", label: "G " + MINUS + " xG", num: true, get: (r) => r.diff, fmt: signed, title: "Goals minus expected goals" },
   { key: "npxg", label: "npxG", num: true, get: (r) => r.npxg, fmt: f2, title: "Expected goals without penalties" },
   /* npxG per shot stays in the tracker; the public page leaves it out */
   ...(READER ? [] : [{ key: "per", label: "npxG / shot", num: true, get: (r) => r.per, fmt: f2, title: "Average chance quality, penalties left out" }]),
   { key: "xgot", label: "xGOT", num: true, get: (r) => r.xgot, fmt: f2, title: "Expected goals on target: chance of scoring given where each shot was placed" },
-  { key: "kp", label: "Key passes", num: true, get: (r) => r.kp, title: "Passes that led straight to a shot" },
+  READER ? { key: "bcc", label: "Big chances created", num: true, get: (r) => r.bcc, title: "Big chances this player set up with the pass before the shot" } :
+    { key: "kp", label: "Key passes", num: true, get: (r) => r.kp, title: "Passes that led straight to a shot" },
   { key: "a", label: "Assists", num: true, get: (r) => r.a, title: "Key passes that ended in a goal" },
   { key: "xa", label: "xA", num: true, get: (r) => r.xa, fmt: f2, title: "Expected assists: the xG of the shots this player set up" },
 ];
@@ -2928,7 +2938,7 @@ function PlayersView({ s, idx, agg }) {
   const [sel, setSel] = useState(null);
   const rows = useMemo(() => Object.keys(agg.players).map((id) => {
     const d = agg.players[id];
-    return { id, name: pname(idx, id), mp: d.mp, mins: d.mins, club: tshort(s.teams, d.team), team: d.team, sh: d.sh, sot: d.sot, g: d.g, xg: d.xg, diff: d.g - d.xg, npxg: d.npxg, per: d.npsh ? d.npxg / d.npsh : null, xgot: d.xgot, kp: d.kp, a: d.a, xa: d.xa, pens: d.pens, pg: d.pg };
+    return { id, name: pname(idx, id), mp: d.mp, mins: d.mins, club: tshort(s.teams, d.team), team: d.team, sh: d.sh, sot: d.sot, g: d.g, xg: d.xg, diff: d.g - d.xg, npxg: d.npxg, per: d.npsh ? d.npxg / d.npsh : null, xgot: d.xgot, kp: d.kp, a: d.a, xa: d.xa, pens: d.pens, pg: d.pg, bcm: d.bcm, bcc: d.bcc };
   }), [agg, idx, s.teams]);
   if (!rows.length) return h(NoShotsYet, { what: "every player's shots, goals, xG and xA" });
   const shown = rows.filter((r) => (!team || r.team === team) && r.sh >= minSh && (!q || fold(r.name).includes(fold(q))));
@@ -2943,15 +2953,18 @@ function PlayersView({ s, idx, agg }) {
       h(ClubSelect, { id: "pl-club", s, value: team, onChange: setTeam }),
       h(Seg, { label: "At least", value: minSh, onChange: setMinSh, options: [{ value: 0, label: "Any" }, { value: 5, label: "5 shots" }, { value: 10, label: "10" }, { value: 20, label: "20" }] })),
     picked ? h(PlayerDetail, { s, idx, r: picked, close: () => setSel(null) }) : null,
-    shown.length ? h(SortTable, { cols: PLAYER_COLS, rows: shown, initial: { key: "xg", dir: -1 }, rowKey: (r) => r.id, onRow: (id) => setSel(sel === id ? null : id), selKey: sel, caption: "Player totals" }) :
+    /* on the public page the long big-chance headings wrap where the room runs out, as on Teams, so the table fits a laptop */
+    shown.length ? h(SortTable, { cols: PLAYER_COLS, rows: shown, initial: { key: "xg", dir: -1 }, rowKey: (r) => r.id, onRow: (id) => setSel(sel === id ? null : id), selKey: sel, caption: "Player totals", className: READER ? "fit" : undefined }) :
       h("div", { className: "empty" }, h("strong", null, "No players match"), "Loosen the filters above."),
     READER ? null : hint,
     h(Defs, { items: [
       ["xG", "Expected goals. Each shot is worth the chance that a shot like it is scored, from 0 to 1, matched to the official xG of ISL goals. A penalty is worth " + f2(MODEL.xg.pen) + "."],
-      ["G " + MINUS + " xG", "Goals minus xG. Above zero means more goals than the chances were worth."],
+      READER ? ["Big chances missed", "Big chances the player had and did not score. A big chance is any shot worth more than 0.20 xG, so every penalty is one."] :
+        ["G " + MINUS + " xG", "Goals minus xG. Above zero means more goals than the chances were worth."],
       ["npxG", "xG with penalties left out."],
       ["xGOT", "xG on target. Rates each on-target shot again once you know where in the goal it went. Shots off target count zero."],
-      ["Key passes", "Passes that led straight to a shot. An assist is a key pass that ended in a goal."],
+      READER ? ["Big chances created", "Big chances the player set up with the pass before the shot. An assist is a pass that led straight to a goal."] :
+        ["Key passes", "Passes that led straight to a shot. An assist is a key pass that ended in a goal."],
       ["xA", "Expected assists. The xG of every shot the player set up, scored or not."],
     ].concat(READER ? [PLAYED_DEF] : []) }));
 }
@@ -3029,7 +3042,7 @@ function KeepersView({ s, idx, agg }) {
     warn,
     h("div", { className: "row" }, h(ClubSelect, { id: "gk-club", s, value: team, onChange: setTeam })),
     picked ? h(KeeperDetail, { s, idx, r: picked, close: () => setSel(null) }) : null,
-    shown.length ? h(SortTable, { cols: KEEPER_COLS, rows: shown, initial: { key: "sae", dir: -1 }, rowKey: (r) => r.id, onRow: (id) => setSel(sel === id ? null : id), selKey: sel, caption: "Goalkeeper totals" }) :
+    shown.length ? h(SortTable, { cols: KEEPER_COLS, rows: shown, initial: { key: "sae", dir: -1 }, rowKey: (r) => r.id, onRow: (id) => setSel(sel === id ? null : id), selKey: sel, caption: "Goalkeeper totals", className: READER ? "fit" : undefined }) :
       h("div", { className: "empty" }, h("strong", null, "No keepers for this club yet"), "Pick another club."),
     READER ? null : hint,
     h(Defs, { items: [
@@ -3073,17 +3086,18 @@ const TEAM_COLS = [
   { key: "mp", label: "Matches", num: true, get: (r) => r.mp, title: READER ? "Finished matches" : "Matches with at least one tagged shot" },
   { key: "gf", label: "Goals for", num: true, get: (r) => r.gf, title: "Goals scored, own goals in their favour included" },
   { key: "ga", label: "Goals against", num: true, get: (r) => r.ga },
-  /* the public page, where every match is finished, also has the league table's two columns; a tie on points goes to goal
-     difference, then goals scored */
+  /* the public page, where every match is finished, also has the league table's points (a tie on points goes to goal
+     difference, then goals scored) and each club's big chances: shots worth more than 0.20 xG, created and conceded */
   ...(READER ? [
-    { key: "gd", label: "Goal difference", num: true, get: (r) => r.gd, fmt: signedInt, title: "Goals for minus goals against" },
     { key: "pts", label: "Points", num: true, get: (r) => r.pts, title: "Three for a win and one for a draw", then: [(r) => r.gd, (r) => r.gf] },
+    { key: "bc", label: "Big chances created", num: true, get: (r) => r.bc, title: "The club's shots worth more than 0.20 xG, penalties included" },
   ] : []),
   { key: "sh", label: "Shots", num: true, get: (r) => r.sh },
   { key: "sot", label: "On target", num: true, get: (r) => r.sot },
   { key: "xg", label: "xG", num: true, get: (r) => r.xg, fmt: f2 },
   /* the public page has the club's total xG on target beside its xG; the tracker has xG per match at the end instead */
   ...(READER ? [{ key: "xgot", label: "xGOT", num: true, get: (r) => r.xgot, fmt: f2, title: "xG on target: the club's shots on target, each rated again for where in the goal it went. Shots that missed or were blocked count zero." }] : []),
+  ...(READER ? [{ key: "bca", label: "Big chances conceded", num: true, get: (r) => r.bca, title: "Opponents' shots worth more than 0.20 xG, penalties included" }] : []),
   { key: "sha", label: "Shots against", num: true, get: (r) => r.sha },
   { key: "xga", label: "xG against", num: true, get: (r) => r.xga, fmt: f2 },
   { key: "xgd", label: "xG difference", num: true, get: (r) => r.xgd, fmt: signed, title: "xG for minus xG against" },
@@ -3095,7 +3109,7 @@ function TeamsView({ s, idx, agg }) {
   const res = useMemo(() => Stats.results(s.matches), [s.matches]);
   const rows = useMemo(() => Object.keys(agg.teams).map((id) => {
     const d = agg.teams[id], gf = d.g + d.ogf, ga = d.ga + d.oga;
-    return { id, name: tname(s.teams, id), mp: d.mp, gf, ga, gd: gf - ga, pts: res[id] ? res[id].pts : 0, sh: d.sh, sot: d.sot, xg: d.xg, xgot: d.xgot,
+    return { id, name: tname(s.teams, id), mp: d.mp, gf, ga, gd: gf - ga, pts: res[id] ? res[id].pts : 0, sh: d.sh, sot: d.sot, xg: d.xg, xgot: d.xgot, bc: d.bc, bca: d.bca,
       sha: d.sha, sota: d.sota, xga: d.xga, xgota: d.xgota, xgd: d.xg - d.xga, xgpm: d.mp ? d.xg / d.mp : null };
   }), [agg, s.teams, res]);
   if (!rows.length) return h(NoShotsYet, { what: "each club's shots and xG for and against" });
@@ -3107,7 +3121,8 @@ function TeamsView({ s, idx, agg }) {
     picked ? h(TeamDetail, { key: picked.id, s, idx, r: picked, close: () => setSel(null) }) : null,
     h(SortTable, { cols: TEAM_COLS, rows, initial: { key: "xgd", dir: -1 }, rowKey: (r) => r.id, onRow: (id) => setSel(sel === id ? null : id), selKey: sel, caption: "Club totals", className: READER ? "fit" : undefined }),
     READER ? null : hint,
-    h("p", { className: "sub" }, (READER ? "Only finished matches are counted." : "Only matches you have tagged are counted.") + " Goals include own goals; xG never does."));
+    h("p", { className: "sub" }, (READER ? "Only finished matches are counted." : "Only matches you have tagged are counted.") + " Goals include own goals; xG never does." +
+      (READER ? " A big chance is a shot worth more than 0.20 xG." : "")));
 }
 
 /* a club's season: its numbers, its shots on one map, and its matches one by one. Pointing at a match, or tapping it, picks out
@@ -3380,6 +3395,7 @@ function MethodView({ s, idx, agg }) {
       h("div", { className: "prose" },
         h("p", null, h("strong", null, "xG"), " is the chance that a shot is scored, judged before it is struck. It uses how far out and how central the shot is, foot or head, whether it is a direct free kick, the pass before it, and whether it is a one-on-one or an open goal. Its values are matched to the official xG of ISL goals. A penalty is always " + f2(MODEL.xg.pen) + "."),
         h("p", null, h("strong", null, "xA"), " gives the player who set up a shot that shot's xG, scored or not."),
+        s.reader ? h("p", null, h("strong", null, "A big chance"), " is any shot worth more than 0.20 xG, so every penalty is one. A big chance missed is one that was not scored, and a player creates one when his pass sets it up.") : null,
         h("p", null, h("strong", null, "The xG worm"), " on a match's Timeline tab adds up each team's xG as the match goes on. The line steps up at every shot, by that shot's xG. A shot saved without a minute cannot be placed, so it is left off the worm but still counts in every total."),
         s.reader ? h("p", null, h("strong", null, "The shot map"), " draws every shot where it was taken, sized by its xG, with each side attacking its own end. Point at a shot and a line shows where it ended up: where a shot on target crossed the goal line (or would have, without the save), the post or bar it hit, where it went out, or where it was blocked. The box that comes up gives the shot's xG and, for a shot on target, its xGOT. A club's map on the Teams tab does the same for its whole season: the shots it took at one end, in its colour, and the shots it conceded at the other, in grey.") : null,
         h("p", null, h("strong", null, "xG on target"), " (xGOT) rates a shot again once you know where in the goal it was heading. A shot into the top corner is worth more than one straight at the keeper. Headers differ on height: a header aimed low is harder to save than one aimed high."),
