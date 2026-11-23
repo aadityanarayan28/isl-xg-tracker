@@ -2867,7 +2867,7 @@ function MatchTimeline({ s, idx, m, can, withMap }) {
   /* One table, two shapes. On a wide screen every fact has its own column. On a phone the team, outcome and score
      fold in under the player's name (the tl-* pieces below), so minute, shot and outcome all show without sideways scrolling.
      The public page adds each shot's xG on target beside its xG (tl-ot), for shots on target only. It also gives the outcome
-     alone (goal, saved, off target, blocked or woodwork) where the tracker describes the shot, and adds who set the shot up,
+     alone (goal, saved, off target, blocked or woodwork, with "(Penalty)" after it for a penalty) where the tracker describes the shot, and adds who set the shot up,
      straight after the player (c-ap; on a phone, a line of its own under his name, tl-ap). */
   const withOt = !!READER, brief = !!READER;
   const otOf = (x) => { const v = Model.onTarget(x) ? Model.xgot(x) : null; return v == null ? "" : f2(v); };
@@ -2903,7 +2903,7 @@ function MatchTimeline({ s, idx, m, can, withMap }) {
         h("th", { className: "num c-run", scope: "col", title: "Each team's xG so far, " + sides.h.short + " first" }, sides.h.short + " \u2013 " + sides.a.short + " xG"))),
       h("tbody", null, shown.map((r) => {
         const timed = r.min != null, og = r.kind === "og";
-        const what = og ? "Own goal" : brief ? OUT[r.shot.out] || r.shot.out : shotLine(r.shot);
+        const what = og ? "Own goal" : brief ? (OUT[r.shot.out] || r.shot.out) + (r.shot.sit === "pen" ? " (Penalty)" : "") : shotLine(r.shot);
         const ap = brief && !og && r.shot.ap ? pname(idx, r.shot.ap) : "";
         const score = r.goal && r.score ? r.score.h + "\u2013" + r.score.a : "";
         const key = r.kind + r.id;
