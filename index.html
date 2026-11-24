@@ -3549,13 +3549,48 @@ function archShortName(n) {
 const archMeasure = (() => { let c = null; return (t, font) => { if (!c) c = document.createElement("canvas").getContext("2d"); c.font = font; return c.measureText(t).width; }; })();
 const archEsc = (t) => String(t).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
 
+/* With clubs picked, each club's dots wear its colour (see CLUB COLOURS): its own, unless that is too like the colour of a
+   club picked before it, then its change colour; when both are, whichever is further from the rest. A club keeps its colour
+   until it is picked off, so adding or taking off a club never repaints the others. "Too like" is the site's colour check:
+   OKLab distance x100 under 15 with full colour vision, or under 8 with red-green colour blindness (Machado, Oliveira and
+   Fernandes 2009, full strength, protan and deutan), in the light page or the dark one. That is the line that gives exactly
+   the clashing pairings in CLUB_SWITCH. */
+const ARCH_CVD = {
+  protan: [[0.152286, 1.052583, -0.204868], [0.114503, 0.786281, 0.099216], [-0.003882, -0.048116, 1.051998]],
+  deutan: [[0.367322, 0.860646, -0.227968], [0.280085, 0.672501, 0.047413], [-0.011820, 0.042940, 0.968881]],
+};
+function archLab(hex, kind) {
+  const lin = [1, 3, 5].map((i) => { const c = parseInt(hex.slice(i, i + 2), 16) / 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; });
+  const [r, g, b] = kind ? ARCH_CVD[kind].map((m) => Math.max(0, Math.min(1, m[0] * lin[0] + m[1] * lin[1] + m[2] * lin[2]))) : lin;
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  return [0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s, 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s, 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s];
+}
+const archDE = (h1, h2, kind) => { const a = archLab(h1, kind), b = archLab(h2, kind); return 100 * Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]); };
+/* how far apart two [light, dark] colours are against that line: 1 or more, told apart */
+const archApart = (k1, k2) => Math.min(...[0, 1].map((i) => Math.min(archDE(k1[i], k2[i]) / 15, Math.min(archDE(k1[i], k2[i], "protan"), archDE(k1[i], k2[i], "deutan")) / 8)));
+/* the colour for a club picked now (0 its own, 1 its change), given the [light, dark] colours of the clubs already picked */
+function archKit(id, others) {
+  const C = CLUB_COLOURS[id];
+  if (!C || !others.length) return 0;
+  const worst = (k) => Math.min(...others.map((o) => archApart(k, o)));
+  const own = worst(C.own);
+  if (own >= 1) return 0;
+  const change = worst(C.change);
+  return change >= 1 || change > own ? 1 : 0;
+}
+const archKitColours = (id, kit) => (CLUB_COLOURS[id] ? (kit ? CLUB_COLOURS[id].change : CLUB_COLOURS[id].own) : null);
+const archKitStyle = (k) => (k ? { "--ch-l": k[0], "--ch-d": k[1] } : undefined);
+
 /* the chart as SVG markup, drawn for a width W: gridlines, the two dashed lines, the four quadrants' names in their corners,
    a dot per player drawn (a link to their card where they have one), and names placed clear of the rest. The axes and the
    dashed lines always come from every player on the chart, so a player's dot stays put whatever is picked. view says what is
    drawn:
      { mode: "all" }          everyone, the bottom left down to its top fifth, and names for the standouts
-     { mode: "clubs", pool }  only the players of the clubs picked (pool), every one of them, bottom left included, counted in
-                              the corners, with names for as many as fit
+     { mode: "clubs", pool, kit }  only the players of the clubs picked (pool), every one of them, bottom left included, each
+                              in their club's colour (kit gives a club's [light, dark] colours), counted in the corners, with
+                              names for as many as fit
      { mode: "find", ids }    everyone as usual but faded, and the players picked (ids) on top, ringed and named, including a
                               player from the bottom left who is not otherwise drawn
      { mode: "vs", ids }      only the one or two players picked, in their two colours (v1, v2) and named, and no counts */
@@ -3604,7 +3639,8 @@ function archChart(rows, cut, scale, W, hrefOf, view) {
   const drawn = v.mode === "vs" ? v.ids.map((id) => rows.find((r) => r.id === id)).filter(Boolean) :
     v.mode === "clubs" ? pool : rows.filter((r) => archQuad(r, cut) !== "LL" || ll.shown.has(r.id) || picked.has(r.id));
   const dots = drawn.map((r) => ({ r, x: sx(r.xa90), y: sy(r.npxg90), q: archQuad(r, cut), href: hrefOf(r),
-    hi: v.mode === "find" && picked.has(r.id), dim: v.mode === "find" && !picked.has(r.id), vs: v.mode === "vs" ? v.ids.indexOf(r.id) + 1 : 0 }));
+    hi: v.mode === "find" && picked.has(r.id), dim: v.mode === "find" && !picked.has(r.id), vs: v.mode === "vs" ? v.ids.indexOf(r.id) + 1 : 0,
+    kc: v.mode === "clubs" && v.kit ? v.kit(r.team) : null }));
   const onDot = (b, except) => dots.some((d) => d !== except && Math.hypot(Math.min(Math.max(d.x, b.x0), b.x1) - d.x, Math.min(Math.max(d.y, b.y0), b.y1) - d.y) < R + 1.5);
   const inPlot = (b) => b.x0 >= m.l + 3 && b.x1 <= m.l + pw - 3 && b.y0 >= m.t + 2 && b.y1 <= m.t + ph - 3;
 
@@ -3651,7 +3687,7 @@ function archChart(rows, cut, scale, W, hrefOf, view) {
   const score = (d) => archScore(d.r, cut);
   const layer = (d) => (d.hi || d.vs ? 2 : d.dim ? 0 : 1);
   for (const d of dots.slice().sort((a, b) => layer(a) - layer(b) || score(a) - score(b))) {
-    const c = '<circle class="ar-pt' + (d.dim ? " dim" : "") + (d.hi ? " hi" : "") + (d.vs ? " v" + d.vs : "") + '" cx="' + d.x.toFixed(1) + '" cy="' + d.y.toFixed(1) + '" r="' + (d.hi || d.vs ? R + 1.5 : R) + '"/>';
+    const c = '<circle class="ar-pt' + (d.dim ? " dim" : "") + (d.hi ? " hi" : "") + (d.vs ? " v" + d.vs : "") + (d.kc ? ' club-colors" style="--ch-l:' + d.kc[0] + ";--ch-d:" + d.kc[1] : "") + '" cx="' + d.x.toFixed(1) + '" cy="' + d.y.toFixed(1) + '" r="' + (d.hi || d.vs ? R + 1.5 : R) + '"/>';
     out.push(d.href ? '<a href="' + archEsc(d.href) + '" aria-label="' + archEsc(d.r.name) + '">' + c + "</a>" : c);
   }
   out.push(...late);
@@ -3693,7 +3729,7 @@ function archChart(rows, cut, scale, W, hrefOf, view) {
 }
 
 /* what the reader has picked on the chart (see VisualiserView), kept while they look at a card or another tab and come back */
-const ARCH_MEMO = { mode: "clubs", clubs: [], picks: [], vs: [null, null] };
+const ARCH_MEMO = { mode: "clubs", clubs: [], kits: {}, picks: [], vs: [null, null] };
 const ARCH_PICKS = 6;                                        // players that can be picked out on the chart at once
 
 /* a box to type a player's name into: the players on the chart who match, by name or by club, are listed under it (up to
@@ -3733,7 +3769,8 @@ function ArchPicker({ id, rows, exclude, label, placeholder, disabled, onPick })
 }
 
 /* The Visualiser tab. Next to the title, what the chart shows:
-     Clubs             all clubs (the chart as it opens), or only the players of the clubs picked, every one of them
+     Clubs             all clubs (the chart as it opens), or only the players of the clubs picked, every one of them, each
+                       club's dots in its own colour, shown on its chip
      Find players      up to six players typed in and picked, ringed and named on the chart over everyone else, faded; one
                        from the bottom left who is not otherwise drawn is drawn too
      Player vs player  two players picked, and only their two dots, each in its own colour, with their numbers beside the names
@@ -3747,9 +3784,10 @@ function VisualiserView({ s, idx, agg }) {
   const clubIds = useMemo(() => [...new Set(rows.map((r) => r.team))].sort((a, b) => tname(s.teams, a).localeCompare(tname(s.teams, b))), [rows, s.teams]);
   const [mode, setMode] = useState(ARCH_MEMO.mode);
   const [clubsAll, setClubs] = useState(ARCH_MEMO.clubs);
+  const [kits, setKits] = useState(ARCH_MEMO.kits);
   const [picksAll, setPicks] = useState(ARCH_MEMO.picks);
   const [vsAll, setVs] = useState(ARCH_MEMO.vs);
-  useEffect(() => { Object.assign(ARCH_MEMO, { mode, clubs: clubsAll, picks: picksAll, vs: vsAll }); }, [mode, clubsAll, picksAll, vsAll]);
+  useEffect(() => { Object.assign(ARCH_MEMO, { mode, clubs: clubsAll, kits, picks: picksAll, vs: vsAll }); }, [mode, clubsAll, kits, picksAll, vsAll]);
   /* only players and clubs still on the chart count (a later upload can move someone under the minutes bar) */
   const clubs = clubsAll.filter((id) => clubIds.includes(id)), picks = picksAll.filter((id) => byId[id]), vs = vsAll.map((id) => (id && byId[id] ? id : null));
   const boxRef = useRef(null);
@@ -3764,9 +3802,10 @@ function VisualiserView({ s, idx, agg }) {
   const cardHref = (r) => (r.card && nav ? nav.href({ tab: "players", item: r.id }) : null);
   const clubSet = new Set(clubs);
   const pool = mode === "clubs" && clubs.length ? rows.filter((r) => clubSet.has(r.team)) : rows;
-  const view = mode === "clubs" && clubs.length ? { mode: "clubs", pool } : mode === "find" && picks.length ? { mode: "find", ids: picks } :
+  const kitOf = (team) => archKitColours(team, kits[team] || 0);
+  const view = mode === "clubs" && clubs.length ? { mode: "clubs", pool, kit: kitOf } : mode === "find" && picks.length ? { mode: "find", ids: picks } :
     mode === "vs" ? { mode: "vs", ids: vs.filter(Boolean) } : { mode: "all" };
-  const viewKey = view.mode + ":" + (view.mode === "clubs" ? clubs.join(",") : (view.ids || []).join(","));
+  const viewKey = view.mode + ":" + (view.mode === "clubs" ? clubs.map((c) => c + "." + (kits[c] || 0)).join(",") : (view.ids || []).join(","));
   const chart = useMemo(() => (cut && width > 0 ? archChart(rows, cut, "sqrt", Math.max(300, Math.round(width)), cardHref, view) : null), [rows, cut, width, fonts, viewKey]);
   /* the player being pointed at (or, on a touch screen, tapped): an index into chart.dots */
   const [tip, setTip] = useState(null);
@@ -3825,7 +3864,7 @@ function VisualiserView({ s, idx, agg }) {
       h("span", { className: "ar-q" }, q.name),
       d.href ? h("span", { className: "ar-go" }, (tip.touch ? "Tap again" : "Click") + " to see their " + (r.sh ? "shot map" : "numbers on Players")) : null);
     ring = h("svg", { className: "ar-hot", viewBox: "0 0 " + chart.W + " " + chart.H, "aria-hidden": "true" },
-      h("circle", { className: "ar-ring" + (d.vs ? " v" + d.vs : ""), cx: d.x, cy: d.y, r: ARCH_R + (d.hi || d.vs ? 3 : 1.5) }));
+      h("circle", { className: "ar-ring" + (d.vs ? " v" + d.vs : "") + (d.kc ? " club-colors" : ""), style: archKitStyle(d.kc), cx: d.x, cy: d.y, r: ARCH_R + (d.hi || d.vs ? 3 : 1.5) }));
   }
 
   /* what the chart shows, next to the title, and under it the picking for that */
@@ -3847,13 +3886,26 @@ function VisualiserView({ s, idx, agg }) {
       h("span", { className: "ar-vs-nums" }, h("span", null, h("b", null, r.npxg90.toFixed(2)), " npxG/90"), h("span", null, h("b", null, r.xa90.toFixed(2)), " xA/90")),
       cross("Take " + r.name + " out of the comparison", () => setVs((v) => v.map((x, j) => (j === i ? null : x)))));
   };
+  /* a club picked takes its colour then (archKit), against the clubs already picked; picked off, it gives it up */
+  const toggleClub = (id) => {
+    if (clubSet.has(id)) {
+      setClubs((c) => c.filter((x) => x !== id));
+      setKits((k) => { const n = Object.assign({}, k); delete n[id]; return n; });
+    } else {
+      const kit = archKit(id, clubs.map((c) => kitOf(c)).filter(Boolean));
+      setKits((k) => Object.assign({}, k, { [id]: kit }));
+      setClubs((c) => c.filter((x) => x !== id).concat(id));
+    }
+  };
+  /* the chips: each club picked shows the colour of its dots, so the chips are the chart's key */
   const tools = mode === "clubs" ?
     h("div", { className: "ar-chips", role: "group", "aria-label": "Clubs on the chart" },
-      h("button", { type: "button", className: "ar-chip" + (clubs.length ? "" : " on"), "aria-pressed": !clubs.length, onClick: () => setClubs([]) }, "All clubs"),
+      h("button", { type: "button", className: "ar-chip" + (clubs.length ? "" : " on"), "aria-pressed": !clubs.length, onClick: () => { setClubs([]); setKits({}); } }, "All clubs"),
       clubIds.map((id) => h("button", {
         key: id, type: "button", className: "ar-chip" + (clubSet.has(id) ? " on" : ""), "aria-pressed": clubSet.has(id), title: tname(s.teams, id), "aria-label": tname(s.teams, id),
-        onClick: () => setClubs((c) => (c.includes(id) ? c.filter((x) => x !== id) : c.concat(id))),
-      }, h(Crest, { id, size: 18 }), tshort(s.teams, id)))) :
+        onClick: () => toggleClub(id),
+      }, clubSet.has(id) && kitOf(id) ? h("i", { className: "dot home club-colors", style: archKitStyle(kitOf(id)), "aria-hidden": "true" }) : null,
+        h(Crest, { id, size: 18 }), tshort(s.teams, id)))) :
     mode === "find" ?
       h("div", { className: "ar-find" },
         h(ArchPicker, { id: "ar-find", rows, exclude: new Set(picks), label: "Find a player on the chart", disabled: picks.length >= ARCH_PICKS,
