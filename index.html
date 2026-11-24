@@ -4145,8 +4145,9 @@ function VisualiserView({ s, idx, agg }) {
       h("circle", { className: "ar-ring" + (d.kc ? " club-colors" : ""), style: archKitStyle(d.kc), cx: d.x, cy: d.y, r: ARCH_R + 1.5 }));
   }
 
-  /* what the tab shows, next to the title, and under it the picking for that */
+  /* what the tab shows, next to the title (which follows it), and under it the picking for that */
   const modes = [["chart", "Chart"], ["players", "Player vs player"], ["keepers", "Keeper vs keeper"], ["teams", "Team vs team"]];
+  const title = { chart: "Goal threat and chance creation", players: "Player performance", keepers: "Goalkeeper performance", teams: "Team performance" }[mode];
   const modeSwitch = h("div", { className: "seg ar-modes", role: "group", "aria-label": "What the tab shows" }, modes.map(([k, l]) =>
     h("button", { key: k, type: "button", className: "seg-btn" + (mode === k ? " on" : ""), "aria-pressed": mode === k, onClick: () => setMode(k) }, l)));
   /* a club picked takes its colour then (archKit), against the clubs already picked; picked off, it gives it up */
@@ -4238,7 +4239,7 @@ function VisualiserView({ s, idx, agg }) {
      table under it (nothing written below the button), or the comparison with nothing under it */
   return h("div", { className: "stack" },
     h("div", { className: "card stack" },
-      h("div", { className: "ar-head" }, h("h2", { className: "h2" }, "Goal threat and chance creation"), modeSwitch),
+      h("div", { className: "ar-head" }, h("h2", { className: "h2" }, title), modeSwitch),
       tools,
       compare,
       h("div", Object.assign({ className: "ar-chart", ref: boxRef, role: "img", hidden: mode !== "chart",
