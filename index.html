@@ -3907,10 +3907,10 @@ function ArchMenu({ id, label, value, rows, s, clubIds, taken, clubsOnly, onPick
 /* a club's season for the comparison, counted as the season tables count it: every match it has a shot or an own goal in,
    90 minutes a match (stoppage time never counts). Its goals are the ones from its own shots, as its xG is: own goals in its
    favour are left out, as they are from a player's. Big chances, and the ones missed, are its shots worth more than 0.20 xG;
-   big chances created, key passes and xA come from the same passes as a player's do (open play, with the pass before the
-   shot), added up over the club */
+   big chances created come from the same passes as a player's do (open play, with the pass before the shot), added up over
+   the club */
 function archTeamStats(s, tid) {
-  const t = { mp: 0, xg: 0, g: 0, npxg: 0, bc: 0, bcm: 0, bcc: 0, kp: 0, xa: 0 };
+  const t = { mp: 0, xg: 0, g: 0, npxg: 0, bc: 0, bcm: 0, bcc: 0 };
   for (const m of Object.values(s.matches)) {
     if (m.home !== tid && m.away !== tid) continue;
     if (!(m.shots || []).length && !(m.og || []).length) continue;
@@ -3923,7 +3923,7 @@ function archTeamStats(s, tid) {
       if (goal) t.g += 1;
       if (x.sit !== "pen") t.npxg += v;
       if (big) { t.bc += 1; if (!goal) t.bcm += 1; }
-      if ((x.sit || "open") === "open" && x.ap) { t.kp += 1; t.xa += v; if (big) t.bcc += 1; }
+      if (big && (x.sit || "open") === "open" && x.ap) t.bcc += 1;
     }
   }
   t.mins = t.mp * 90;
@@ -3941,21 +3941,23 @@ const ARCH_CMP = [
   ["npxG", (t) => t.npxg, 2],
   ["npxG/90", (t) => (t.mins ? (t.npxg / t.mins) * 90 : null), 2],
   ["Big chances", (t) => t.bc, 0],
-  ["Big chances missed", (t) => t.bcm, 0],
   ["Big chances created", (t) => t.bcc, 0],
+  ["Big chances missed", (t) => t.bcm, 0],
   ["Key passes", (t) => t.kp, 0],
   ["xA", (t) => t.xa, 2],
   ["xA/90", (t) => (t.mins ? (t.xa / t.mins) * 90 : null), 2],
 ];
+/* two clubs are compared without the last three: key passes, xA and xA/90 */
+const ARCH_CMP_CLUB = ARCH_CMP.filter(([label]) => !["Key passes", "xA", "xA/90"].includes(label));
 /* two sides side by side, a row a measure: in each row the higher number is green and the lower red, compared as shown (to
    the decimals shown), and the higher is bold too, for anyone who cannot tell the two colours apart; equal numbers, or a side
    not picked yet, stay plain */
-function ArchCompare({ caption, heads, sides }) {
+function ArchCompare({ caption, heads, sides, measures }) {
   const fmt = (v, dp, f) => (v == null ? "\u2013" : f ? f(v) : dp ? v.toFixed(dp) : Math.round(v).toLocaleString("en-US"));
   return h("div", { className: "tbl-wrap ar-cmp-wrap" }, h("table", { className: "tbl ar-cmp" },
     h("caption", { className: "sr" }, caption),
     h("thead", null, h("tr", null, h("th", { scope: "col" }, h("span", { className: "sr" }, "Measure")), heads.map((hd, i) => h("th", { key: i, scope: "col", className: "num" }, hd)))),
-    h("tbody", null, ARCH_CMP.map(([label, get, dp, f, note]) => {
+    h("tbody", null, (measures || ARCH_CMP).map(([label, get, dp, f, note]) => {
       const vals = sides.map((t) => (t ? get(t) : null));
       const shown = vals.map((v) => (v == null ? null : Number(v.toFixed(dp))));
       const apart = shown[0] != null && shown[1] != null && shown[0] !== shown[1];
@@ -3971,8 +3973,10 @@ function ArchCompare({ caption, heads, sides }) {
                        one of them, each club's dots in its own colour, shown on its chip
      Player vs player  two players picked from the club menu (ArchMenu), compared in a table (ArchCompare)
      Team vs team      two clubs picked from the clubs' menu, compared in the same table
-   Each keeps what was picked in it. The four lists and the table under the card follow the clubs picked on the chart, and
-   otherwise list everyone. The chart stays in the page (hidden) under the tables, so it keeps its measurements. */
+   Each keeps what was picked in it. Under the chart, the four lists and the table follow the clubs picked on it, and otherwise
+   list everyone. The head-to-heads have nothing under their table but the page's foot: the lists and the table stay in the
+   page, hidden, so a table opened (and sorted) under the chart is still that way on coming back. The chart stays in the page
+   (hidden) under the tables, so it keeps its measurements. */
 function VisualiserView({ s, idx, agg }) {
   const nav = useContext(NavCtx);
   const rows = useMemo(() => archetypeRows(s, idx, agg), [s, idx, agg]);
@@ -4108,7 +4112,7 @@ function VisualiserView({ s, idx, agg }) {
     tools = pickers(tv, setTv, "club", (id) => ({ clubsOnly: true, value: id ? { team: id, name: tname(s.teams, id) } : null }));
     const sides = tv.map((id) => (id ? archTeamStats(s, id) : null));
     compare = h(ArchCompare, {
-      caption: "Team vs team: " + tv.map((id, i) => (id ? tname(s.teams, id) : (i ? "second" : "first") + " club not picked")).join(" and "), sides,
+      caption: "Team vs team: " + tv.map((id, i) => (id ? tname(s.teams, id) : (i ? "second" : "first") + " club not picked")).join(" and "), sides, measures: ARCH_CMP_CLUB,
       heads: tv.map((id, i) => (id ? h("span", { className: "ar-cmp-head" }, h(Crest, { id, size: 22 }), h("span", { className: "ar-cmp-name" }, tname(s.teams, id))) :
         h("span", { className: "faint" }, i ? "Second club" : "First club"))),
     });
@@ -4120,7 +4124,7 @@ function VisualiserView({ s, idx, agg }) {
   const lead = { HH: "npxG/90 + xA/90", HL: "npxG/90", LH: "xA/90", LL: "npxG/90 + xA/90" };
   const follow = (r) => (e) => { if (!plainClick(e)) return; e.preventDefault(); nav.go({ tab: "players", item: r.id }); };
   const fifth = view.mode === "all";
-  const quads = h("div", { className: "ar-quads" }, ARCH_ORDER.map((k) => {
+  const quads = h("div", { className: "ar-quads", hidden: mode !== "chart" }, ARCH_ORDER.map((k) => {
     const list = listRows.filter((r) => archQuad(r, cut) === k).sort((a, b) => by[k](b) - by[k](a));
     return h("div", { key: k, className: "card stack tight ar-quad" },
       h("h3", { className: "h2" }, ARCH[k].name),
@@ -4142,8 +4146,8 @@ function VisualiserView({ s, idx, agg }) {
   const n = listRows.length;
   const who = view.mode === "clubs" ? n + " players from " + clubs.map((id) => tname(s.teams, id)).join(", ") : n + " players";
   const split = "split at the 82nd percentile of each into " + ARCH_ORDER.map((k) => ARCH[k].name + " (" + (chart ? chart.counts[k] : 0) + ")").join(", ") + (fifth ? "; only the top 20% of the bottom left are drawn" : "");
-  /* the title with what the tab shows beside it, the picking, the chart or the comparison, the four lists, then the button that
-     opens the table: nothing written below the button */
+  /* the title with what the tab shows beside it, the picking, then the chart with the four lists and the button that opens the
+     table under it (nothing written below the button), or the comparison with nothing under it */
   return h("div", { className: "stack" },
     h("div", { className: "card stack" },
       h("div", { className: "ar-head" }, h("h2", { className: "h2" }, "Goal threat and chance creation"), modeSwitch),
@@ -4153,7 +4157,7 @@ function VisualiserView({ s, idx, agg }) {
         "aria-label": "Chart of " + who + ": xA per 90 across, non-penalty xG per 90 up, " + split + ". The table below lists every player." }, pointing),
         chart ? h("div", { className: "ar-svg", dangerouslySetInnerHTML: { __html: chart.html } }) : null, ring, tipEl)),
     quads,
-    h("details", { className: "card ar-all" },
+    h("details", { className: "card ar-all", hidden: mode !== "chart" },
       h("summary", null, (view.mode === "clubs" ? "These " : "All ") + n + " players as a table"),
       h(SortTable, { cols: COLS, rows: listRows, initial: { key: "npxg90", dir: -1 }, rowKey: (r) => r.id, onRow: (id) => { const r = byId[id]; if (r && r.card) nav.go({ tab: "players", item: id }); }, rowHref: (id) => { const r = byId[id]; return r && r.card && nav ? nav.href({ tab: "players", item: id }) : null; }, caption: view.mode === "clubs" ? "Every player from the clubs picked" : "Every player on the chart" })));
 }
