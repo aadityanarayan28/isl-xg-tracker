@@ -403,6 +403,8 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: 13.5px; }
 .tbl.fit th { white-space: normal; }
 .tbl.fit .sortb { text-align: inherit; }
 .tbl.fit th, .tbl.fit td { padding-inline: 7px; }
+/* the public page's Teams table, with its three big-chance columns, sits a pixel closer each side so it still fits a laptop */
+.tbl.fit.snug th, .tbl.fit.snug td { padding-inline: 6px; }
 /* a long heading given as short lines, stacked: the column is no wider than its longest line (Players' big-chance columns).
    Its 1px width only stops the table handing it spare room; it grows to fit the heading and the numbers. */
 .tbl th.stack-h { width: 1px; }
@@ -550,12 +552,32 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: 13.5px; }
   .ar-chips::-webkit-scrollbar { display: none; }
 }
 .ar-find, .ar-vs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
-.ar-pick { position: relative; width: 270px; max-width: 100%; }
-.ar-opts { position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + 4px); margin: 0; padding: 4px; list-style: none; background: var(--surface); border: 1px solid var(--line-2); border-radius: 9px; box-shadow: var(--shadow); max-height: 312px; overflow-y: auto; }
-.ar-opt { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 6px; cursor: pointer; }
-.ar-opt.act { background: var(--accent-soft); }
-.ar-opt.none { color: var(--muted); cursor: default; }
-.ar-opt .ar-meta { margin-left: auto; padding-left: 8px; color: var(--muted); font-size: 12.5px; }
+/* the club menu (ArchMenu): its button, the clubs' drop-down under it and the players' beside that; on a phone the clubs go
+   by their short names, so both fit side by side */
+.ar-menu { position: relative; }
+.ar-menu-btn { appearance: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 210px; min-height: 34px; padding: 6px 10px 6px 12px; border: 1px solid var(--line-2); border-radius: 7px; background: var(--surface); color: var(--ink); font-weight: 500; }
+.ar-menu-btn:hover { border-color: var(--ink-2); }
+.ar-menu-btn[aria-expanded="true"] { border-color: var(--accent); }
+.ar-menu-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.ar-menu-btn svg, .ar-mi svg { width: 13px; height: 13px; color: var(--muted); flex: none; }
+.ar-menu-pop { position: absolute; z-index: 30; top: calc(100% + 4px); left: 0; display: flex; align-items: flex-start; gap: 4px; }
+.ar-menu-list { margin: 0; padding: 4px; list-style: none; background: var(--surface); border: 1px solid var(--line-2); border-radius: 9px; box-shadow: var(--shadow); }
+.ar-clubs { width: 264px; }
+.ar-players { width: 220px; }
+.ar-mi { appearance: none; width: 100%; height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 9px; border: 0; border-radius: 6px; background: none; color: var(--ink); font-size: 13.5px; text-align: left; cursor: pointer; white-space: nowrap; }
+.ar-mi:hover, .ar-mi:focus-visible, .ar-mi.open { background: var(--accent-soft); outline: none; }
+.ar-mi[aria-disabled="true"] { color: var(--muted); cursor: default; background: none; }
+.ar-mi[aria-disabled="true"] svg { color: var(--accent); }
+.ar-mi-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ar-mi .ar-short { display: none; }
+@media (max-width: 640px) {
+  .ar-find .ar-menu, .ar-vs .ar-menu, .ar-menu-btn { width: 100%; }
+  .ar-clubs { width: 118px; }
+  .ar-clubs .ar-mi { gap: 6px; padding: 0 7px; }
+  .ar-mi .ar-full { display: none; }
+  .ar-mi .ar-short { display: inline; }
+  .ar-players { width: min(230px, calc(100vw - 163px)); }
+}
 .ar-tag { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 2px 3px 2px 12px; border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 999px; font-size: 13px; font-weight: 500; }
 .ar-tag .ar-meta { color: var(--ink-2); font-size: 12px; }
 .ar-x { appearance: none; border: 0; background: none; cursor: pointer; width: 26px; height: 26px; border-radius: 50%; color: var(--ink-2); font-size: 17px; line-height: 1; display: inline-grid; place-items: center; flex: none; }
@@ -567,9 +589,7 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: 13.5px; }
 .ar-vs-nums { display: flex; gap: 12px; padding-left: 6px; color: var(--ink-2); font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ar-vs-nums b { color: var(--ink); font-weight: 600; }
 @media (max-width: 640px) {
-  .ar-find .ar-pick { width: 100%; }
   .ar-vs { flex-direction: column; align-items: stretch; }
-  .ar-vs .ar-pick { width: 100%; }
   .ar-vs-sep { align-self: center; }
   .ar-vs-nums { margin-left: auto; flex-direction: column; gap: 0; text-align: right; }
 }
@@ -3340,17 +3360,19 @@ const TEAM_COLS = [
   { key: "gf", label: "Goals for", num: true, get: (r) => r.gf, title: "Goals scored, own goals in their favour included" },
   { key: "ga", label: "Goals against", num: true, get: (r) => r.ga },
   /* the public page, where every match is finished, also has the league table's points (a tie on points goes to goal
-     difference, then goals scored) and each club's big chances: shots worth more than 0.20 xG, created and conceded */
+     difference, then goals scored) and each club's big chances: shots worth more than 0.20 xG, created, missed (created and
+     not scored) and conceded, their headings stacked a word to a line as on Players, so the table still fits a laptop */
   ...(READER ? [
     { key: "pts", label: "Points", num: true, get: (r) => r.pts, title: "Three for a win and one for a draw", then: [(r) => r.gd, (r) => r.gf] },
-    { key: "bc", label: "Big chances created", num: true, get: (r) => r.bc, title: "The club's shots worth more than 0.20 xG, penalties included" },
+    { key: "bc", label: "Big chances created", lines: ["Big", "chances", "created"], num: true, get: (r) => r.bc, title: "The club's shots worth more than 0.20 xG, penalties included" },
+    { key: "bcm", label: "Big chances missed", lines: ["Big", "chances", "missed"], num: true, get: (r) => r.bcm, title: "The club's big chances that were not scored: shots worth more than 0.20 xG, penalties included" },
   ] : []),
   { key: "sh", label: "Shots", num: true, get: (r) => r.sh },
   { key: "sot", label: "On target", num: true, get: (r) => r.sot },
   { key: "xg", label: "xG", num: true, get: (r) => r.xg, fmt: f2 },
   /* the public page has the club's total xG on target beside its xG; the tracker has xG per match at the end instead */
   ...(READER ? [{ key: "xgot", label: "xGOT", num: true, get: (r) => r.xgot, fmt: f2, title: "xG on target: the club's shots on target, each rated again for where in the goal it went. Shots that missed or were blocked count zero." }] : []),
-  ...(READER ? [{ key: "bca", label: "Big chances conceded", num: true, get: (r) => r.bca, title: "Opponents' shots worth more than 0.20 xG, penalties included" }] : []),
+  ...(READER ? [{ key: "bca", label: "Big chances conceded", lines: ["Big", "chances", "conceded"], num: true, get: (r) => r.bca, title: "Opponents' shots worth more than 0.20 xG, penalties included" }] : []),
   { key: "sha", label: "Shots against", num: true, get: (r) => r.sha },
   { key: "xga", label: "xG against", num: true, get: (r) => r.xga, fmt: f2 },
   { key: "xgd", label: "xG difference", num: true, get: (r) => r.xgd, fmt: signed, title: "xG for minus xG against" },
@@ -3372,7 +3394,7 @@ function TeamsView({ s, idx, agg }) {
   return h("div", { className: "stack" },
     READER ? hint : null,
     picked ? cardShown(card, picked, (close) => h(TeamDetail, { key: picked.id, s, idx, r: picked, close }), true) : null,
-    h(SortTable, { cols: TEAM_COLS, rows, initial: { key: "xgd", dir: -1 }, rowKey: (r) => r.id, onRow: card.toggle, rowHref: card.href, selKey: sel, caption: "Club totals", className: READER ? "fit" : undefined }),
+    h(SortTable, { cols: TEAM_COLS, rows, initial: { key: "xgd", dir: -1 }, rowKey: (r) => r.id, onRow: card.toggle, rowHref: card.href, selKey: sel, caption: "Club totals", className: READER ? "fit snug" : undefined }),
     READER ? null : hint,
     h("p", { className: "sub" }, (READER ? "Only finished matches are counted." : "Only matches you have tagged are counted.") + " Goals include own goals; xG never does." +
       (READER ? " A big chance is a shot worth more than 0.20 xG." : "")));
@@ -3732,48 +3754,147 @@ function archChart(rows, cut, scale, W, hrefOf, view) {
 const ARCH_MEMO = { mode: "clubs", clubs: [], kits: {}, picks: [], vs: [null, null] };
 const ARCH_PICKS = 6;                                        // players that can be picked out on the chart at once
 
-/* a box to type a player's name into: the players on the chart who match, by name or by club, are listed under it (up to
-   eight, names that start with what was typed first), and one is picked with a click, a tap, or the arrow keys and Enter.
-   exclude: the players already picked. */
-function ArchPicker({ id, rows, exclude, label, placeholder, disabled, onPick }) {
-  const [q, setQ] = useState("");
+/* picking a player: a button that drops down the clubs, and beside the club pointed at (or tapped, or reached with the arrow
+   keys) a second drop-down, to its right, with that club's players on the chart, A to Z; a click, a tap or Enter picks one.
+   Players already picked (taken) are greyed out and ticked. On the way across from a club to its players the pointer may
+   cross other clubs: while it is heading for the players' list the menu waits a moment before switching (the "menu aim" a
+   desktop menu has), so the list being aimed at stays put. Escape, a click outside or a pick closes it.
+   Keyboard: Enter, Space or Down opens it on the clubs; Up and Down move, Right or Enter opens a club's players, Left goes
+   back to the clubs, Enter picks, Escape closes. */
+const ARCH_ROW = 34;                                         // the height of a row in both drop-downs (.ar-mi), in pixels
+const IconDown = svgIcon("M4 6l4 4 4-4");
+const IconRight = svgIcon("M6 4l4 4-4 4");
+function ArchMenu({ id, label, rows, s, clubIds, taken, disabled, onPick }) {
   const [open, setOpen] = useState(false);
-  const [act, setAct] = useState(0);
-  const f = fold(q);
-  const list = !f ? [] : rows.filter((r) => !exclude.has(r.id) && (fold(r.name).includes(f) || fold(r.short) === f || fold(r.club).includes(f)))
-    .sort((a, b) => (fold(b.name).startsWith(f) - fold(a.name).startsWith(f)) || a.name.localeCompare(b.name)).slice(0, 8);
-  const pick = (r) => { onPick(r.id); setQ(""); setOpen(false); setAct(0); };
-  const lid = id + "-opts", shown = open && !!f;
-  return h("div", { className: "ar-pick" },
-    h("input", {
-      id, className: "input", type: "search", value: q, placeholder, disabled: !!disabled, autoComplete: "off", spellCheck: false,
-      role: "combobox", "aria-label": label, "aria-autocomplete": "list", "aria-expanded": shown && list.length > 0, "aria-controls": lid,
-      "aria-activedescendant": shown && list[act] ? lid + "-" + act : undefined,
-      onChange: (e) => { setQ(e.target.value); setOpen(true); setAct(0); },
-      onFocus: () => setOpen(true),
-      onBlur: () => setOpen(false),
-      onKeyDown: (e) => {
-        if (e.key === "ArrowDown") { e.preventDefault(); setOpen(true); setAct((a) => Math.min(a + 1, Math.max(list.length - 1, 0))); }
-        else if (e.key === "ArrowUp") { e.preventDefault(); setAct((a) => Math.max(a - 1, 0)); }
-        else if (e.key === "Enter") { if (shown && list[act]) { e.preventDefault(); pick(list[act]); } }
-        else if (e.key === "Escape") { if (shown) { e.preventDefault(); setOpen(false); } }
-      },
-    }),
-    shown ? h("ul", { id: lid, className: "ar-opts", role: "listbox", "aria-label": label },
-      list.length ? list.map((r, i) => h("li", {
-        key: r.id, id: lid + "-" + i, role: "option", "aria-selected": i === act, className: "ar-opt" + (i === act ? " act" : ""),
-        /* pressing an option keeps the focus in the box, so the list is still there when the click lands */
-        onPointerDown: (e) => e.preventDefault(), onPointerEnter: () => setAct(i), onClick: () => pick(r),
-      }, h(Crest, { id: r.team, size: 18 }), h("span", { className: "ar-opt-name" }, r.name), h("span", { className: "ar-meta" }, r.short))) :
-        h("li", { className: "ar-opt none", role: "option", "aria-disabled": "true" }, "No player on the chart matches")) : null);
+  const [club, setClub] = useState(null);
+  const [focusTo, setFocusTo] = useState(null);              // after the next render, focus "club:<i>" or "player:<j>"
+  const box = useRef(null), btn = useRef(null), fly = useRef(null), clubBtns = useRef([]), playerBtns = useRef([]);
+  const aim = useRef({ pts: [], timer: 0 });
+  const byClub = useMemo(() => {
+    const by = {};
+    for (const r of rows) (by[r.team] = by[r.team] || []).push(r);
+    for (const k of Object.keys(by)) by[k].sort((a, b) => a.name.localeCompare(b.name));
+    return by;
+  }, [rows]);
+  const list = club ? byClub[club] || [] : [];
+  const close = (refocus) => {
+    clearTimeout(aim.current.timer);
+    setOpen(false); setClub(null);
+    if (refocus && btn.current) btn.current.focus();
+  };
+  /* a press anywhere else closes it, and so does Escape, wherever the focus is (pointing at it does not move the focus) */
+  useEffect(() => {
+    if (!open) return undefined;
+    const away = (e) => { if (box.current && !box.current.contains(e.target)) close(false); };
+    const esc = (e) => { if (e.key === "Escape") { e.preventDefault(); close(box.current && box.current.contains(document.activeElement)); } };
+    document.addEventListener("pointerdown", away);
+    document.addEventListener("keydown", esc);
+    return () => { document.removeEventListener("pointerdown", away); document.removeEventListener("keydown", esc); };
+  }, [open]);
+  useEffect(() => () => clearTimeout(aim.current.timer), []);
+  useLayoutEffect(() => {
+    if (!focusTo) return;
+    const [kind, i] = focusTo.split(":");
+    const el = (kind === "club" ? clubBtns : playerBtns).current[+i];
+    if (el) el.focus();
+    setFocusTo(null);
+  }, [focusTo]);
+
+  /* the pointer's path over the last moment (an eighth of a second, and where it last rested), and whether it is heading into
+     the players' list: moving right, on a path that points between the list's top and bottom left corners (as jQuery's
+     menu-aim works it out) */
+  const track = (e) => {
+    if (e.pointerType !== "mouse") return;
+    const now = performance.now(), p = aim.current.pts, q = { x: e.clientX, y: e.clientY, t: now }, l = p[p.length - 1];
+    if (l && l.x === q.x && l.y === q.y) return;
+    while (p.length > 1 && now - p[0].t > 125) p.shift();
+    if (p.length === 1 && now - p[0].t > 125) p[0].t = now - 125;
+    p.push(q);
+    if (p.length > 8) p.shift();
+  };
+  const heading = () => {
+    const p = aim.current.pts, r = fly.current ? fly.current.getBoundingClientRect() : null;
+    if (p.length < 2 || !r) return false;
+    const a = p[0], b = p[p.length - 1];
+    if (b.x <= a.x || b.x >= r.left) return false;
+    const slope = (u, v) => (v.y - u.y) / (v.x - u.x);
+    const tl = { x: r.left, y: r.top - 6 }, bl = { x: r.left, y: r.bottom + 6 };
+    return slope(b, tl) < slope(a, tl) && slope(b, bl) > slope(a, bl);
+  };
+  const pointClub = (t) => (e) => {
+    if (e.pointerType !== "mouse") return;
+    track(e);
+    if (t === club) { clearTimeout(aim.current.timer); return; }
+    clearTimeout(aim.current.timer);
+    if (club && heading()) aim.current.timer = setTimeout(() => setClub(t), 260);
+    else setClub(t);
+  };
+  const firstFree = (t) => (byClub[t] || []).findIndex((r) => !taken.has(r.id));
+  const choose = (r, refocus) => { if (taken.has(r.id)) return; onPick(r.id); close(refocus); };
+
+  const onButtonKey = (e) => {
+    if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      setOpen(true);
+      setFocusTo("club:" + Math.max(0, clubIds.indexOf(club)));
+    }
+  };
+  const onClubKey = (i, t) => (e) => {
+    const n = clubIds.length;
+    if (e.key === "ArrowDown") { e.preventDefault(); setFocusTo("club:" + ((i + 1) % n)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setFocusTo("club:" + ((i - 1 + n) % n)); }
+    else if (e.key === "Home") { e.preventDefault(); setFocusTo("club:0"); }
+    else if (e.key === "End") { e.preventDefault(); setFocusTo("club:" + (n - 1)); }
+    else if (e.key === "ArrowRight" || e.key === "Enter" || e.key === " ") {
+      e.preventDefault(); setClub(t);
+      const j = firstFree(t);
+      setFocusTo("player:" + Math.max(0, j));
+    }
+    else if (e.key === "Escape") { e.preventDefault(); close(true); }
+    else if (e.key === "Tab") close(false);
+  };
+  const onPlayerKey = (j, r) => (e) => {
+    const n = list.length;
+    if (e.key === "ArrowDown") { e.preventDefault(); setFocusTo("player:" + ((j + 1) % n)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setFocusTo("player:" + ((j - 1 + n) % n)); }
+    else if (e.key === "ArrowLeft") { e.preventDefault(); setFocusTo("club:" + clubIds.indexOf(club)); }
+    else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); choose(r, true); }
+    else if (e.key === "Escape") { e.preventDefault(); close(true); }
+    else if (e.key === "Tab") close(false);
+  };
+
+  /* the players' list sits beside its club, moved up as far as it must to end no lower than the clubs' list */
+  const ci = club ? clubIds.indexOf(club) : -1;
+  const drop = ci < 0 ? 0 : Math.max(0, Math.min(ci, clubIds.length - list.length)) * ARCH_ROW;
+  return h("div", { className: "ar-menu", ref: box },
+    h("button", {
+      ref: btn, type: "button", className: "ar-menu-btn", disabled: !!disabled, "aria-haspopup": "menu", "aria-expanded": open, "aria-controls": id + "-clubs",
+      onClick: () => (open ? close(false) : setOpen(true)), onKeyDown: onButtonKey,
+    }, h("span", null, label), h(IconDown)),
+    open ? h("div", { className: "ar-menu-pop", onPointerMove: track },
+      h("ul", { id: id + "-clubs", className: "ar-menu-list ar-clubs", role: "menu", "aria-label": "Clubs" }, clubIds.map((t, i) => h("li", { key: t, role: "none" },
+        h("button", {
+          ref: (el) => { clubBtns.current[i] = el; }, type: "button", role: "menuitem", tabIndex: -1, "aria-haspopup": "menu", "aria-expanded": club === t,
+          className: "ar-mi" + (club === t ? " open" : ""), title: tname(s.teams, t), "data-club": t,
+          onPointerEnter: pointClub(t), onPointerMove: pointClub(t), onClick: () => { clearTimeout(aim.current.timer); setClub(t); }, onKeyDown: onClubKey(i, t),
+        }, h(Crest, { id: t, size: 18 }), h("span", { className: "ar-mi-name ar-full" }, tname(s.teams, t)), h("span", { className: "ar-mi-name ar-short" }, tshort(s.teams, t)), h(IconRight))))),
+      club ? h("ul", {
+        ref: fly, className: "ar-menu-list ar-players", role: "menu", "aria-label": tname(s.teams, club) + " players", style: { marginTop: drop },
+        onPointerEnter: () => clearTimeout(aim.current.timer),
+      }, list.map((r, j) => h("li", { key: r.id, role: "none" },
+        h("button", {
+          ref: (el) => { playerBtns.current[j] = el; }, type: "button", role: "menuitem", tabIndex: -1, "aria-disabled": taken.has(r.id) ? "true" : undefined,
+          className: "ar-mi", "data-player": r.id, onClick: () => choose(r, false), onKeyDown: onPlayerKey(j, r),
+        }, h("span", { className: "ar-mi-name" }, r.name), taken.has(r.id) ? h(IconCheck) : null)))) : null) : null);
 }
 
 /* The Visualiser tab. Next to the title, what the chart shows:
      Clubs             all clubs (the chart as it opens), or only the players of the clubs picked, every one of them, each
                        club's dots in its own colour, shown on its chip
-     Find players      up to six players typed in and picked, ringed and named on the chart over everyone else, faded; one
-                       from the bottom left who is not otherwise drawn is drawn too
-     Player vs player  two players picked, and only their two dots, each in its own colour, with their numbers beside the names
+     Find players      up to six players picked from the club menu (ArchMenu), ringed and named on the chart over everyone
+                       else, faded; one from the bottom left who is not otherwise drawn is drawn too
+     Player vs player  two players picked from the club menu, and only their two dots, each in its own colour, with their
+                       numbers beside the names
    Each keeps what was picked in it. The four lists and the table under the chart follow the clubs picked, and otherwise list
    everyone. */
 function VisualiserView({ s, idx, agg }) {
@@ -3872,13 +3993,13 @@ function VisualiserView({ s, idx, agg }) {
   const modeSwitch = h("div", { className: "seg ar-modes", role: "group", "aria-label": "What the chart shows" }, modes.map(([k, l]) =>
     h("button", { key: k, type: "button", className: "seg-btn" + (mode === k ? " on" : ""), "aria-pressed": mode === k, onClick: () => setMode(k) }, l)));
   const cross = (label, onClick) => h("button", { type: "button", className: "ar-x", "aria-label": label, onClick }, "\u00d7");
-  /* player vs player: each side is the box to pick a player in until one is picked, then that player, in the colour of their
-     dot, with their numbers on both measures */
+  /* player vs player: each side is the club menu to pick a player from until one is picked, then that player, in the colour
+     of their dot, with their numbers on both measures */
   const vsSlot = (i) => {
     const r = vs[i] ? byId[vs[i]] : null;
     if (!r) {
-      return h(ArchPicker, { key: "pick" + i, id: "ar-vs-" + i, rows, exclude: new Set(vs.filter(Boolean)), label: (i ? "Second" : "First") + " player to compare",
-        placeholder: i ? "Second player" : "First player", onPick: (pid) => setVs((v) => v.map((x, j) => (j === i ? pid : x))) });
+      return h(ArchMenu, { key: "pick" + i, id: "ar-vs-" + i, label: i ? "Second player" : "First player", rows, s, clubIds, taken: new Set(vs.filter(Boolean)),
+        onPick: (pid) => setVs((v) => v.map((x, j) => (j === i ? pid : x))) });
     }
     return h("div", { key: "card" + i, className: "ar-vs-card" },
       h("i", { className: "dot " + (i ? "away" : "home"), "aria-hidden": "true" }),
@@ -3908,8 +4029,8 @@ function VisualiserView({ s, idx, agg }) {
         h(Crest, { id, size: 18 }), tshort(s.teams, id)))) :
     mode === "find" ?
       h("div", { className: "ar-find" },
-        h(ArchPicker, { id: "ar-find", rows, exclude: new Set(picks), label: "Find a player on the chart", disabled: picks.length >= ARCH_PICKS,
-          placeholder: picks.length >= ARCH_PICKS ? "Up to " + ARCH_PICKS + " players at once" : "Type a player's name", onPick: (pid) => setPicks((p) => (p.includes(pid) ? p : p.concat(pid))) }),
+        h(ArchMenu, { id: "ar-find", label: picks.length >= ARCH_PICKS ? "Up to " + ARCH_PICKS + " players at once" : "Add a player", rows, s, clubIds, taken: new Set(picks),
+          disabled: picks.length >= ARCH_PICKS, onPick: (pid) => setPicks((p) => (p.includes(pid) ? p : p.concat(pid))) }),
         picks.map((pid) => h("span", { key: pid, className: "ar-tag" }, h("span", { className: "ar-tag-name" }, byId[pid].name), h("span", { className: "ar-meta" }, byId[pid].short),
           cross("Take " + byId[pid].name + " off the chart", () => setPicks((p) => p.filter((x) => x !== pid)))))) :
       h("div", { className: "ar-vs" }, vsSlot(0), h("span", { className: "ar-vs-sep", "aria-hidden": "true" }, "vs"), vsSlot(1));
