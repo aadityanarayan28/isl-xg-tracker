@@ -529,6 +529,9 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: 13.5px; }
 .ar-tip .ar-soft { opacity: 0.72; }
 .ar-tip .ar-q { margin-top: 4px; font-weight: 600; }
 .ar-tip .ar-go { margin-top: 4px; opacity: 0.72; font-size: 12px; }
+.ar-tip .ar-note { margin-top: 4px; opacity: 0.72; font-size: 12px; }
+/* the arrow past the edge for a player too far out for the scale */
+.ar-off { fill: var(--ink-2); }
 .ar-quads { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 @media (max-width: 640px) { .ar-quads { grid-template-columns: minmax(0, 1fr); } }
 .ar-quad ol { margin: 2px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 2px; }
@@ -547,6 +550,8 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: 13.5px; }
 .ar-chip { appearance: none; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; min-height: 32px; padding: 4px 9px; border: 1px solid var(--line-2); border-radius: 999px; background: var(--surface); color: var(--ink); font-size: 13px; font-weight: 500; white-space: nowrap; flex: none; }
 .ar-chip:hover { border-color: var(--ink-2); }
 .ar-chip.on { background: var(--accent-soft); border-color: var(--accent); }
+.ar-chip:disabled { opacity: 0.45; cursor: not-allowed; }
+.ar-chip:disabled:hover { border-color: var(--line-2); }
 @media (max-width: 640px) {
   .ar-chips { flex-wrap: nowrap; overflow-x: auto; margin-inline: -16px; padding: 2px 16px 6px; scrollbar-width: none; }
   .ar-chips::-webkit-scrollbar { display: none; }
@@ -3533,8 +3538,9 @@ function TeamDetail({ s, idx, r, close }) {
    percentile of the players on it, one for each measure. The bottom left, where most players sit, draws only its top 20% (by
    both measures against the lines), so the chart is not crowded along its axes; the table under it lists everyone.
    Who is on it: outfield players (anyone who kept goal in a match is left off) with at least 270 minutes, or a third of their
-   club's minutes once that is more, so the bar rises with the season. A player the page has no name for (a public file saved
-   before line-up players were named) is left off too.
+   club's minutes once that is more, so the bar rises with the season. With clubs picked (three at most) there is no bar:
+   every outfield player of theirs with a minute is on it, and one too far out for the scale sits at its edge, with an arrow.
+   A player the page has no name for (a public file saved before line-up players were named) is left off too.
    Both axes use a square-root scale, which spreads out the many players near zero (a player's quadrant does not depend on it);
    the page does not spell that out. The 82nd percentile and the square root are the chart, with no switches for them. Pointing
    at a dot shows the player's numbers; clicking it (on a touch screen, a second tap) opens their card on Players, and each dot
@@ -3550,13 +3556,15 @@ const ARCH = {
 };
 const ARCH_ORDER = ["HH", "HL", "LH", "LL"];
 const ARCH_MIN = 270;
+const ARCH_CLUBS = 3;                                        // the most clubs picked on the chart at once
 const ARCH_PCT = 0.82;                                       // where the dashed lines go: this percentile of each measure
 const ARCH_LL_SHOWN = 0.2;                                   // the share of the bottom left drawn: its top fifth
 const ARCH_R = 4.5;                                          // a dot's radius
 const archQuad = (r, c) => (r.npxg90 >= c.y ? "H" : "L") + (r.xa90 >= c.x ? "H" : "L");
 
-/* the players on the chart, from the season totals: minutes from the line-ups (agg.played), xG and xA from the shots */
-function archetypeRows(s, idx, agg) {
+/* the players on the chart, from the season totals: minutes from the line-ups (agg.played), xG and xA from the shots. Those
+   over the minutes bar (regular), or with every, everyone with a minute, each marked regular or not */
+function archetypeRows(s, idx, agg, every) {
   const keepers = new Set(Object.keys(agg.keepers));
   for (const m of Object.values(s.matches)) if (m.gk) { if (m.gk.h) keepers.add(m.gk.h); if (m.gk.a) keepers.add(m.gk.a); }
   const out = [];
@@ -3564,10 +3572,11 @@ function archetypeRows(s, idx, agg) {
     if (keepers.has(id) || !idx[id] || !a.mins) continue;
     const d = agg.players[id], team = d ? d.team : idx[id].team;
     const clubMins = agg.teams[team] ? agg.teams[team].mp * 90 : 0;
-    if (a.mins < Math.max(ARCH_MIN, clubMins / 3)) continue;
+    const regular = a.mins >= Math.max(ARCH_MIN, clubMins / 3);
+    if (!regular && !every) continue;
     const npxg = d ? d.npxg : 0, xa = d ? d.xa : 0;
     out.push({ id, name: idx[id].name, team, short: tshort(s.teams, team), club: tname(s.teams, team), mins: a.mins, npxg, xa,
-      npxg90: (npxg / a.mins) * 90, xa90: (xa / a.mins) * 90, sh: d ? d.sh : 0, card: !!d, regular: true, keeper: false });
+      npxg90: (npxg / a.mins) * 90, xa90: (xa / a.mins) * 90, sh: d ? d.sh : 0, card: !!d, regular, keeper: false });
   }
   return out;
 }
@@ -3652,9 +3661,11 @@ const archKitStyle = (k) => (k ? { "--ch-l": k[0], "--ch-d": k[1] } : undefined)
    dashed lines always come from every player on the chart, so a player's dot stays put whatever is picked. view says what is
    drawn:
      { mode: "all" }          everyone, the bottom left down to its top fifth, and names for the standouts
-     { mode: "clubs", pool, kit }  only the players of the clubs picked (pool), every one of them, bottom left included, each
-                              in their club's colour (kit gives a club's [light, dark] colours), counted in the corners, with
-                              names for as many as fit
+     { mode: "clubs", pool, kit }  only the players of the clubs picked (pool), every one of them with a minute, bottom left
+                              included, each in their club's colour (kit gives a club's [light, dark] colours), counted in the
+                              corners, with names for as many as fit
+   The scale is the regulars' (rows), so a player of a picked club with few minutes can be too far out for it: his dot sits at
+   the edge he is beyond (off), with a small arrow past it pointing the way.
  */
 function archChart(rows, cut, scale, W, hrefOf, view) {
   const v = view || { mode: "all" };
@@ -3698,7 +3709,11 @@ function archChart(rows, cut, scale, W, hrefOf, view) {
   const counts = { HH: 0, HL: 0, LH: 0, LL: 0 };
   for (const r of pool) counts[archQuad(r, cut)] += 1;
   const drawn = v.mode === "clubs" ? pool : rows.filter((r) => archQuad(r, cut) !== "LL" || ll.shown.has(r.id));
-  const dots = drawn.map((r) => ({ r, x: sx(r.xa90), y: sy(r.npxg90), q: archQuad(r, cut), href: hrefOf(r), kc: v.mode === "clubs" && v.kit ? v.kit(r.team) : null }));
+  const dots = drawn.map((r) => {
+    const offX = r.xa90 > XMAX, offY = r.npxg90 > YMAX;
+    return { r, x: offX ? m.l + pw - R - 1 : sx(r.xa90), y: offY ? m.t + R + 1 : sy(r.npxg90), off: offX || offY ? [offX, offY] : null,
+      q: archQuad(r, cut), href: hrefOf(r), kc: v.mode === "clubs" && v.kit ? v.kit(r.team) : null };
+  });
   const onDot = (b, except) => dots.some((d) => d !== except && Math.hypot(Math.min(Math.max(d.x, b.x0), b.x1) - d.x, Math.min(Math.max(d.y, b.y0), b.y1) - d.y) < R + 1.5);
   const inPlot = (b) => b.x0 >= m.l + 3 && b.x1 <= m.l + pw - 3 && b.y0 >= m.t + 2 && b.y1 <= m.t + ph - 3;
   const score = (d) => archScore(d.r, cut);
@@ -3758,6 +3773,13 @@ function archChart(rows, cut, scale, W, hrefOf, view) {
     out.push(d.href ? '<a href="' + archEsc(d.href) + '" aria-label="' + archEsc(d.r.name) + '">' + c + "</a>" : c);
   }
   out.push(...late);
+  /* the arrows for a player too far out for the scale: in the margin past the edge his dot sits at */
+  for (const d of dots) {
+    if (!d.off) continue;
+    const f = (n) => n.toFixed(1);
+    if (d.off[1]) out.push('<path class="ar-off" d="M' + f(d.x - 4) + "," + f(m.t - 1.5) + "L" + f(d.x + 4) + "," + f(m.t - 1.5) + "L" + f(d.x) + "," + f(m.t - 7.5) + 'Z"/>');
+    if (d.off[0]) out.push('<path class="ar-off" d="M' + f(m.l + pw + 1.5) + "," + f(d.y - 4) + "L" + f(m.l + pw + 1.5) + "," + f(d.y + 4) + "L" + f(m.l + pw + 7.5) + "," + f(d.y) + 'Z"/>');
+  }
 
   /* names for the standouts, each in the first of eight spots around its dot that is clear of everything placed so far: the
      leaders of the three busier profiles first, then the furthest from the middle (the bottom left too, with clubs picked),
@@ -4048,8 +4070,9 @@ function ArchCompare({ kind, caption, heads, sides }) {
 function VisualiserView({ s, idx, agg }) {
   const nav = useContext(NavCtx);
   const rows = useMemo(() => archetypeRows(s, idx, agg), [s, idx, agg]);
+  const everyRows = useMemo(() => archetypeRows(s, idx, agg, true), [s, idx, agg]);
   const cut = useMemo(() => (rows.length ? archCut(rows) : null), [rows]);
-  const byId = useMemo(() => Object.fromEntries(rows.map((r) => [r.id, r])), [rows]);
+  const byId = useMemo(() => Object.fromEntries(everyRows.map((r) => [r.id, r])), [everyRows]);
   const allRows = useMemo(() => archAllRows(s, idx, agg, rows), [s, idx, agg, rows]);
   const byIdAll = useMemo(() => Object.fromEntries(allRows.map((r) => [r.id, r])), [allRows]);
   const clubIds = useMemo(() => [...new Set(rows.map((r) => r.team))].sort((a, b) => tname(s.teams, a).localeCompare(tname(s.teams, b))), [rows, s.teams]);
@@ -4067,7 +4090,7 @@ function VisualiserView({ s, idx, agg }) {
   useEffect(() => { Object.assign(ARCH_MEMO, { mode, clubs: clubsAll, kits, vs: vsAll, gv: gvAll, tv: tvAll }); }, [mode, clubsAll, kits, vsAll, gvAll, tvAll]);
   /* only players, keepers and clubs the page still has count (a later upload can change who is on the chart) */
   const playable = (id) => !!(id && byIdAll[id] && (byIdAll[id].mins || byIdAll[id].tagged));
-  const clubs = clubsAll.filter((id) => clubIds.includes(id)), vs = vsAll.map((id) => (playable(id) ? id : null));
+  const clubs = clubsAll.filter((id) => clubIds.includes(id)).slice(0, ARCH_CLUBS), vs = vsAll.map((id) => (playable(id) ? id : null));
   const gv = gvAll.map((id) => (id && byKeeper[id] ? id : null)), tv = tvAll.map((id) => (id && s.teams[id] ? id : null));
   const boxRef = useRef(null);
   const width = useWidth(boxRef, typeof window !== "undefined" && window.innerWidth ? Math.min(1146, window.innerWidth - 66) : 1000);
@@ -4080,7 +4103,7 @@ function VisualiserView({ s, idx, agg }) {
   }, []);
   const cardHref = (r) => (r.card && nav ? nav.href({ tab: "players", item: r.id }) : null);
   const clubSet = new Set(clubs);
-  const pool = clubs.length ? rows.filter((r) => clubSet.has(r.team)) : rows;
+  const pool = clubs.length ? everyRows.filter((r) => clubSet.has(r.team)) : rows;
   const kitOf = (team) => archKitColours(team, kits[team] || 0);
   const view = clubs.length ? { mode: "clubs", pool, kit: kitOf } : { mode: "all" };
   const viewKey = view.mode + ":" + clubs.map((c) => c + "." + (kits[c] || 0)).join(",");
@@ -4140,6 +4163,7 @@ function VisualiserView({ s, idx, agg }) {
       h("span", { className: "ar-row" }, h("span", null, "xA/90"), h("b", null, r.xa90.toFixed(2))),
       h("span", { className: "ar-row ar-soft" }, h("span", null, "npxG, xA"), h("span", null, r.npxg.toFixed(2) + ", " + r.xa.toFixed(2))),
       h("span", { className: "ar-q" }, q.name),
+      d.off ? h("span", { className: "ar-note" }, "Too far out for the scale, so drawn at its edge") : null,
       d.href ? h("span", { className: "ar-go" }, (tip.touch ? "Tap again" : "Click") + " to see their " + (r.sh ? "shot map" : "numbers on Players")) : null);
     ring = h("svg", { className: "ar-hot", viewBox: "0 0 " + chart.W + " " + chart.H, "aria-hidden": "true" },
       h("circle", { className: "ar-ring" + (d.kc ? " club-colors" : ""), style: archKitStyle(d.kc), cx: d.x, cy: d.y, r: ARCH_R + 1.5 }));
@@ -4151,7 +4175,9 @@ function VisualiserView({ s, idx, agg }) {
   const modeSwitch = h("div", { className: "seg ar-modes", role: "group", "aria-label": "What the tab shows" }, modes.map(([k, l]) =>
     h("button", { key: k, type: "button", className: "seg-btn" + (mode === k ? " on" : ""), "aria-pressed": mode === k, onClick: () => setMode(k) }, l)));
   /* a club picked takes its colour then (archKit), against the clubs already picked; picked off, it gives it up */
+  const full = clubs.length >= ARCH_CLUBS;
   const toggleClub = (id) => {
+    if (!clubSet.has(id) && full) return;
     if (clubSet.has(id)) {
       setClubs((c) => c.filter((x) => x !== id));
       setKits((k) => { const n = Object.assign({}, k); delete n[id]; return n; });
@@ -4184,7 +4210,9 @@ function VisualiserView({ s, idx, agg }) {
     tools = h("div", { className: "ar-chips", role: "group", "aria-label": "Clubs on the chart" },
       h("button", { type: "button", className: "ar-chip" + (clubs.length ? "" : " on"), "aria-pressed": !clubs.length, onClick: () => { setClubs([]); setKits({}); } }, "All clubs"),
       clubIds.map((id) => h("button", {
-        key: id, type: "button", className: "ar-chip" + (clubSet.has(id) ? " on" : ""), "aria-pressed": clubSet.has(id), title: tname(s.teams, id), "aria-label": tname(s.teams, id),
+        /* with three picked, the rest wait until one is taken off */
+        key: id, type: "button", className: "ar-chip" + (clubSet.has(id) ? " on" : ""), "aria-pressed": clubSet.has(id),
+        title: tname(s.teams, id) + (full && !clubSet.has(id) ? " (three clubs at most)" : ""), "aria-label": tname(s.teams, id), disabled: full && !clubSet.has(id),
         onClick: () => toggleClub(id),
       }, clubSet.has(id) && kitOf(id) ? h("i", { className: "dot home club-colors", style: archKitStyle(kitOf(id)), "aria-hidden": "true" }) : null,
         h(Crest, { id, size: 18 }), tshort(s.teams, id))));
