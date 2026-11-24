@@ -563,12 +563,13 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: 13.5px; }
 .ar-menu-pop { position: absolute; z-index: 30; top: calc(100% + 4px); left: 0; display: flex; align-items: flex-start; gap: 4px; }
 .ar-menu-list { margin: 0; padding: 4px; list-style: none; background: var(--surface); border: 1px solid var(--line-2); border-radius: 9px; box-shadow: var(--shadow); }
 .ar-clubs { width: 264px; }
-.ar-players { width: 220px; }
+.ar-players { width: 236px; overflow-y: auto; }
 .ar-mi { appearance: none; width: 100%; height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 9px; border: 0; border-radius: 6px; background: none; color: var(--ink); font-size: 13.5px; text-align: left; cursor: pointer; white-space: nowrap; }
 .ar-mi:hover, .ar-mi:focus-visible, .ar-mi.open { background: var(--accent-soft); outline: none; }
 .ar-mi[aria-disabled="true"] { color: var(--muted); cursor: default; background: none; }
 .ar-mi[aria-disabled="true"] svg { color: var(--accent); }
 .ar-mi-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ar-mi-note { flex: none; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .ar-mi .ar-short { display: none; }
 @media (max-width: 640px) {
   .ar-find .ar-menu, .ar-vs .ar-menu, .ar-menu-btn { width: 100%; }
@@ -600,6 +601,10 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: 13.5px; }
 .ar-pt.v1, .ar-pt.v2 { stroke: var(--ink); stroke-width: 2; }
 .ar-pt.v2, .ar-ring.v2 { fill: var(--away); }
 .ar-lab.hi { fill: var(--ink); font-size: 12.5px; font-weight: 600; }
+.ar-off { fill: var(--ink-2); }
+.ar-off.v1 { fill: var(--home); }
+.ar-off.v2 { fill: var(--away); }
+.ar-tip .ar-note { margin-top: 4px; opacity: 0.72; font-size: 12px; }
 .ar-empty { fill: var(--muted); font-size: 14px; paint-order: stroke; stroke: var(--surface); stroke-width: 5px; stroke-linejoin: round; }
 
 /* the public page's card window (CardPop): centred over its tab, 960px wide (a club's card 1080px, so its whole pitch can lie
@@ -3544,9 +3549,24 @@ function archetypeRows(s, idx, agg) {
     if (a.mins < Math.max(ARCH_MIN, clubMins / 3)) continue;
     const npxg = d ? d.npxg : 0, xa = d ? d.xa : 0;
     out.push({ id, name: idx[id].name, team, short: tshort(s.teams, team), club: tname(s.teams, team), mins: a.mins, npxg, xa,
-      npxg90: (npxg / a.mins) * 90, xa90: (xa / a.mins) * 90, sh: d ? d.sh : 0, card: !!d });
+      npxg90: (npxg / a.mins) * 90, xa90: (xa / a.mins) * 90, sh: d ? d.sh : 0, card: !!d, regular: true, keeper: false });
   }
   return out;
+}
+/* every player the page has a name for, for picking in Find players and Player vs player: each with their numbers per 90 from
+   whatever minutes they have played (none without minutes), whether they are one of the chart's players (regular), whether
+   they kept goal (keeper), and their club's minutes bar */
+function archAllRows(s, idx, agg, regulars) {
+  const reg = new Set(regulars.map((r) => r.id));
+  const keepers = new Set(Object.keys(agg.keepers));
+  for (const m of Object.values(s.matches)) if (m.gk) { if (m.gk.h) keepers.add(m.gk.h); if (m.gk.a) keepers.add(m.gk.a); }
+  return Object.keys(idx).map((id) => {
+    const d = agg.players[id], a = (agg.played || {})[id], mins = a ? a.mins : 0, team = d ? d.team : idx[id].team;
+    const clubMins = agg.teams[team] ? agg.teams[team].mp * 90 : 0, npxg = d ? d.npxg : 0, xa = d ? d.xa : 0;
+    return { id, name: idx[id].name, team, short: tshort(s.teams, team), club: tname(s.teams, team), mins, npxg, xa,
+      npxg90: mins ? (npxg / mins) * 90 : null, xa90: mins ? (xa / mins) * 90 : null, sh: d ? d.sh : 0, card: !!d,
+      regular: reg.has(id), keeper: keepers.has(id), bar: Math.round(Math.max(ARCH_MIN, clubMins / 3)) };
+  });
 }
 /* where the dashed lines go: the 82nd percentile of each measure across the players on the chart */
 function archCut(rows) {
@@ -3615,7 +3635,10 @@ const archKitStyle = (k) => (k ? { "--ch-l": k[0], "--ch-d": k[1] } : undefined)
                               names for as many as fit
      { mode: "find", ids }    everyone as usual but faded, and the players picked (ids) on top, ringed and named, including a
                               player from the bottom left who is not otherwise drawn
-     { mode: "vs", ids }      only the one or two players picked, in their two colours (v1, v2) and named, and no counts */
+     { mode: "vs", ids }      only the one or two players picked, in their two colours (v1, v2) and named, and no counts
+   In "find" and "vs" a player picked need not be one of the chart's players (extra: their rows, from archAllRows): they are
+   placed by their own numbers, and one too far out for the scale (a few minutes can make a big number per 90) sits at its
+   edge, with a small arrow beyond it pointing the way it is off. */
 function archChart(rows, cut, scale, W, hrefOf, view) {
   const v = view || { mode: "all" };
   const cs = getComputedStyle(document.documentElement);
@@ -3658,13 +3681,39 @@ function archChart(rows, cut, scale, W, hrefOf, view) {
   const counts = { HH: 0, HL: 0, LH: 0, LL: 0 };
   for (const r of pool) counts[archQuad(r, cut)] += 1;
   const picked = new Set(v.mode === "find" || v.mode === "vs" ? v.ids : []);
-  const drawn = v.mode === "vs" ? v.ids.map((id) => rows.find((r) => r.id === id)).filter(Boolean) :
-    v.mode === "clubs" ? pool : rows.filter((r) => archQuad(r, cut) !== "LL" || ll.shown.has(r.id) || picked.has(r.id));
-  const dots = drawn.map((r) => ({ r, x: sx(r.xa90), y: sy(r.npxg90), q: archQuad(r, cut), href: hrefOf(r),
+  const extra = (v.extra || []).filter((r) => picked.has(r.id) && r.npxg90 != null);
+  const lookup = new Map(rows.map((r) => [r.id, r]));
+  for (const r of extra) lookup.set(r.id, r);
+  const drawn = v.mode === "vs" ? v.ids.map((id) => lookup.get(id)).filter(Boolean) :
+    v.mode === "clubs" ? pool : rows.filter((r) => archQuad(r, cut) !== "LL" || ll.shown.has(r.id) || picked.has(r.id)).concat(v.mode === "find" ? extra.filter((r) => !rows.includes(r)) : []);
+  const place = (r) => {
+    const offX = r.xa90 > XMAX, offY = r.npxg90 > YMAX;
+    return { x: offX ? m.l + pw - R - 1 : sx(r.xa90), y: offY ? m.t + R + 1 : sy(r.npxg90), off: offX || offY ? [offX, offY] : null };
+  };
+  const dots = drawn.map((r) => Object.assign({ r, q: archQuad(r, cut), href: hrefOf(r) }, place(r), {
     hi: v.mode === "find" && picked.has(r.id), dim: v.mode === "find" && !picked.has(r.id), vs: v.mode === "vs" ? v.ids.indexOf(r.id) + 1 : 0,
     kc: v.mode === "clubs" && v.kit ? v.kit(r.team) : null }));
   const onDot = (b, except) => dots.some((d) => d !== except && Math.hypot(Math.min(Math.max(d.x, b.x0), b.x1) - d.x, Math.min(Math.max(d.y, b.y0), b.y1) - d.y) < R + 1.5);
   const inPlot = (b) => b.x0 >= m.l + 3 && b.x1 <= m.l + pw - 3 && b.y0 >= m.t + 2 && b.y1 <= m.t + ph - 3;
+  const score = (d) => archScore(d.r, cut);
+  const put = (b, t, cls, dest) => { taken.push(b); (dest || out).push('<text class="' + cls + '" x="' + b.x0.toFixed(1) + '" y="' + (b.y0 + 11).toFixed(1) + '">' + archEsc(t) + "</text>"); return true; };
+  const label = (d, font, cls, force, dest) => {
+    const t = archShortName(d.r.name), w = archMeasure(t, font), hh = 14, rr = d.hi || d.vs ? R + 1.5 : R;
+    const spots = [[rr + 4, -hh / 2], [-rr - 4 - w, -hh / 2], [-w / 2, -rr - 3 - hh], [-w / 2, rr + 3], [rr + 1, -rr - hh + 1], [-rr - 1 - w, -rr - hh + 1], [rr + 1, rr - 1], [-rr - 1 - w, rr - 1]];
+    let first = null;
+    for (const [dx, dy] of spots) {
+      const b = { x0: d.x + dx, x1: d.x + dx + w, y0: d.y + dy, y1: d.y + dy + hh };
+      if (!inPlot(b)) continue;
+      if (!first) first = b;
+      if (hit(b) || onDot(b, d)) continue;
+      return put(b, t, cls, dest);
+    }
+    return force ? put(first || { x0: d.x + rr + 4, x1: d.x + rr + 4 + w, y0: d.y - hh / 2, y1: d.y + hh / 2 }, t, cls, dest) : false;
+  };
+  /* the players picked ("find", "vs") are named first, so the quadrants' names then keep clear of their names as well as of
+     the dots; the names are drawn over the dots, later */
+  const early = [];
+  if (v.mode === "find" || v.mode === "vs") for (const d of dots.filter((x) => x.hi || x.vs).sort((a, b) => score(b) - score(a))) label(d, "600 12.5px " + BODY, "ar-lab hi", true, early);
 
   /* each quadrant's name and count, in its outer corner where that is clear of players, else as close to it as it fits; where
      the quadrant is too narrow for the name on one line, it takes two. A name that has to sit over players goes over them, on
@@ -3706,33 +3755,25 @@ function archChart(rows, cut, scale, W, hrefOf, view) {
 
   /* the dots, the busiest first so the standouts sit on top, any faded ones under the rest and the players picked over all of
      them; each is a link to the player's card where they have one */
-  const score = (d) => archScore(d.r, cut);
   const layer = (d) => (d.hi || d.vs ? 2 : d.dim ? 0 : 1);
   for (const d of dots.slice().sort((a, b) => layer(a) - layer(b) || score(a) - score(b))) {
     const c = '<circle class="ar-pt' + (d.dim ? " dim" : "") + (d.hi ? " hi" : "") + (d.vs ? " v" + d.vs : "") + (d.kc ? ' club-colors" style="--ch-l:' + d.kc[0] + ";--ch-d:" + d.kc[1] : "") + '" cx="' + d.x.toFixed(1) + '" cy="' + d.y.toFixed(1) + '" r="' + (d.hi || d.vs ? R + 1.5 : R) + '"/>';
     out.push(d.href ? '<a href="' + archEsc(d.href) + '" aria-label="' + archEsc(d.r.name) + '">' + c + "</a>" : c);
+  }
+  /* the arrows for a player off the scale: in the margin beyond the edge the dot sits at */
+  for (const d of dots) {
+    if (!d.off) continue;
+    const cls = "ar-off" + (d.vs ? " v" + d.vs : ""), f = (n) => n.toFixed(1);
+    if (d.off[1]) out.push('<path class="' + cls + '" d="M' + f(d.x - 4) + "," + f(m.t - 1.5) + "L" + f(d.x + 4) + "," + f(m.t - 1.5) + "L" + f(d.x) + "," + f(m.t - 7.5) + 'Z"/>');
+    if (d.off[0]) out.push('<path class="' + cls + '" d="M' + f(m.l + pw + 1.5) + "," + f(d.y - 4) + "L" + f(m.l + pw + 1.5) + "," + f(d.y + 4) + "L" + f(m.l + pw + 7.5) + "," + f(d.y) + 'Z"/>');
   }
   out.push(...late);
 
   /* names. A name goes in the first of eight spots around its dot that is clear of everything placed so far; a player picked
      ("find", "vs") is always named, over the others when no spot is clear. Otherwise the standouts: the leaders of the three
      busier profiles first, then the furthest from the middle (the bottom left too, with clubs picked), as many as fit. */
-  const put = (b, t, cls) => { taken.push(b); out.push('<text class="' + cls + '" x="' + b.x0.toFixed(1) + '" y="' + (b.y0 + 11).toFixed(1) + '">' + archEsc(t) + "</text>"); return true; };
-  const label = (d, font, cls, force) => {
-    const t = archShortName(d.r.name), w = archMeasure(t, font), hh = 14, rr = d.hi || d.vs ? R + 1.5 : R;
-    const spots = [[rr + 4, -hh / 2], [-rr - 4 - w, -hh / 2], [-w / 2, -rr - 3 - hh], [-w / 2, rr + 3], [rr + 1, -rr - hh + 1], [-rr - 1 - w, -rr - hh + 1], [rr + 1, rr - 1], [-rr - 1 - w, rr - 1]];
-    let first = null;
-    for (const [dx, dy] of spots) {
-      const b = { x0: d.x + dx, x1: d.x + dx + w, y0: d.y + dy, y1: d.y + dy + hh };
-      if (!inPlot(b)) continue;
-      if (!first) first = b;
-      if (hit(b) || onDot(b, d)) continue;
-      return put(b, t, cls);
-    }
-    return force ? put(first || { x0: d.x + rr + 4, x1: d.x + rr + 4 + w, y0: d.y - hh / 2, y1: d.y + hh / 2 }, t, cls) : false;
-  };
   if (v.mode === "find" || v.mode === "vs") {
-    for (const d of dots.filter((x) => x.hi || x.vs).sort((a, b) => score(b) - score(a))) label(d, "600 12.5px " + BODY, "ar-lab hi", true);
+    out.push(...early);
     if (v.mode === "vs" && !dots.length) out.push('<text class="ar-empty" x="' + (m.l + pw / 2) + '" y="' + (m.t + ph / 2) + '" text-anchor="middle">Pick two players to compare</text>');
   } else {
     const lead = (q, key, n) => dots.filter((d) => d.q === q).sort((a, b) => (key ? b.r[key] - a.r[key] : score(b) - score(a))).slice(0, n);
@@ -3756,7 +3797,9 @@ const ARCH_PICKS = 6;                                        // players that can
 
 /* picking a player: a button that drops down the clubs, and beside the club pointed at (or tapped, or reached with the arrow
    keys) a second drop-down, to its right, with that club's players on the chart, A to Z; a click, a tap or Enter picks one.
-   Players already picked (taken) are greyed out and ticked. On the way across from a club to its players the pointer may
+   Players already picked (taken) are greyed out and ticked. Every player the page has for the club is there (rows come from
+   archAllRows): a keeper is marked GK and a player under the minutes bar shows his minutes; a player with no minutes yet
+   could not be placed, so he is greyed out. On the way across from a club to its players the pointer may
    cross other clubs: while it is heading for the players' list the menu waits a moment before switching (the "menu aim" a
    desktop menu has), so the list being aimed at stays put. Escape, a click outside or a pick closes it.
    Keyboard: Enter, Space or Down opens it on the clubs; Up and Down move, Right or Enter opens a club's players, Left goes
@@ -3829,8 +3872,10 @@ function ArchMenu({ id, label, rows, s, clubIds, taken, disabled, onPick }) {
     if (club && heading()) aim.current.timer = setTimeout(() => setClub(t), 260);
     else setClub(t);
   };
-  const firstFree = (t) => (byClub[t] || []).findIndex((r) => !taken.has(r.id));
-  const choose = (r, refocus) => { if (taken.has(r.id)) return; onPick(r.id); close(refocus); };
+  const off = (r) => taken.has(r.id) || !r.mins;
+  const firstFree = (t) => (byClub[t] || []).findIndex((r) => !off(r));
+  const choose = (r, refocus) => { if (off(r)) return; onPick(r.id); close(refocus); };
+  const note = (r) => (r.regular ? null : !r.mins ? "No minutes" : r.keeper ? "GK" : r.mins.toLocaleString("en-US") + " min");
 
   const onButtonKey = (e) => {
     if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
@@ -3879,20 +3924,21 @@ function ArchMenu({ id, label, rows, s, clubIds, taken, disabled, onPick }) {
           onPointerEnter: pointClub(t), onPointerMove: pointClub(t), onClick: () => { clearTimeout(aim.current.timer); setClub(t); }, onKeyDown: onClubKey(i, t),
         }, h(Crest, { id: t, size: 18 }), h("span", { className: "ar-mi-name ar-full" }, tname(s.teams, t)), h("span", { className: "ar-mi-name ar-short" }, tshort(s.teams, t)), h(IconRight))))),
       club ? h("ul", {
-        ref: fly, className: "ar-menu-list ar-players", role: "menu", "aria-label": tname(s.teams, club) + " players", style: { marginTop: drop },
+        ref: fly, className: "ar-menu-list ar-players", role: "menu", "aria-label": tname(s.teams, club) + " players", style: { marginTop: drop, maxHeight: clubIds.length * ARCH_ROW + 10 },
         onPointerEnter: () => clearTimeout(aim.current.timer),
       }, list.map((r, j) => h("li", { key: r.id, role: "none" },
         h("button", {
-          ref: (el) => { playerBtns.current[j] = el; }, type: "button", role: "menuitem", tabIndex: -1, "aria-disabled": taken.has(r.id) ? "true" : undefined,
+          ref: (el) => { playerBtns.current[j] = el; }, type: "button", role: "menuitem", tabIndex: -1, "aria-disabled": off(r) ? "true" : undefined,
           className: "ar-mi", "data-player": r.id, onClick: () => choose(r, false), onKeyDown: onPlayerKey(j, r),
-        }, h("span", { className: "ar-mi-name" }, r.name), taken.has(r.id) ? h(IconCheck) : null)))) : null) : null);
+        }, h("span", { className: "ar-mi-name" }, r.name), note(r) ? h("span", { className: "ar-mi-note" }, note(r)) : null, taken.has(r.id) ? h(IconCheck) : null)))) : null) : null);
 }
 
 /* The Visualiser tab. Next to the title, what the chart shows:
      Clubs             all clubs (the chart as it opens), or only the players of the clubs picked, every one of them, each
                        club's dots in its own colour, shown on its chip
      Find players      up to six players picked from the club menu (ArchMenu), ringed and named on the chart over everyone
-                       else, faded; one from the bottom left who is not otherwise drawn is drawn too
+                       else, faded; one from the bottom left who is not otherwise drawn is drawn too, and so is any other player
+                       the page has, placed by his own numbers
      Player vs player  two players picked from the club menu, and only their two dots, each in its own colour, with their
                        numbers beside the names
    Each keeps what was picked in it. The four lists and the table under the chart follow the clubs picked, and otherwise list
@@ -3902,6 +3948,8 @@ function VisualiserView({ s, idx, agg }) {
   const rows = useMemo(() => archetypeRows(s, idx, agg), [s, idx, agg]);
   const cut = useMemo(() => (rows.length ? archCut(rows) : null), [rows]);
   const byId = useMemo(() => Object.fromEntries(rows.map((r) => [r.id, r])), [rows]);
+  const allRows = useMemo(() => archAllRows(s, idx, agg, rows), [s, idx, agg, rows]);
+  const byIdAll = useMemo(() => Object.fromEntries(allRows.map((r) => [r.id, r])), [allRows]);
   const clubIds = useMemo(() => [...new Set(rows.map((r) => r.team))].sort((a, b) => tname(s.teams, a).localeCompare(tname(s.teams, b))), [rows, s.teams]);
   const [mode, setMode] = useState(ARCH_MEMO.mode);
   const [clubsAll, setClubs] = useState(ARCH_MEMO.clubs);
@@ -3910,7 +3958,8 @@ function VisualiserView({ s, idx, agg }) {
   const [vsAll, setVs] = useState(ARCH_MEMO.vs);
   useEffect(() => { Object.assign(ARCH_MEMO, { mode, clubs: clubsAll, kits, picks: picksAll, vs: vsAll }); }, [mode, clubsAll, kits, picksAll, vsAll]);
   /* only players and clubs still on the chart count (a later upload can move someone under the minutes bar) */
-  const clubs = clubsAll.filter((id) => clubIds.includes(id)), picks = picksAll.filter((id) => byId[id]), vs = vsAll.map((id) => (id && byId[id] ? id : null));
+  const playable = (id) => !!(id && byIdAll[id] && byIdAll[id].mins);
+  const clubs = clubsAll.filter((id) => clubIds.includes(id)), picks = picksAll.filter(playable), vs = vsAll.map((id) => (playable(id) ? id : null));
   const boxRef = useRef(null);
   const width = useWidth(boxRef, typeof window !== "undefined" && window.innerWidth ? Math.min(1146, window.innerWidth - 66) : 1000);
   /* the names are measured to place them, so the chart is drawn again once the page's own fonts have loaded */
@@ -3924,8 +3973,9 @@ function VisualiserView({ s, idx, agg }) {
   const clubSet = new Set(clubs);
   const pool = mode === "clubs" && clubs.length ? rows.filter((r) => clubSet.has(r.team)) : rows;
   const kitOf = (team) => archKitColours(team, kits[team] || 0);
-  const view = mode === "clubs" && clubs.length ? { mode: "clubs", pool, kit: kitOf } : mode === "find" && picks.length ? { mode: "find", ids: picks } :
-    mode === "vs" ? { mode: "vs", ids: vs.filter(Boolean) } : { mode: "all" };
+  const extraOf = (ids) => ids.filter((id) => !byId[id]).map((id) => byIdAll[id]);
+  const view = mode === "clubs" && clubs.length ? { mode: "clubs", pool, kit: kitOf } : mode === "find" && picks.length ? { mode: "find", ids: picks, extra: extraOf(picks) } :
+    mode === "vs" ? { mode: "vs", ids: vs.filter(Boolean), extra: extraOf(vs.filter(Boolean)) } : { mode: "all" };
   const viewKey = view.mode + ":" + (view.mode === "clubs" ? clubs.map((c) => c + "." + (kits[c] || 0)).join(",") : (view.ids || []).join(","));
   const chart = useMemo(() => (cut && width > 0 ? archChart(rows, cut, "sqrt", Math.max(300, Math.round(width)), cardHref, view) : null), [rows, cut, width, fonts, viewKey]);
   /* the player being pointed at (or, on a touch screen, tapped): an index into chart.dots */
@@ -3945,8 +3995,9 @@ function VisualiserView({ s, idx, agg }) {
     if (!svg || !chart) return -1;
     const b = svg.getBoundingClientRect(), k = chart.W / b.width;
     const x = (e.clientX - b.left) * k, y = (e.clientY - b.top) * k;
+    /* the nearest dot, the players picked counting a little nearer, so one sitting on another dot is the one pointed at */
     let best = -1, bd = 24 * k;
-    chart.dots.forEach((d, i) => { const dd = Math.hypot(d.x - x, d.y - y); if (dd < bd) { bd = dd; best = i; } });
+    chart.dots.forEach((d, i) => { const dd = Math.hypot(d.x - x, d.y - y) - (d.hi || d.vs ? 4 * k : 0); if (dd < bd) { bd = dd; best = i; } });
     return best;
   };
   const openCard = (d) => nav.go({ tab: "players", item: d.r.id });
@@ -3983,6 +4034,9 @@ function VisualiserView({ s, idx, agg }) {
       h("span", { className: "ar-row" }, h("span", null, "xA/90"), h("b", null, r.xa90.toFixed(2))),
       h("span", { className: "ar-row ar-soft" }, h("span", null, "npxG, xA"), h("span", null, r.npxg.toFixed(2) + ", " + r.xa.toFixed(2))),
       h("span", { className: "ar-q" }, q.name),
+      /* a player who is not one of the chart's (picked from the menus) says why, and one off the scale says so */
+      !r.regular ? h("span", { className: "ar-note" }, r.keeper ? "A goalkeeper, usually left off the chart" : "Under " + r.bar + " minutes, usually left off the chart") : null,
+      d.off ? h("span", { className: "ar-note" }, "Too far out for the scale, so drawn at its edge") : null,
       d.href ? h("span", { className: "ar-go" }, (tip.touch ? "Tap again" : "Click") + " to see their " + (r.sh ? "shot map" : "numbers on Players")) : null);
     ring = h("svg", { className: "ar-hot", viewBox: "0 0 " + chart.W + " " + chart.H, "aria-hidden": "true" },
       h("circle", { className: "ar-ring" + (d.vs ? " v" + d.vs : "") + (d.kc ? " club-colors" : ""), style: archKitStyle(d.kc), cx: d.x, cy: d.y, r: ARCH_R + (d.hi || d.vs ? 3 : 1.5) }));
@@ -3996,14 +4050,14 @@ function VisualiserView({ s, idx, agg }) {
   /* player vs player: each side is the club menu to pick a player from until one is picked, then that player, in the colour
      of their dot, with their numbers on both measures */
   const vsSlot = (i) => {
-    const r = vs[i] ? byId[vs[i]] : null;
+    const r = vs[i] ? byIdAll[vs[i]] : null;
     if (!r) {
-      return h(ArchMenu, { key: "pick" + i, id: "ar-vs-" + i, label: i ? "Second player" : "First player", rows, s, clubIds, taken: new Set(vs.filter(Boolean)),
+      return h(ArchMenu, { key: "pick" + i, id: "ar-vs-" + i, label: i ? "Second player" : "First player", rows: allRows, s, clubIds, taken: new Set(vs.filter(Boolean)),
         onPick: (pid) => setVs((v) => v.map((x, j) => (j === i ? pid : x))) });
     }
     return h("div", { key: "card" + i, className: "ar-vs-card" },
       h("i", { className: "dot " + (i ? "away" : "home"), "aria-hidden": "true" }),
-      h("span", { className: "ar-vs-who" }, h("strong", null, r.name), h("span", { className: "ar-meta" }, r.club)),
+      h("span", { className: "ar-vs-who" }, h("strong", null, r.name), h("span", { className: "ar-meta" }, r.club + " \u00b7 " + r.mins.toLocaleString("en-US") + " min")),
       h("span", { className: "ar-vs-nums" }, h("span", null, h("b", null, r.npxg90.toFixed(2)), " npxG/90"), h("span", null, h("b", null, r.xa90.toFixed(2)), " xA/90")),
       cross("Take " + r.name + " out of the comparison", () => setVs((v) => v.map((x, j) => (j === i ? null : x)))));
   };
@@ -4029,15 +4083,15 @@ function VisualiserView({ s, idx, agg }) {
         h(Crest, { id, size: 18 }), tshort(s.teams, id)))) :
     mode === "find" ?
       h("div", { className: "ar-find" },
-        h(ArchMenu, { id: "ar-find", label: picks.length >= ARCH_PICKS ? "Up to " + ARCH_PICKS + " players at once" : "Add a player", rows, s, clubIds, taken: new Set(picks),
+        h(ArchMenu, { id: "ar-find", label: picks.length >= ARCH_PICKS ? "Up to " + ARCH_PICKS + " players at once" : "Add a player", rows: allRows, s, clubIds, taken: new Set(picks),
           disabled: picks.length >= ARCH_PICKS, onPick: (pid) => setPicks((p) => (p.includes(pid) ? p : p.concat(pid))) }),
-        picks.map((pid) => h("span", { key: pid, className: "ar-tag" }, h("span", { className: "ar-tag-name" }, byId[pid].name), h("span", { className: "ar-meta" }, byId[pid].short),
-          cross("Take " + byId[pid].name + " off the chart", () => setPicks((p) => p.filter((x) => x !== pid)))))) :
+        picks.map((pid) => h("span", { key: pid, className: "ar-tag" }, h("span", { className: "ar-tag-name" }, byIdAll[pid].name), h("span", { className: "ar-meta" }, byIdAll[pid].short),
+          cross("Take " + byIdAll[pid].name + " off the chart", () => setPicks((p) => p.filter((x) => x !== pid)))))) :
       h("div", { className: "ar-vs" }, vsSlot(0), h("span", { className: "ar-vs-sep", "aria-hidden": "true" }, "vs"), vsSlot(1));
   /* player vs player draws its two players in a pair of colours that are told apart, as a match's two sides are: the first in
      their club's colour, the second in theirs or, when the two clash, their club's change colour (blue and orange for two
      players from one club) */
-  const va = vs[0] ? byId[vs[0]] : null, vb = vs[1] ? byId[vs[1]] : null;
+  const va = vs[0] ? byIdAll[vs[0]] : null, vb = vs[1] ? byIdAll[vs[1]] : null;
   const awayOnly = (team) => { const c = ClubColours.club(team); return c ? { "--ca-l": c["--ch-l"], "--ca-d": c["--ch-d"] } : null; };
   const pair = mode !== "vs" ? null : va && vb ? ClubColours.match(va.team, vb.team) : va ? ClubColours.club(va.team) : vb ? awayOnly(vb.team) : null;
 
@@ -4067,7 +4121,7 @@ function VisualiserView({ s, idx, agg }) {
     { key: "q", label: "Profile", get: (r) => ARCH[archQuad(r, cut)].name },
   ];
   const n = listRows.length;
-  const named = (ids) => ids.map((id) => byId[id].name);
+  const named = (ids) => ids.map((id) => byIdAll[id].name);
   const who = view.mode === "clubs" ? n + " players from " + clubs.map((id) => tname(s.teams, id)).join(", ") :
     view.mode === "vs" ? (view.ids.length ? named(view.ids).join(" and ") + " alone" : "no players yet: pick two to compare them") :
       n + " players" + (view.mode === "find" ? ", with " + named(picks).join(", ") + " picked out" : "");
