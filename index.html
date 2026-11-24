@@ -540,8 +540,8 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: 13.5px; }
 .ar-all > summary { cursor: pointer; padding: 14px 16px; font-weight: 600; }
 .ar-all[open] > summary { border-bottom: 1px solid var(--line); }
 .ar-all .tbl-wrap { border: 0; border-radius: 0 0 12px 12px; }
-/* what the chart shows, beside its title, and the picking for it under them: club chips, the boxes to type players into, and
-   the players picked. On a phone the club chips sit in one row that scrolls sideways, out to the screen's edges. */
+/* what the tab shows, beside its title, and the picking for it under them: the club chips for the chart, or a menu for each
+   side of a head-to-head. On a phone the club chips sit in one row that scrolls sideways, out to the screen's edges. */
 .ar-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
 .ar-chips { display: flex; flex-wrap: wrap; gap: 5px; }
 .ar-chip { appearance: none; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; min-height: 32px; padding: 4px 9px; border: 1px solid var(--line-2); border-radius: 999px; background: var(--surface); color: var(--ink); font-size: 13px; font-weight: 500; white-space: nowrap; flex: none; }
@@ -571,6 +571,10 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: 13.5px; }
 .ar-mi-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .ar-mi-note { flex: none; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .ar-mi .ar-short { display: none; }
+/* All players, above the clubs: a list mark where a crest would be */
+.ar-mi-all { display: inline-grid; place-items: center; width: 18px; height: 18px; flex: none; }
+.ar-mi-all svg { width: 14px; height: 14px; color: var(--ink-2); }
+.ar-mi-every .ar-mi-name { font-weight: 600; }
 @media (max-width: 640px) {
   .ar-vs .ar-menu, .ar-menu-btn { width: 100%; }
   .ar-clubs { width: 118px; }
@@ -580,9 +584,21 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: 13.5px; }
   .ar-players { width: min(230px, calc(100vw - 163px)); }
 }
 .ar-vs-sep { font-family: var(--font-display); font-weight: 700; font-size: 15px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+/* each side: its menu, and with more than two sides a button to remove it, with the "vs" before it (ar-pair); after the last,
+   the button to add a side */
+.ar-pair { display: inline-flex; align-items: center; gap: 10px; }
+.ar-slot { display: inline-flex; align-items: center; gap: 2px; }
+.ar-drop { appearance: none; cursor: pointer; display: inline-grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--muted); flex: none; }
+.ar-drop:hover, .ar-drop:focus-visible { color: var(--ink); background: var(--accent-soft); outline: none; }
+.ar-drop svg, .ar-add svg { width: 13px; height: 13px; flex: none; }
+.ar-add { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; }
 @media (max-width: 640px) {
   .ar-vs { flex-direction: column; align-items: stretch; }
   .ar-vs-sep { align-self: center; }
+  .ar-pair { flex-direction: column; align-items: stretch; gap: 8px; }
+  .ar-slot { display: flex; }
+  .ar-slot .ar-menu { flex: 1; min-width: 0; }
+  .ar-add { align-self: center; margin-top: 2px; }
 }
 
 /* the public page's card window (CardPop): centred over its tab, 960px wide (a club's card 1080px, so its whole pitch can lie
@@ -606,8 +622,8 @@ dialog.pop::backdrop { background: rgba(10, 14, 12, 0.3); -webkit-backdrop-filte
 }
 @media (max-width: 640px) { dialog.pop { max-width: calc(100% - 16px); max-height: calc(100% - 16px); } }
 
-/* the head-to-head table (ArchCompare): a measure a row, the two sides' numbers beside it, the higher green and bold, the lower
-   red; the names (or the club's crest and name) head the two columns. The button of each side's menu shows who is picked. */
+/* the head-to-head table (ArchCompare): a measure a row, each side's number beside it, the best green and bold, the worst red;
+   the names (or the club's crest and name) head the columns. The button of each side's menu shows who is picked. */
 .ar-menu-val { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
 .ar-menu-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ar-menu-val .ar-meta { color: var(--muted); font-size: 12.5px; }
@@ -618,6 +634,7 @@ dialog.pop::backdrop { background: rgba(10, 14, 12, 0.3); -webkit-backdrop-filte
 .ar-cmp-head { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 3px; text-align: right; text-transform: none; letter-spacing: 0; }
 .ar-cmp-head .ar-cmp-name { font-size: 14px; font-weight: 600; color: var(--ink); }
 .ar-cmp-head .ar-meta { font-size: 12px; font-weight: 400; color: var(--muted); }
+.ar-cmp-head .ar-short { display: none; }
 .ar-cmp td { font-size: 15px; font-variant-numeric: tabular-nums; }
 .ar-cmp td.hi { color: var(--ok-text); font-weight: 700; }
 .ar-cmp td.lo { color: var(--danger-text); }
@@ -625,6 +642,8 @@ dialog.pop::backdrop { background: rgba(10, 14, 12, 0.3); -webkit-backdrop-filte
 @media (max-width: 640px) {
   .ar-cmp th, .ar-cmp td { padding-inline: 7px; }
   .ar-cmp tbody th { white-space: normal; }
+  .ar-cmp-head .ar-full { display: none; }
+  .ar-cmp-head .ar-short { display: inline; }
 }
 </style>
 </head>
@@ -3554,9 +3573,12 @@ function archetypeRows(s, idx, agg) {
 }
 /* every player the page has a name for, for picking in Player vs player: each with their totals and their numbers per 90 from
    whatever minutes they have played (none without minutes), whether they are one of the chart's players (regular), whether
-   they kept goal (keeper), and their club's minutes bar */
+   they kept goal (keeper), whether they are on a shot, as the one who took it or played the pass before it (tagged), and
+   their club's minutes bar */
 function archAllRows(s, idx, agg, regulars) {
   const reg = new Set(regulars.map((r) => r.id));
+  const tagged = new Set();
+  for (const m of Object.values(s.matches)) for (const x of m.shots || []) { tagged.add(x.p); if (x.ap) tagged.add(x.ap); }
   const keepers = new Set(Object.keys(agg.keepers));
   for (const m of Object.values(s.matches)) if (m.gk) { if (m.gk.h) keepers.add(m.gk.h); if (m.gk.a) keepers.add(m.gk.a); }
   return Object.keys(idx).map((id) => {
@@ -3565,7 +3587,7 @@ function archAllRows(s, idx, agg, regulars) {
     return { id, name: idx[id].name, team, short: tshort(s.teams, team), club: tname(s.teams, team), mins, npxg, xa,
       xg: d ? d.xg : 0, g: d ? d.g : 0, bc: d ? d.bc : 0, bcm: d ? d.bcm : 0, bcc: d ? d.bcc : 0, kp: d ? d.kp : 0,
       npxg90: mins ? (npxg / mins) * 90 : null, xa90: mins ? (xa / mins) * 90 : null, sh: d ? d.sh : 0, card: !!d,
-      regular: reg.has(id), keeper: keepers.has(id), bar: Math.round(Math.max(ARCH_MIN, clubMins / 3)) };
+      regular: reg.has(id), keeper: keepers.has(id), tagged: tagged.has(id), bar: Math.round(Math.max(ARCH_MIN, clubMins / 3)) };
   });
 }
 /* where the dashed lines go: the 82nd percentile of each measure across the players on the chart */
@@ -3757,14 +3779,18 @@ function archChart(rows, cut, scale, W, hrefOf, view) {
 }
 
 /* what the reader has picked on the tab (see VisualiserView), kept while they look at a card or another tab and come back */
-const ARCH_MEMO = { mode: "chart", clubs: [], kits: {}, vs: [null, null], tv: [null, null] };
+const ARCH_MEMO = { mode: "chart", clubs: [], kits: {}, vs: [null, null], gv: [null, null], tv: [null, null] };
+const ARCH_MAX = 5;                                          // the most sides a head-to-head takes (it starts with two)
+const ARCH_NTH = ["First", "Second", "Third", "Fourth", "Fifth"];
+const ARCH_ALL = "*";                                        // the player menu's All players, above the clubs
 
 /* picking a player, or a club: a button that drops down the clubs. For a player, the club pointed at (or tapped, or reached
    with the arrow keys) opens a second drop-down to its right with that club's players, A to Z, and a click, a tap or Enter
-   picks one. For a club (clubsOnly) the clubs' drop-down is all there is, and a club is picked straight from it. Whatever is
-   already picked (taken) is greyed out and ticked. Every player the page has for the club is there (rows come from
-   archAllRows): a keeper is marked GK and a player under the chart's minutes bar shows his minutes; a player with no minutes
-   yet has nothing to compare, so he is greyed out. On the way across from a club to its players the pointer may cross other
+   picks one. Above the clubs, All players (everyone) opens the same way on everyone tagged for a shot, from every club, A to
+   Z, each with his club. For a club (clubsOnly) the clubs' drop-down is all there is, and a club is picked straight from it.
+   Whatever is already picked (taken) is greyed out and ticked. Every player the page has for the club is there (rows come
+   from archAllRows): a keeper is marked GK and a player under the chart's minutes bar shows his minutes; a player with no
+   minutes yet is greyed out, unless he is on a shot (then his totals still compare). On the way across from a club to its players the pointer may cross other
    clubs: while it is heading for the players' list the menu waits a moment before switching (the "menu aim" a desktop menu
    has), so the list being aimed at stays put. Escape, a click outside or a pick closes it. The button shows what is picked.
    Keyboard: Enter, Space or Down opens it on the clubs; Up and Down move, Right or Enter opens a club's players (or, for a
@@ -3772,7 +3798,10 @@ const ARCH_MEMO = { mode: "chart", clubs: [], kits: {}, vs: [null, null], tv: [n
 const ARCH_ROW = 34;                                         // the height of a row in both drop-downs (.ar-mi), in pixels
 const IconDown = svgIcon("M4 6l4 4 4-4");
 const IconRight = svgIcon("M6 4l4 4-4 4");
-function ArchMenu({ id, label, value, rows, s, clubIds, taken, clubsOnly, onPick }) {
+const IconList = svgIcon("M3 4.5h10M3 8h10M3 11.5h10");
+const IconPlus = svgIcon("M8 3.5v9M3.5 8h9");
+const IconX = svgIcon("M4.5 4.5l7 7M11.5 4.5l-7 7");
+function ArchMenu({ id, label, value, rows, s, clubIds, taken, clubsOnly, everyone, onPick }) {
   const [open, setOpen] = useState(false);
   const [club, setClub] = useState(null);
   const [focusTo, setFocusTo] = useState(null);              // after the next render, focus "club:<i>" or "player:<j>"
@@ -3784,7 +3813,9 @@ function ArchMenu({ id, label, value, rows, s, clubIds, taken, clubsOnly, onPick
     for (const k of Object.keys(by)) by[k].sort((a, b) => a.name.localeCompare(b.name));
     return by;
   }, [rows]);
-  const list = club && !clubsOnly ? byClub[club] || [] : [];
+  const ids = everyone ? [ARCH_ALL].concat(clubIds) : clubIds;
+  const listOf = (t) => (t === ARCH_ALL ? everyone : byClub[t] || []);
+  const list = club && !clubsOnly ? listOf(club) : [];
   const close = (refocus) => {
     clearTimeout(aim.current.timer);
     setOpen(false); setClub(null);
@@ -3837,21 +3868,21 @@ function ArchMenu({ id, label, value, rows, s, clubIds, taken, clubsOnly, onPick
     if (club && heading()) aim.current.timer = setTimeout(() => setClub(t), 260);
     else setClub(t);
   };
-  const off = (r) => taken.has(r.id) || !r.mins;
-  const firstFree = (t) => (byClub[t] || []).findIndex((r) => !off(r));
+  const off = (r) => taken.has(r.id) || (!r.mins && !r.tagged);
+  const firstFree = (t) => listOf(t).findIndex((r) => !off(r));
   const choose = (r, refocus) => { if (off(r)) return; onPick(r.id); close(refocus); };
   const chooseClub = (t, refocus) => { if (taken.has(t)) return; onPick(t); close(refocus); };
-  const note = (r) => (r.regular ? null : !r.mins ? "No minutes" : r.keeper ? "GK" : r.mins.toLocaleString("en-US") + " min");
+  const note = (r) => (club === ARCH_ALL ? r.short : r.regular ? null : !r.mins ? "No minutes" : r.keeper ? "GK" : r.mins.toLocaleString("en-US") + " min");
 
   const onButtonKey = (e) => {
     if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       setOpen(true);
-      setFocusTo("club:" + Math.max(0, clubIds.indexOf(club)));
+      setFocusTo("club:" + Math.max(0, ids.indexOf(club)));
     }
   };
   const onClubKey = (i, t) => (e) => {
-    const n = clubIds.length;
+    const n = ids.length;
     if (e.key === "ArrowDown") { e.preventDefault(); setFocusTo("club:" + ((i + 1) % n)); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setFocusTo("club:" + ((i - 1 + n) % n)); }
     else if (e.key === "Home") { e.preventDefault(); setFocusTo("club:0"); }
@@ -3869,15 +3900,15 @@ function ArchMenu({ id, label, value, rows, s, clubIds, taken, clubsOnly, onPick
     const n = list.length;
     if (e.key === "ArrowDown") { e.preventDefault(); setFocusTo("player:" + ((j + 1) % n)); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setFocusTo("player:" + ((j - 1 + n) % n)); }
-    else if (e.key === "ArrowLeft") { e.preventDefault(); setFocusTo("club:" + clubIds.indexOf(club)); }
+    else if (e.key === "ArrowLeft") { e.preventDefault(); setFocusTo("club:" + ids.indexOf(club)); }
     else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); choose(r, true); }
     else if (e.key === "Escape") { e.preventDefault(); close(true); }
     else if (e.key === "Tab") close(false);
   };
 
   /* the players' list sits beside its club, moved up as far as it must to end no lower than the clubs' list */
-  const ci = club ? clubIds.indexOf(club) : -1;
-  const drop = ci < 0 ? 0 : Math.max(0, Math.min(ci, clubIds.length - list.length)) * ARCH_ROW;
+  const ci = club ? ids.indexOf(club) : -1;
+  const drop = ci < 0 ? 0 : Math.max(0, Math.min(ci, ids.length - list.length)) * ARCH_ROW;
   return h("div", { className: "ar-menu", ref: box },
     h("button", {
       ref: btn, type: "button", className: "ar-menu-btn" + (value ? " set" : ""), "aria-haspopup": "menu", "aria-expanded": open, "aria-controls": id + "-clubs",
@@ -3885,17 +3916,18 @@ function ArchMenu({ id, label, value, rows, s, clubIds, taken, clubsOnly, onPick
     }, value ? h("span", { className: "ar-menu-val" }, h(Crest, { id: value.team, size: 20 }), h("span", { className: "ar-menu-name" }, value.name), value.sub ? h("span", { className: "ar-meta" }, value.sub) : null) :
       h("span", { className: "ar-menu-label" }, label), h(IconDown)),
     open ? h("div", { className: "ar-menu-pop", onPointerMove: clubsOnly ? undefined : track },
-      h("ul", { id: id + "-clubs", className: "ar-menu-list ar-clubs", role: "menu", "aria-label": "Clubs" }, clubIds.map((t, i) => h("li", { key: t, role: "none" },
+      h("ul", { id: id + "-clubs", className: "ar-menu-list ar-clubs", role: "menu", "aria-label": "Clubs" }, ids.map((t, i) => h("li", { key: t, role: "none" },
         h("button", {
-          ref: (el) => { clubBtns.current[i] = el; }, type: "button", role: "menuitem", tabIndex: -1, title: tname(s.teams, t), "data-club": t,
+          ref: (el) => { clubBtns.current[i] = el; }, type: "button", role: "menuitem", tabIndex: -1, title: t === ARCH_ALL ? "Everyone tagged for a shot" : tname(s.teams, t), "data-club": t,
           "aria-haspopup": clubsOnly ? undefined : "menu", "aria-expanded": clubsOnly ? undefined : club === t, "aria-disabled": clubsOnly && taken.has(t) ? "true" : undefined,
-          className: "ar-mi" + (club === t ? " open" : ""),
+          className: "ar-mi" + (t === ARCH_ALL ? " ar-mi-every" : "") + (club === t ? " open" : ""),
           onPointerEnter: pointClub(t), onPointerMove: pointClub(t), onKeyDown: onClubKey(i, t),
           onClick: () => { if (clubsOnly) chooseClub(t, false); else { clearTimeout(aim.current.timer); setClub(t); } },
-        }, h(Crest, { id: t, size: 18 }), h("span", { className: "ar-mi-name ar-full" }, tname(s.teams, t)), h("span", { className: "ar-mi-name ar-short" }, tshort(s.teams, t)),
+        }, t === ARCH_ALL ? h("span", { className: "ar-mi-all" }, h(IconList)) : h(Crest, { id: t, size: 18 }),
+          h("span", { className: "ar-mi-name ar-full" }, t === ARCH_ALL ? "All players" : tname(s.teams, t)), h("span", { className: "ar-mi-name ar-short" }, t === ARCH_ALL ? "All" : tshort(s.teams, t)),
           clubsOnly ? (taken.has(t) ? h(IconCheck) : null) : h(IconRight))))),
       club && !clubsOnly ? h("ul", {
-        ref: fly, className: "ar-menu-list ar-players", role: "menu", "aria-label": tname(s.teams, club) + " players", style: { marginTop: drop, maxHeight: clubIds.length * ARCH_ROW + 10 },
+        ref: fly, className: "ar-menu-list ar-players", role: "menu", "aria-label": club === ARCH_ALL ? "Everyone tagged for a shot" : tname(s.teams, club) + " players", style: { marginTop: drop, maxHeight: ids.length * ARCH_ROW + 10 },
         onPointerEnter: () => clearTimeout(aim.current.timer),
       }, list.map((r, j) => h("li", { key: r.id, role: "none" },
         h("button", {
@@ -3906,64 +3938,99 @@ function ArchMenu({ id, label, value, rows, s, clubIds, taken, clubsOnly, onPick
 
 /* a club's season for the comparison, counted as the season tables count it: every match it has a shot or an own goal in,
    90 minutes a match (stoppage time never counts). Its goals are the ones from its own shots, as its xG is: own goals in its
-   favour are left out, as they are from a player's. Big chances, and the ones missed, are its shots worth more than 0.20 xG;
-   big chances created come from the same passes as a player's do (open play, with the pass before the shot), added up over
-   the club */
+   favour are left out, as they are from a player's. Big chances, and the ones missed, are its shots worth more than 0.20 xG.
+   Against it, from the other side: shots, xG, the goals from those shots (own goals left out again, so that one club's goals
+   are the other's goals against) and big chances */
 function archTeamStats(s, tid) {
-  const t = { mp: 0, xg: 0, g: 0, npxg: 0, bc: 0, bcm: 0, bcc: 0 };
+  const t = { mp: 0, xg: 0, g: 0, npxg: 0, bc: 0, bcm: 0, sha: 0, xga: 0, ga: 0, bca: 0 };
   for (const m of Object.values(s.matches)) {
     if (m.home !== tid && m.away !== tid) continue;
     if (!(m.shots || []).length && !(m.og || []).length) continue;
     t.mp += 1;
     const side = m.home === tid ? "h" : "a";
     for (const x of m.shots || []) {
-      if (x.t !== side) continue;
       const v = Model.xg(x), big = Stats.isBig(v), goal = x.out === "goal";
+      if (x.t !== side) { t.sha += 1; t.xga += v; if (goal) t.ga += 1; if (big) t.bca += 1; continue; }
       t.xg += v;
       if (goal) t.g += 1;
       if (x.sit !== "pen") t.npxg += v;
       if (big) { t.bc += 1; if (!goal) t.bcm += 1; }
-      if (big && (x.sit || "open") === "open" && x.ap) t.bcc += 1;
     }
   }
   t.mins = t.mp * 90;
   return t;
 }
 
-/* the measures compared head to head, in her order, each with the decimals it is shown to (and compared at), and for some
-   how it is written (xG performance with its sign, as G - xG is on Players) and what its heading says when pointed at */
-const ARCH_CMP = [
-  ["Minutes played", (t) => t.mins, 0],
-  ["xG", (t) => t.xg, 2],
-  ["xG/90", (t) => (t.mins ? (t.xg / t.mins) * 90 : null), 2],
-  ["Goals", (t) => t.g, 0, null, "Scored from their own shots. Own goals are left out, as they are from xG."],
-  ["xG performance", (t) => t.g - t.xg, 2, signed, "Goals minus xG"],
-  ["npxG", (t) => t.npxg, 2],
-  ["npxG/90", (t) => (t.mins ? (t.npxg / t.mins) * 90 : null), 2],
-  ["Big chances", (t) => t.bc, 0],
-  ["Big chances created", (t) => t.bcc, 0],
-  ["Big chances missed", (t) => t.bcm, 0],
-  ["Key passes", (t) => t.kp, 0],
-  ["xA", (t) => t.xa, 2],
-  ["xA/90", (t) => (t.mins ? (t.xa / t.mins) * 90 : null), 2],
-];
-/* two clubs are compared without the last three: key passes, xA and xA/90 */
-const ARCH_CMP_CLUB = ARCH_CMP.filter(([label]) => !["Key passes", "xA", "xA/90"].includes(label));
-/* two sides side by side, a row a measure: in each row the higher number is green and the lower red, compared as shown (to
-   the decimals shown), and the higher is bold too, for anyone who cannot tell the two colours apart; equal numbers, or a side
-   not picked yet, stay plain */
-function ArchCompare({ caption, heads, sides, measures }) {
-  const fmt = (v, dp, f) => (v == null ? "\u2013" : f ? f(v) : dp ? v.toFixed(dp) : Math.round(v).toLocaleString("en-US"));
-  return h("div", { className: "tbl-wrap ar-cmp-wrap" }, h("table", { className: "tbl ar-cmp" },
-    h("caption", { className: "sr" }, caption),
+/* every keeper the page knows of (in goal for a match, or on a shot on target), with his numbers as the Keepers tab counts
+   them: shots on target faced, every goal conceded while in goal (own goals included), saves, xGOT faced (and per 90 of his
+   minutes), xSaves, and goals prevented (xGOT faced minus the goals from those shots, so own goals stay out of it) */
+function archKeeperRows(s, idx, agg) {
+  const teamOf = {};
+  for (const id of Object.keys(agg.keepers)) teamOf[id] = agg.keepers[id].team;
+  for (const m of Object.values(s.matches)) if (m.gk) for (const sd of ["h", "a"]) {
+    const id = m.gk[sd];
+    if (id && !teamOf[id]) teamOf[id] = idx[id] ? idx[id].team : sd === "h" ? m.home : m.away;
+  }
+  return Object.keys(teamOf).map((id) => {
+    const d = agg.keepers[id] || { sotf: 0, ga: 0, oga: 0, xgotf: 0 }, a = (agg.played || {})[id], team = teamOf[id];
+    return { id, name: pname(idx, id), team, short: tshort(s.teams, team), club: tname(s.teams, team), mins: a ? a.mins : 0, regular: true, tagged: true,
+      sotf: d.sotf, gc: d.ga + d.oga, sv: d.sotf - d.ga, xgotf: d.xgotf, xsv: d.sotf - d.xgotf, gp: d.xgotf - d.ga };
+  });
+}
+
+/* the measures the head-to-heads compare: each with the decimals it is shown to (and compared at), how it is written when
+   that is not plain (with its sign, as G - xG is on Players), what its heading says when pointed at, and whether the lower
+   number is the better one (low) */
+const archPer90 = (v, mins) => (mins ? (v / mins) * 90 : null);
+const ARCH_M = {
+  mins: { label: "Minutes played", get: (t) => t.mins, dp: 0 },
+  xg: { label: "xG", get: (t) => t.xg, dp: 2 },
+  xg90: { label: "xG/90", get: (t) => archPer90(t.xg, t.mins), dp: 2 },
+  g: { label: "Goals", get: (t) => t.g, dp: 0, note: "Scored from their own shots. Own goals are left out, as they are from xG." },
+  perf: { label: "xG performance", get: (t) => t.g - t.xg, dp: 2, fmt: signed, note: "Goals minus xG" },
+  npxg: { label: "npxG", get: (t) => t.npxg, dp: 2 },
+  npxg90: { label: "npxG/90", get: (t) => archPer90(t.npxg, t.mins), dp: 2 },
+  bc: { label: "Big chances", get: (t) => t.bc, dp: 0 },
+  bcc: { label: "Big chances created", get: (t) => t.bcc, dp: 0 },
+  bcm: { label: "Big chances missed", get: (t) => t.bcm, dp: 0, low: true },
+  kp: { label: "Key passes", get: (t) => t.kp, dp: 0 },
+  xa: { label: "xA", get: (t) => t.xa, dp: 2 },
+  xa90: { label: "xA/90", get: (t) => archPer90(t.xa, t.mins), dp: 2 },
+  xga: { label: "xG against", get: (t) => t.xga, dp: 2, low: true },
+  sha: { label: "Shots against", get: (t) => t.sha, dp: 0, low: true },
+  ga: { label: "Goals against", get: (t) => t.ga, dp: 0, low: true, note: "From the other side's shots. Own goals are left out, as they are from Goals." },
+  bca: { label: "Big chances conceded", get: (t) => t.bca, dp: 0, low: true },
+  sotf: { label: "Shots on target faced", get: (t) => t.sotf, dp: 0, low: true },
+  gc: { label: "Goals conceded", get: (t) => t.gc, dp: 0, low: true, note: "Every goal conceded while in goal, own goals included" },
+  sv: { label: "Saves", get: (t) => t.sv, dp: 0 },
+  xgotf: { label: "xGOT faced", get: (t) => t.xgotf, dp: 2, low: true },
+  xgotf90: { label: "xGOT faced/90", get: (t) => archPer90(t.xgotf, t.mins), dp: 2, low: true },
+  xsv: { label: KEEPER_NAMES.xsv, get: (t) => t.xsv, dp: 2 },
+  gp: { label: KEEPER_NAMES.sae, get: (t) => t.gp, dp: 2, fmt: signed, note: "Saves minus xSaves: the goals kept out beyond an average keeper. Own goals are left out." },
+};
+/* the rows of each head-to-head, in her order */
+const ARCH_ROWS = {
+  players: ["mins", "xg", "xg90", "g", "perf", "npxg", "npxg90", "bc", "bcc", "bcm", "kp", "xa", "xa90"],
+  keepers: ["sotf", "gc", "sv", "xgotf", "xgotf90", "xsv", "gp"],
+  teams: ["mins", "xg", "xg90", "g", "perf", "npxg", "npxg90", "bc", "bcm", "xga", "sha", "ga", "bca"],
+};
+/* the sides side by side (two to five), a row a measure: in each row the best number is green and the worst red, compared as
+   shown (to the decimals shown), and the best is bold too, for anyone who cannot tell the two colours apart. The best is the
+   highest, or the lowest where lower is better. Numbers in between, numbers all the same and sides not picked stay plain.
+   The measures' column stays put when the table scrolls sideways (on a phone, with several sides). */
+function ArchCompare({ kind, caption, heads, sides }) {
+  const fmt = (v, m) => (v == null ? "\u2013" : m.fmt ? m.fmt(v) : m.dp ? v.toFixed(m.dp) : Math.round(v).toLocaleString("en-US"));
+  return h("div", { className: "tbl-wrap ar-cmp-wrap", style: { maxWidth: 220 + 250 * sides.length } }, h("table", { className: "tbl pin ar-cmp" },
+    h("caption", { className: "sr" }, caption + ". In each row the best number is marked green and the worst red."),
     h("thead", null, h("tr", null, h("th", { scope: "col" }, h("span", { className: "sr" }, "Measure")), heads.map((hd, i) => h("th", { key: i, scope: "col", className: "num" }, hd)))),
-    h("tbody", null, (measures || ARCH_CMP).map(([label, get, dp, f, note]) => {
-      const vals = sides.map((t) => (t ? get(t) : null));
-      const shown = vals.map((v) => (v == null ? null : Number(v.toFixed(dp))));
-      const apart = shown[0] != null && shown[1] != null && shown[0] !== shown[1];
-      return h("tr", { key: label }, h("th", { scope: "row", title: note }, label), vals.map((v, i) => {
-        const tone = !apart ? "" : shown[i] > shown[1 - i] ? "hi" : "lo";
-        return h("td", { key: i, className: "num" + (tone ? " " + tone : "") }, fmt(v, dp, f), tone ? h("span", { className: "sr" }, tone === "hi" ? " (higher)" : " (lower)") : null);
+    h("tbody", null, ARCH_ROWS[kind].map((k) => {
+      const m = ARCH_M[k], vals = sides.map((t) => (t ? m.get(t) : null));
+      const shown = vals.map((v) => (v == null ? null : Number(v.toFixed(m.dp))));
+      const nums = shown.filter((v) => v != null), top = Math.max(...nums), bottom = Math.min(...nums);
+      const spread = nums.length > 1 && top !== bottom, best = m.low ? bottom : top, worst = m.low ? top : bottom;
+      return h("tr", { key: k }, h("th", { scope: "row", title: m.note }, m.label), vals.map((v, i) => {
+        const tone = !spread || shown[i] == null ? "" : shown[i] === best ? "hi" : shown[i] === worst ? "lo" : "";
+        return h("td", { key: i, className: "num" + (tone ? " " + tone : "") }, fmt(v, m), tone ? h("span", { className: "sr" }, tone === "hi" ? " (best)" : " (worst)") : null);
       }));
     }))));
 }
@@ -3971,9 +4038,10 @@ function ArchCompare({ caption, heads, sides, measures }) {
 /* The Visualiser tab. Next to the title, what the tab shows:
      Chart             the chart: every club (as it opens), or only the players of the clubs picked from the chips, every
                        one of them, each club's dots in its own colour, shown on its chip
-     Player vs player  two players picked from the club menu (ArchMenu), compared in a table (ArchCompare)
-     Team vs team      two clubs picked from the clubs' menu, compared in the same table
-   Each keeps what was picked in it. Under the chart, the four lists and the table follow the clubs picked on it, and otherwise
+     Player vs player  players picked from the club menu (ArchMenu), or from its All players, compared in a table (ArchCompare)
+     Keeper vs keeper  keepers picked the same way, compared on the Keepers tab's numbers
+     Team vs team      clubs picked from the clubs' menu, compared on the club's season
+   Each head-to-head starts with two sides and takes up to five. Each keeps what was picked in it. Under the chart, the four lists and the table follow the clubs picked on it, and otherwise
    list everyone. The head-to-heads have nothing under their table but the page's foot: the lists and the table stay in the
    page, hidden, so a table opened (and sorted) under the chart is still that way on coming back. The chart stays in the page
    (hidden) under the tables, so it keeps its measurements. */
@@ -3985,15 +4053,22 @@ function VisualiserView({ s, idx, agg }) {
   const allRows = useMemo(() => archAllRows(s, idx, agg, rows), [s, idx, agg, rows]);
   const byIdAll = useMemo(() => Object.fromEntries(allRows.map((r) => [r.id, r])), [allRows]);
   const clubIds = useMemo(() => [...new Set(rows.map((r) => r.team))].sort((a, b) => tname(s.teams, a).localeCompare(tname(s.teams, b))), [rows, s.teams]);
+  const keeperRows = useMemo(() => archKeeperRows(s, idx, agg), [s, idx, agg]);
+  const byKeeper = useMemo(() => Object.fromEntries(keeperRows.map((r) => [r.id, r])), [keeperRows]);
+  const keeperClubs = useMemo(() => [...new Set(keeperRows.map((r) => r.team))].sort((a, b) => tname(s.teams, a).localeCompare(tname(s.teams, b))), [keeperRows, s.teams]);
+  /* the player menu's All players: everyone tagged for a shot, A to Z */
+  const everyone = useMemo(() => allRows.filter((r) => r.tagged).sort((a, b) => a.name.localeCompare(b.name)), [allRows]);
   const [mode, setMode] = useState(() => ({ clubs: "chart", find: "chart", vs: "players" }[ARCH_MEMO.mode] || ARCH_MEMO.mode));
   const [clubsAll, setClubs] = useState(ARCH_MEMO.clubs);
   const [kits, setKits] = useState(ARCH_MEMO.kits);
   const [vsAll, setVs] = useState(ARCH_MEMO.vs);
-  const [tvAll, setTv] = useState(ARCH_MEMO.tv || [null, null]);
-  useEffect(() => { Object.assign(ARCH_MEMO, { mode, clubs: clubsAll, kits, vs: vsAll, tv: tvAll }); }, [mode, clubsAll, kits, vsAll, tvAll]);
-  /* only players and clubs the page still has count (a later upload can change who is on the chart) */
-  const playable = (id) => !!(id && byIdAll[id] && byIdAll[id].mins);
-  const clubs = clubsAll.filter((id) => clubIds.includes(id)), vs = vsAll.map((id) => (playable(id) ? id : null)), tv = tvAll.map((id) => (id && s.teams[id] ? id : null));
+  const [gvAll, setGv] = useState(ARCH_MEMO.gv);
+  const [tvAll, setTv] = useState(ARCH_MEMO.tv);
+  useEffect(() => { Object.assign(ARCH_MEMO, { mode, clubs: clubsAll, kits, vs: vsAll, gv: gvAll, tv: tvAll }); }, [mode, clubsAll, kits, vsAll, gvAll, tvAll]);
+  /* only players, keepers and clubs the page still has count (a later upload can change who is on the chart) */
+  const playable = (id) => !!(id && byIdAll[id] && (byIdAll[id].mins || byIdAll[id].tagged));
+  const clubs = clubsAll.filter((id) => clubIds.includes(id)), vs = vsAll.map((id) => (playable(id) ? id : null));
+  const gv = gvAll.map((id) => (id && byKeeper[id] ? id : null)), tv = tvAll.map((id) => (id && s.teams[id] ? id : null));
   const boxRef = useRef(null);
   const width = useWidth(boxRef, typeof window !== "undefined" && window.innerWidth ? Math.min(1146, window.innerWidth - 66) : 1000);
   /* the names are measured to place them, so the chart is drawn again once the page's own fonts have loaded */
@@ -4071,7 +4146,7 @@ function VisualiserView({ s, idx, agg }) {
   }
 
   /* what the tab shows, next to the title, and under it the picking for that */
-  const modes = [["chart", "Chart"], ["players", "Player vs player"], ["teams", "Team vs team"]];
+  const modes = [["chart", "Chart"], ["players", "Player vs player"], ["keepers", "Keeper vs keeper"], ["teams", "Team vs team"]];
   const modeSwitch = h("div", { className: "seg ar-modes", role: "group", "aria-label": "What the tab shows" }, modes.map(([k, l]) =>
     h("button", { key: k, type: "button", className: "seg-btn" + (mode === k ? " on" : ""), "aria-pressed": mode === k, onClick: () => setMode(k) }, l)));
   /* a club picked takes its colour then (archKit), against the clubs already picked; picked off, it gives it up */
@@ -4085,11 +4160,23 @@ function VisualiserView({ s, idx, agg }) {
       setClubs((c) => c.filter((x) => x !== id).concat(id));
     }
   };
-  /* head to head: the two sides' menus, side by side with "vs" between them, each showing what is picked in it */
-  const pickers = (ids, set, name, menu) => h("div", { className: "ar-vs" },
-    [0, 1].map((i) => h(Frag, { key: i }, i ? h("span", { className: "ar-vs-sep", "aria-hidden": "true" }, "vs") : null,
-      h(ArchMenu, Object.assign({ id: "ar-" + name + "-" + i, label: (i ? "Second " : "First ") + name, s, clubIds, taken: new Set(ids.filter(Boolean)),
-        onPick: (pick) => set((v) => v.map((x, j) => (j === i ? pick : x))) }, menu(ids[i]))))));
+  /* head to head: a menu for each side, "vs" between them, each showing what is picked in it. It starts with two; while there
+     are fewer than five, Add puts one more at the end, and with more than two each can be removed (the ones after it move up).
+     Each "vs" goes with the menu after it, so when they wrap onto a second line it never ends one */
+  const pickers = (ids, set, noun, menu) => h("div", { className: "ar-vs" },
+    ids.map((pick, i) => {
+      const slot = h("div", { className: "ar-slot" },
+        h(ArchMenu, Object.assign({ id: "ar-" + noun + "-" + i, label: ARCH_NTH[i] + " " + noun, s, clubIds, taken: new Set(ids.filter(Boolean)),
+          onPick: (p) => set((v) => v.map((x, j) => (j === i ? p : x))) }, menu(pick))),
+        ids.length > 2 ? h("button", { type: "button", className: "ar-drop", title: "Remove", "aria-label": "Remove the " + ARCH_NTH[i].toLowerCase() + " " + noun,
+          onClick: () => set((v) => v.filter((x, j) => j !== i)) }, h(IconX)) : null);
+      return i ? h("div", { key: i, className: "ar-pair" }, h("span", { className: "ar-vs-sep", "aria-hidden": "true" }, "vs"), slot) : h(Frag, { key: i }, slot);
+    }),
+    ids.length < ARCH_MAX ? h("button", { type: "button", className: "btn ar-add", onClick: () => set((v) => v.concat(null)) }, h(IconPlus), "Add " + noun) : null);
+  const named = (r, empty) => (r ? h("span", { className: "ar-cmp-head" }, h("span", { className: "ar-cmp-name" }, r.name),
+    h("span", { className: "ar-meta ar-full" }, r.club), h("span", { className: "ar-meta ar-short" }, r.short)) :
+    h("span", { className: "faint" }, empty));
+  const listed = (a) => (a.length > 1 ? a.slice(0, -1).join(", ") + " and " + a[a.length - 1] : a[0]);
   let tools = null, compare = null;
   if (mode === "chart") {
     /* the chips: each club picked shows the colour of its dots, so the chips are the chart's key */
@@ -4101,21 +4188,22 @@ function VisualiserView({ s, idx, agg }) {
       }, clubSet.has(id) && kitOf(id) ? h("i", { className: "dot home club-colors", style: archKitStyle(kitOf(id)), "aria-hidden": "true" }) : null,
         h(Crest, { id, size: 18 }), tshort(s.teams, id))));
   } else if (mode === "players") {
-    tools = pickers(vs, setVs, "player", (id) => ({ rows: allRows, value: id ? { team: byIdAll[id].team, name: byIdAll[id].name, sub: byIdAll[id].short } : null }));
+    tools = pickers(vs, setVs, "player", (id) => ({ rows: allRows, everyone, value: id ? { team: byIdAll[id].team, name: byIdAll[id].name, sub: byIdAll[id].short } : null }));
     const sides = vs.map((id) => (id ? byIdAll[id] : null));
-    compare = h(ArchCompare, {
-      caption: "Player vs player: " + sides.map((r, i) => (r ? r.name : (i ? "second" : "first") + " player not picked")).join(" and "), sides,
-      heads: sides.map((r, i) => (r ? h("span", { className: "ar-cmp-head" }, h("span", { className: "ar-cmp-name" }, r.name), h("span", { className: "ar-meta" }, r.club)) :
-        h("span", { className: "faint" }, i ? "Second player" : "First player"))),
-    });
+    compare = h(ArchCompare, { kind: "players", sides, heads: sides.map((r, i) => named(r, ARCH_NTH[i] + " player")),
+      caption: "Player vs player: " + listed(sides.map((r, i) => (r ? r.name : ARCH_NTH[i].toLowerCase() + " player not picked"))) });
+  } else if (mode === "keepers") {
+    tools = pickers(gv, setGv, "keeper", (id) => ({ rows: keeperRows, clubIds: keeperClubs, value: id ? { team: byKeeper[id].team, name: byKeeper[id].name, sub: byKeeper[id].short } : null }));
+    const sides = gv.map((id) => (id ? byKeeper[id] : null));
+    compare = h(ArchCompare, { kind: "keepers", sides, heads: sides.map((r, i) => named(r, ARCH_NTH[i] + " keeper")),
+      caption: "Keeper vs keeper: " + listed(sides.map((r, i) => (r ? r.name : ARCH_NTH[i].toLowerCase() + " keeper not picked"))) });
   } else {
     tools = pickers(tv, setTv, "club", (id) => ({ clubsOnly: true, value: id ? { team: id, name: tname(s.teams, id) } : null }));
     const sides = tv.map((id) => (id ? archTeamStats(s, id) : null));
-    compare = h(ArchCompare, {
-      caption: "Team vs team: " + tv.map((id, i) => (id ? tname(s.teams, id) : (i ? "second" : "first") + " club not picked")).join(" and "), sides, measures: ARCH_CMP_CLUB,
+    compare = h(ArchCompare, { kind: "teams", sides,
       heads: tv.map((id, i) => (id ? h("span", { className: "ar-cmp-head" }, h(Crest, { id, size: 22 }), h("span", { className: "ar-cmp-name" }, tname(s.teams, id))) :
-        h("span", { className: "faint" }, i ? "Second club" : "First club"))),
-    });
+        h("span", { className: "faint" }, ARCH_NTH[i] + " club"))),
+      caption: "Team vs team: " + listed(tv.map((id, i) => (id ? tname(s.teams, id) : ARCH_NTH[i].toLowerCase() + " club not picked"))) });
   }
 
   /* who sits where: each quadrant's count and its leading players, each a link to their card */
