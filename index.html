@@ -3638,8 +3638,8 @@ function TeamDetail({ s, idx, r, close }) {
    every outfield player of theirs with a minute is on it, and one too far out for the scale sits at its edge, with an arrow.
    A player the page has no name for (a public file saved before line-up players were named) is left off too.
    Whose chart: All players, or Indian players (offered once the squads say who is Indian). The Indian players' chart is
-   theirs alone: the regulars among them, on the All players chart's axes, with the dashed lines fixed at 0.2 npxG/90 and 0.2
-   xA/90, each drawn as his club's crest; with clubs picked, theirs only. On the All players chart a player whose country is
+   theirs alone: the regulars among them, on the All players chart's axes and with its dashed lines (so a player sits at the
+   same spot, in the same corner, on both), each drawn as his club's crest; with clubs picked, theirs only. On the All players chart a player whose country is
    known is drawn as its round flag, a little bigger than a dot.
    Both axes use a square-root scale, which spreads out the many players near zero (a player's quadrant does not depend on it);
    the page does not spell that out. The 82nd percentile and the square root are the chart, with no switches for them. Pointing
@@ -3657,7 +3657,6 @@ const ARCH = {
 const ARCH_ORDER = ["HH", "HL", "LH", "LL"];
 const ARCH_MIN = 270;
 const ARCH_CLUBS = 3;                                        // the most clubs picked on the chart at once
-const ARCH_INDIA_CUT = { x: 0.2, y: 0.2 };                   // the Indian players' chart's dashed lines: xA/90 and npxG/90
 const ARCH_PCT = 0.82;                                       // where the dashed lines go: this percentile of each measure
 const ARCH_LL_SHOWN = 0.2;                                   // the share of the bottom left drawn: its top fifth
 const ARCH_R = 4.5;                                          // a dot's radius
@@ -4200,7 +4199,8 @@ function VisualiserView({ s, idx, agg }) {
   const whose = anyIndian && whoseRaw === "india" ? "india" : "all";
   const base = useMemo(() => (whose === "india" ? rows.filter((r) => isIndian(r.nat)) : rows), [rows, whose]);
   const baseEvery = useMemo(() => (whose === "india" ? everyRows.filter((r) => isIndian(r.nat)) : everyRows), [everyRows, whose]);
-  const cut = useMemo(() => (!base.length ? null : whose === "india" ? ARCH_INDIA_CUT : archCut(base)), [base, whose]);
+  /* the dashed lines are always every regular's 82nd percentile, so the Indian players' chart splits where the All players' does */
+  const cut = useMemo(() => (base.length ? archCut(rows) : null), [base, rows]);
   const byId = useMemo(() => Object.fromEntries(everyRows.map((r) => [r.id, r])), [everyRows]);
   const allRows = useMemo(() => archAllRows(s, idx, agg, rows), [s, idx, agg, rows]);
   const byIdAll = useMemo(() => Object.fromEntries(allRows.map((r) => [r.id, r])), [allRows]);
@@ -4396,7 +4396,7 @@ function VisualiserView({ s, idx, agg }) {
   ];
   const n = listRows.length, them = n + (whose === "india" ? " Indian" : "") + " players";
   const who = view.mode === "clubs" ? them + " from " + clubs.map((id) => tname(s.teams, id)).join(", ") : them;
-  const split = (whose === "india" ? "split at 0.2 of each into " : "split at the 82nd percentile of each into ") + ARCH_ORDER.map((k) => ARCH[k].name + " (" + (chart ? chart.counts[k] : 0) + ")").join(", ") + (fifth ? "; only the top 20% of the bottom left are drawn" : "");
+  const split = (whose === "india" ? "split where the All players chart is, at every regular's 82nd percentile of each, into " : "split at the 82nd percentile of each into ") + ARCH_ORDER.map((k) => ARCH[k].name + " (" + (chart ? chart.counts[k] : 0) + ")").join(", ") + (fifth ? "; only the top 20% of the bottom left are drawn" : "");
   /* the title with what the tab shows beside it, the picking, then the chart with the four lists and the button that opens the
      table under it (nothing written below the button), or the comparison with nothing under it */
   return h("div", { className: "stack" },
