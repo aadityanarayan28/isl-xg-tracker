@@ -254,6 +254,13 @@ textarea.input { min-height: 110px; resize: vertical; }
 .mk-dot { fill: var(--home); fill-opacity: 0.24; stroke: var(--home); stroke-width: 1.6px; vector-effect: non-scaling-stroke; }
 .mk.away .mk-dot { fill: var(--away); stroke: var(--away); }
 .mk.goal .mk-dot { fill-opacity: 1; stroke: none; }
+/* a big chance missed: a ring of dots round the shot (its width and spacing set in pixels where it is drawn) */
+.mk-bcm { fill: none; stroke: var(--home); stroke-linecap: round; }
+.mk.away .mk-bcm { stroke: var(--away); }
+.ring-key { flex: none; overflow: visible; }
+.ring-key circle { fill: none; stroke: var(--muted); stroke-linecap: round; }
+.ring-key.home circle { stroke: var(--home); }
+.ring-key.away circle { stroke: var(--away); }
 .mk-hit { fill: transparent; stroke: none; cursor: default; outline: none; }
 .viz.linked .mk-hit { cursor: pointer; }
 /* a map linked to the worm and the list picks shots by nearness on the drawing itself, so its circles take no pointer
@@ -525,6 +532,12 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: 13.5px; }
 .ar-fl-edge { fill: none; stroke: var(--ink); stroke-opacity: 0.22; stroke-width: 0.75; }
 .ar-fl-edge.club-colors { stroke: var(--home); stroke-opacity: 1; stroke-width: 2; }
 .ar-ring.flag { fill: none; }
+/* a club's crest for a dot (the Indian players' chart); the dark-edged ones outlined on the dark page, as elsewhere */
+.ar-chart a .ar-crest { cursor: pointer; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .ar-crest.edge { filter: drop-shadow(0.7px 0 0 #d8ddd6) drop-shadow(-0.7px 0 0 #d8ddd6) drop-shadow(0 0.7px 0 #d8ddd6) drop-shadow(0 -0.7px 0 #d8ddd6); }
+}
+:root[data-theme="dark"] .ar-crest.edge { filter: drop-shadow(0.7px 0 0 #d8ddd6) drop-shadow(-0.7px 0 0 #d8ddd6) drop-shadow(0 0.7px 0 #d8ddd6) drop-shadow(0 -0.7px 0 #d8ddd6); }
 .ar-lab { fill: var(--ink-2); font-size: 12px; font-weight: 500; paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; pointer-events: none; }
 .ar-tip { min-width: 190px; max-width: 250px; }
 .ar-tip strong { font-size: 13.5px; }
@@ -1871,8 +1884,13 @@ function useWidth(ref, fallback) {
   return w;
 }
 const markRadius = (v) => 4 + 9 * Math.sqrt(Math.max(v, 0));   // px; area grows with the value
+/* a big chance missed: a shot worth more than 0.20 xG that did not go in (as the tables count them). The public page's maps
+   ring each one with dots, and their keys say so (RingKey). */
+const bigMiss = (x) => !!READER && x.out !== "goal" && Stats.isBig(Model.xg(x));
+const RingKey = ({ cls }) => h("svg", { className: "ring-key" + (cls ? " " + cls : ""), viewBox: "0 0 14 14", width: 14, height: 14, "aria-hidden": "true" },
+  h("circle", { cx: 7, cy: 7, r: 5.6, strokeWidth: 1.8, strokeDasharray: "0 3.3" }));
 
-/* marks: [{ id, cx, cy, v, goal, cls, value, lines, aria }] in drawing units.
+/* marks: [{ id, cx, cy, v, goal, cls, value, lines, aria, bcm }] in drawing units; bcm, a big chance missed, is ringed with dots.
    Linked to other views (onHover given), the map as a whole works out which mark the pointer or finger is nearest (see
    PitchMap) and reports it up; each mark still takes keyboard focus, and reports that. lit holds the ids the page has
    picked out: those are ringed and drawn on top.
@@ -1889,6 +1907,7 @@ function Marks({ marks, u, activeId, onMark, tipId, setTip, vb, lit, onHover, st
     return h("g", { key: m.id, "data-id": m.id, className: "mk " + (m.cls || "home") + (m.goal ? " goal" : "") + (tipId === m.id ? " focus" : "") + (activeId === m.id ? " active" : "") + (lit && lit.has(m.id) ? " lit" : "") },
       h("circle", { className: "mk-ring", cx: m.cx, cy: m.cy, r: r + 2 * u }),
       h("circle", { className: "mk-dot", cx: m.cx, cy: m.cy, r }),
+      m.bcm ? h("circle", { className: "mk-bcm", cx: m.cx, cy: m.cy, r: r + 4 * u * (scale || 1), strokeWidth: 1.8 * u, strokeDasharray: "0 " + (3.4 * u).toFixed(3) }) : null,
       still ? null : h("circle", Object.assign({
         className: "mk-hit", cx: m.cx, cy: m.cy, r: Math.max(r, 12 * u), tabIndex: 0, role: onMark ? "button" : "img", "aria-label": m.aria,
         onFocus: onHover ? () => onHover(m.id) : show, onBlur: onHover ? () => onHover(null) : hide,
@@ -3015,9 +3034,9 @@ function MatchTimeline({ s, idx, m, can, withMap }) {
   const marks = useMemo(() => (linked ? m.shots.map((x) => {
     const v = Model.xg(x), who = pname(idx, x.p), nb = shotNumbers(x, !!READER);
     return {
-      id: x.id, x: x.x, y: x.y, sd: x.t, v, goal: x.out === "goal", cls: x.t === "h" ? "home" : "away", value: nb.value, end: shotEnd(x),
+      id: x.id, x: x.x, y: x.y, sd: x.t, v, goal: x.out === "goal", cls: x.t === "h" ? "home" : "away", value: nb.value, end: shotEnd(x), bcm: bigMiss(x),
       lines: [who + (x.min != null ? " \u00b7 " + x.min + "\u2032" : ""), shotLine(x)],
-      aria: who + (x.min != null ? ", minute " + x.min : "") + ", " + shotLine(x) + ", " + nb.aria,
+      aria: who + (x.min != null ? ", minute " + x.min : "") + ", " + shotLine(x) + ", " + nb.aria + (bigMiss(x) ? ", a big chance missed" : ""),
     };
   }) : []), [linked, m.shots, idx]);
   /* the map is the whole pitch, the two sides at opposite ends: lying across where the card is wide enough for that to read
@@ -3093,6 +3112,7 @@ function MatchTimeline({ s, idx, m, can, withMap }) {
     h("div", { className: "legend" },
       h("span", null, h("i", { className: "dot solid" }), "Goal"),
       h("span", null, h("i", { className: "dot hollow" }), "No goal"),
+      h("span", null, h(RingKey, null), "Big chance missed"),
       h("span", null, "Bigger means higher xG"))) : null;
 
   /* the corner copy: only while something is picked out in the worm or the list and the map itself is off screen */
@@ -3339,8 +3359,8 @@ function PlayerDetail({ s, idx, r, close }) {
   const marks = shots.map(({ x, mid, m }) => {
     const v = Model.xg(x), nb = shotNumbers(x, !!READER);   // on the public page a shot on target also gives its xG on target
     const opp = tshort(s.teams, x.t === "h" ? m.away : m.home);
-    return { id: mid + "/" + x.id, x: x.x, y: x.y, v, goal: x.out === "goal", cls: "home", value: nb.value, lines: ["v " + opp + ", " + fmtDate(m.date) + (x.min != null ? " \u00b7 " + x.min + "\u2032" : ""), shotLine(x)], aria: "Against " + opp + ", " + shotLine(x) + ", " + nb.aria,
-      end: READER ? shotEnd(x) : null };
+    return { id: mid + "/" + x.id, x: x.x, y: x.y, v, goal: x.out === "goal", cls: "home", value: nb.value, lines: ["v " + opp + ", " + fmtDate(m.date) + (x.min != null ? " \u00b7 " + x.min + "\u2032" : ""), shotLine(x)], aria: "Against " + opp + ", " + shotLine(x) + ", " + nb.aria + (bigMiss(x) ? ", a big chance missed" : ""),
+      end: READER ? shotEnd(x) : null, bcm: bigMiss(x) };
   });
   /* on the public page a player's shots are drawn in his club's colour, and pointing at one shows where it ended up */
   const cc = READER ? ClubColours.club(r.team) : null;
@@ -3355,7 +3375,8 @@ function PlayerDetail({ s, idx, r, close }) {
       h("div", { className: "kpis" }, h(Kpi, { v: r.sh, k: "Shots" }), h(Kpi, { v: r.sot, k: "On target" }), h(Kpi, { v: r.g, k: "Goals" }), h(Kpi, { v: f2(r.xg), k: "xG" }), h(Kpi, { v: r.a, k: "Assists" }), h(Kpi, { v: f2(r.xa), k: "xA" })),
     shots.length ? h("div", { className: "detail-grid" },
       h("div", null, h(PitchMap, { marks, lit: pick ? [pick] : null, label: "Shot map for " + r.name }),
-        h("div", { className: "legend" }, h("span", null, h("i", { className: "dot home" }), "Goal"), h("span", null, h("i", { className: "dot soft" }), "No goal"), h("span", null, "Bigger means higher xG"),
+        h("div", { className: "legend" }, h("span", null, h("i", { className: "dot home" }), "Goal"), h("span", null, h("i", { className: "dot soft" }), "No goal"),
+          READER ? h("span", null, h(RingKey, { cls: "home" }), "Big chance missed") : null, h("span", null, "Bigger means higher xG"),
           READER ? h("span", null, "Hover over a shot to see where it ended up") : null)),
       h(TblWrap, { className: "tall" }, h("table", { className: "tbl" + pinned() },
         h("thead", null, h("tr", null, h("th", { scope: "col" }, "Match"), h("th", { className: "num", scope: "col" }, "Min"), h("th", { scope: "col" }, "What happened"), h("th", { className: "num", scope: "col" }, "xG"))),
@@ -3438,7 +3459,8 @@ function KeeperDetail({ s, idx, r, close }) {
       if (x.k !== r.id || !Model.onTarget(x) || x.gy == null || x.gz == null) continue;
       const v = Model.xgot(x) || 0;
       const lines = [pname(idx, x.p) + ", " + tshort(s.teams, x.t === "h" ? m.home : m.away) + ", " + fmtDate(m.date), x.out === "goal" ? "Goal" : "Saved"];
-      out.push({ id: mid + "/" + x.id, gy: x.gy, gz: x.gz, v, goal: x.out === "goal", cls: "home", value: f2(v) + " xGOT", lines, aria: lines.join(", ") + ", " + f2(v) + " expected goals on target" });
+      out.push({ id: mid + "/" + x.id, gy: x.gy, gz: x.gz, v, goal: x.out === "goal", cls: "home", value: f2(v) + " xGOT", lines, bcm: bigMiss(x),
+        aria: lines.join(", ") + ", " + f2(v) + " expected goals on target" + (bigMiss(x) ? ", a big chance missed" : "") });
     }
     return out;
   }, [s.matches, r.id, idx, s.teams]);
@@ -3451,7 +3473,8 @@ function KeeperDetail({ s, idx, r, close }) {
       h("button", { type: "button", className: "btn", onClick: close }, "Close")),
     h("div", { className: "kpis" }, h(Kpi, { v: r.sotf, k: "On target faced" }), h(Kpi, { v: r.sv, k: "Saves" }), h(Kpi, { v: f2(r.xsv), k: KEEPER_NAMES.xsv }), h(Kpi, { v: signed(r.sae), k: KEEPER_NAMES.sae })),
     h(GoalMouth, { marks, label: "Shots on target faced by " + r.name }),
-    h("div", { className: "legend" }, h("span", null, h("i", { className: "dot home" }), "Goal conceded"), h("span", null, h("i", { className: "dot soft" }), "Saved"), h("span", null, "Bigger means harder to save")));
+    h("div", { className: "legend" }, h("span", null, h("i", { className: "dot home" }), "Goal conceded"), h("span", null, h("i", { className: "dot soft" }), "Saved"),
+      READER ? h("span", null, h(RingKey, { cls: "home" }), "Big chance missed") : null, h("span", null, "Bigger means harder to save")));
 }
 
 const TEAM_COLS = [
@@ -3532,9 +3555,9 @@ function TeamDetail({ s, idx, r, close }) {
     const opp = tshort(s.teams, gm.opp), when = fmtDate(gm.m.date);
     const mark = (x, mine) => {
       const v = Model.xg(x), who = pname(idx, x.p), nb = shotNumbers(x, both), min = x.min != null ? x.min : null;
-      return { id: gm.id + "/" + x.id, x: x.x, y: x.y, sd: mine ? "h" : "a", v, goal: x.out === "goal", cls: mine ? "home" : "away", value: nb.value, end: both ? shotEnd(x) : null,
+      return { id: gm.id + "/" + x.id, x: x.x, y: x.y, sd: mine ? "h" : "a", v, goal: x.out === "goal", cls: mine ? "home" : "away", value: nb.value, end: both ? shotEnd(x) : null, bcm: bigMiss(x),
         lines: [who + (min != null ? " \u00b7 " + min + "\u2032" : ""), (mine ? "v " : "For ") + opp + ", " + when, shotLine(x)],
-        aria: (mine ? who + ", against " : "Conceded: " + who + ", for ") + opp + (min != null ? ", minute " + min : "") + ", " + shotLine(x) + ", " + nb.aria };
+        aria: (mine ? who + ", against " : "Conceded: " + who + ", for ") + opp + (min != null ? ", minute " + min : "") + ", " + shotLine(x) + ", " + nb.aria + (bigMiss(x) ? ", a big chance missed" : "") };
     };
     return gm.shots.map((x) => mark(x, true)).concat(both ? gm.against.map((x) => mark(x, false)) : []);
   }), [games, idx, s.teams, both]);
@@ -3563,6 +3586,7 @@ function TeamDetail({ s, idx, r, close }) {
   const legend = both ? h("div", { className: "legend" },
     h("span", null, h("span", { className: "dots" }, h("i", { className: "dot home" }), h("i", { className: "dot away" })), "Goal"),
     h("span", null, h("span", { className: "dots" }, h("i", { className: "dot soft" }), h("i", { className: "dot soft away" })), "No goal"),
+    h("span", null, h("span", { className: "dots" }, h(RingKey, { cls: "home" }), h(RingKey, { cls: "away" })), "Big chance missed"),
     h("span", null, "Bigger means higher xG"), h("span", null, "Hover over a shot to see where it ended up")) :
     h("div", { className: "legend" }, h("span", null, h("i", { className: "dot home" }), "Goal"), h("span", null, h("i", { className: "dot soft" }), "No goal"), h("span", null, "Bigger means higher xG"));
   const pair = (a, b) => a + "\u2013" + b;
@@ -3614,9 +3638,9 @@ function TeamDetail({ s, idx, r, close }) {
    every outfield player of theirs with a minute is on it, and one too far out for the scale sits at its edge, with an arrow.
    A player the page has no name for (a public file saved before line-up players were named) is left off too.
    Whose chart: All players, or Indian players (offered once the squads say who is Indian). The Indian players' chart is
-   theirs alone: the regulars among them, with axes from them and the dashed lines fixed at 0.2 npxG/90 and 0.2 xA/90, and
-   with clubs picked, theirs only. On the All players chart a player whose country is known is drawn as its round flag, a
-   little bigger than a dot.
+   theirs alone: the regulars among them, on the All players chart's axes, with the dashed lines fixed at 0.2 npxG/90 and 0.2
+   xA/90, each drawn as his club's crest; with clubs picked, theirs only. On the All players chart a player whose country is
+   known is drawn as its round flag, a little bigger than a dot.
    Both axes use a square-root scale, which spreads out the many players near zero (a player's quadrant does not depend on it);
    the page does not spell that out. The 82nd percentile and the square root are the chart, with no switches for them. Pointing
    at a dot shows the player's numbers; clicking it (on a touch screen, a second tap) opens their card on Players, and each dot
@@ -3640,6 +3664,7 @@ const ARCH_R = 4.5;                                          // a dot's radius
 /* a player's flag: his country's round flag (circle-flags, MIT licensed, one small file a country, a pinned version) */
 const ARCH_FLAGS = "https://cdn.jsdelivr.net/npm/circle-flags@2.8.3/flags/";
 const ARCH_FR = 7.5;                                         // a flag's radius (one less on a phone)
+const ARCH_CR = 10;                                          // half a crest's box on the Indian players' chart (8 on a phone)
 const archFlag = (nat) => { const c = nat ? NAT_CODE[tidyNat(nat)] : null; return c ? ARCH_FLAGS + c + ".svg" : null; };
 const archQuad = (r, c) => (r.npxg90 >= c.y ? "H" : "L") + (r.xa90 >= c.x ? "H" : "L");
 
@@ -3749,6 +3774,8 @@ const archKitStyle = (k) => (k ? { "--ch-l": k[0], "--ch-d": k[1] } : undefined)
    the edge he is beyond (off), with a small arrow past it pointing the way.
    With flags, a player whose country is known (archFlag) is drawn as its flag in place of his dot, over a dot of the same
    size that shows if the flag cannot load, edged faintly, or in his club's colour with clubs picked; names keep clear of it.
+   With crests, each player is drawn as his club's crest (each club's once, in defs, and used where it is wanted).
+   axes, when given, are the rows the axes are sized from in place of rows (the Indian players' chart takes everyone's).
  */
 function archChart(rows, cut, scale, W, hrefOf, view) {
   const v = view || { mode: "all" };
@@ -3758,8 +3785,9 @@ function archChart(rows, cut, scale, W, hrefOf, view) {
   const H = Math.round(narrow ? W * 1.18 : Math.min(W * 0.64, 700));
   const m = { l: narrow ? 46 : 62, r: narrow ? 8 : 14, t: 12, b: narrow ? 46 : 54 };
   const pw = W - m.l - m.r, ph = H - m.t - m.b;
-  const XMAX = Math.max(0.2, Math.ceil(Math.max(...rows.map((r) => r.xa90)) * 10.4) / 10);
-  const YMAX = Math.max(0.2, Math.ceil(Math.max(...rows.map((r) => r.npxg90)) * 10.4) / 10);
+  const ax = v.axes || rows;
+  const XMAX = Math.max(0.2, Math.ceil(Math.max(...ax.map((r) => r.xa90)) * 10.4) / 10);
+  const YMAX = Math.max(0.2, Math.ceil(Math.max(...ax.map((r) => r.npxg90)) * 10.4) / 10);
   const tf = scale === "sqrt" ? Math.sqrt : (v) => v;
   const sx = (v) => m.l + (tf(Math.max(0, v)) / tf(XMAX)) * pw;
   const sy = (v) => m.t + ph - (tf(Math.max(0, v)) / tf(YMAX)) * ph;
@@ -3792,11 +3820,11 @@ function archChart(rows, cut, scale, W, hrefOf, view) {
   const counts = { HH: 0, HL: 0, LH: 0, LL: 0 };
   for (const r of pool) counts[archQuad(r, cut)] += 1;
   const drawn = v.mode === "clubs" ? pool : rows.filter((r) => archQuad(r, cut) !== "LL" || ll.shown.has(r.id));
-  const FR = narrow ? ARCH_FR - 1 : ARCH_FR;
+  const FR = narrow ? ARCH_FR - 1 : ARCH_FR, CR = narrow ? ARCH_CR - 2 : ARCH_CR;
   const dots = drawn.map((r) => {
-    const fl = v.flags ? archFlag(r.nat) : null, rad = fl ? FR : R;
+    const fl = v.flags ? archFlag(r.nat) : null, cr = v.crests && CLUB_CRESTS[r.team] ? r.team : null, rad = cr ? CR : fl ? FR : R;
     const offX = r.xa90 > XMAX, offY = r.npxg90 > YMAX;
-    return { r, fl, rad, x: offX ? m.l + pw - rad - 1 : sx(r.xa90), y: offY ? m.t + rad + 1 : sy(r.npxg90), off: offX || offY ? [offX, offY] : null,
+    return { r, fl, cr, rad, x: offX ? m.l + pw - rad - 1 : sx(r.xa90), y: offY ? m.t + rad + 1 : sy(r.npxg90), off: offX || offY ? [offX, offY] : null,
       q: archQuad(r, cut), href: hrefOf(r), kc: v.mode === "clubs" && v.kit ? v.kit(r.team) : null };
   });
   const onDot = (b, except) => dots.some((d) => d !== except && Math.hypot(Math.min(Math.max(d.x, b.x0), b.x1) - d.x, Math.min(Math.max(d.y, b.y0), b.y1) - d.y) < d.rad + 1.5);
@@ -3853,7 +3881,14 @@ function archChart(rows, cut, scale, W, hrefOf, view) {
   }
 
   /* the dots, the busiest first so the standouts sit on top; each is a link to the player's card where they have one */
+  const crests = [...new Set(dots.map((d) => d.cr).filter(Boolean))];
+  if (crests.length) out.push("<defs>" + crests.map((t) => '<symbol id="ar-crest-' + t + '" viewBox="0 0 1 1"><image href="' + CLUB_CRESTS[t] + '" width="1" height="1"/></symbol>').join("") + "</defs>");
   for (const d of dots.slice().sort((a, b) => score(a) - score(b))) {
+    if (d.cr) {
+      const c = '<use class="ar-crest' + (CREST_OUTLINE.has(d.cr) ? " edge" : "") + '" href="#ar-crest-' + d.cr + '" x="' + (d.x - d.rad).toFixed(1) + '" y="' + (d.y - d.rad).toFixed(1) + '" width="' + 2 * d.rad + '" height="' + 2 * d.rad + '"/>';
+      out.push(d.href ? '<a href="' + archEsc(d.href) + '" aria-label="' + archEsc(d.r.name) + '">' + c + "</a>" : c);
+      continue;
+    }
     const kc = d.kc ? ' club-colors" style="--ch-l:' + d.kc[0] + ";--ch-d:" + d.kc[1] : "", cx = d.x.toFixed(1), cy = d.y.toFixed(1);
     let c = '<circle class="ar-pt' + kc + '" cx="' + cx + '" cy="' + cy + '" r="' + d.rad + '"/>';
     if (d.fl) c += '<image class="ar-fl" href="' + d.fl + '" x="' + (d.x - d.rad).toFixed(1) + '" y="' + (d.y - d.rad).toFixed(1) + '" width="' + 2 * d.rad + '" height="' + 2 * d.rad + '"/>' +
@@ -4199,8 +4234,9 @@ function VisualiserView({ s, idx, agg }) {
   const clubSet = new Set(clubs);
   const pool = clubs.length ? baseEvery.filter((r) => clubSet.has(r.team)) : base;
   const kitOf = (team) => archKitColours(team, kits[team] || 0);
-  /* flags on the All players chart (on the Indian players' they would all be India's) */
-  const view = Object.assign(clubs.length ? { mode: "clubs", pool, kit: kitOf } : { mode: "all" }, whose === "all" ? { flags: true } : {});
+  /* flags on the All players chart (on the Indian players' they would all be India's); club crests on the Indian players', on the
+     All players chart's axes */
+  const view = Object.assign(clubs.length ? { mode: "clubs", pool, kit: kitOf } : { mode: "all" }, whose === "all" ? { flags: true } : { crests: true, axes: rows });
   const viewKey = whose + "|" + view.mode + ":" + clubs.map((c) => c + "." + (kits[c] || 0)).join(",");
   const chart = useMemo(() => (cut && width > 0 ? archChart(base, cut, "sqrt", Math.max(300, Math.round(width)), cardHref, view) : null), [base, cut, width, fonts, viewKey]);
   /* the player being pointed at (or, on a touch screen, tapped): an index into chart.dots */
@@ -4261,7 +4297,7 @@ function VisualiserView({ s, idx, agg }) {
       d.off ? h("span", { className: "ar-note" }, "Too far out for the scale, so drawn at its edge") : null,
       d.href ? h("span", { className: "ar-go" }, (tip.touch ? "Tap again" : "Click") + " to see their " + (r.sh ? "shot map" : "numbers on Players")) : null);
     ring = h("svg", { className: "ar-hot", viewBox: "0 0 " + chart.W + " " + chart.H, "aria-hidden": "true" },
-      h("circle", { className: "ar-ring" + (d.fl ? " flag" : "") + (d.kc ? " club-colors" : ""), style: archKitStyle(d.kc), cx: d.x, cy: d.y, r: d.rad + 1.5 }));
+      h("circle", { className: "ar-ring" + (d.fl || d.cr ? " flag" : "") + (d.kc ? " club-colors" : ""), style: archKitStyle(d.kc), cx: d.x, cy: d.y, r: d.rad + 1.5 }));
   }
 
   /* what the tab shows, next to the title (which follows it), and under it the picking for that */
@@ -4312,7 +4348,7 @@ function VisualiserView({ s, idx, agg }) {
         key: id, type: "button", className: "ar-chip" + (clubSet.has(id) ? " on" : ""), "aria-pressed": clubSet.has(id),
         title: tname(s.teams, id) + (full && !clubSet.has(id) ? " (three clubs at most)" : ""), "aria-label": tname(s.teams, id), disabled: full && !clubSet.has(id),
         onClick: () => toggleClub(id),
-      }, clubSet.has(id) && kitOf(id) ? h("i", { className: "dot home club-colors", style: archKitStyle(kitOf(id)), "aria-hidden": "true" }) : null,
+      }, clubSet.has(id) && kitOf(id) && whose === "all" ? h("i", { className: "dot home club-colors", style: archKitStyle(kitOf(id)), "aria-hidden": "true" }) : null,
         h(Crest, { id, size: 18 }), tshort(s.teams, id)))));
   } else if (mode === "players") {
     tools = pickers(vs, setVs, "player", (id) => ({ rows: allRows, everyone, value: id ? { team: byIdAll[id].team, name: byIdAll[id].name, sub: byIdAll[id].short } : null }));
