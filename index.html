@@ -4551,8 +4551,8 @@ function MoreShare({ s, share, cards }) {
    Each is drawn as his club's crest (each club's once, in defs, and used where it is wanted; a club with no crest keeps a
    dot), and the one pointed at is drawn again on top of the rest, ringed, so a crowd never hides it.
    A keeper's goals conceded count the own goals he let in, as on the Keepers tab (and a column of them, once there are
-   any). The chart puts him at the goals from shots on target, the only ones xGOT prices, so his gap to the line is his
-   Goals Prevented. */
+   any), and the chart plots every one of them, so a keeper with an own goal sits that much above where his Goals
+   Prevented alone would put him (xGOT prices shots, never an own goal). */
 const MORE_SHOTS = 5;
 function MoreFinish({ s, idx, agg, cards }) {
   const [who, setWho] = useState(MORE_MEMO.finish);
@@ -4560,7 +4560,7 @@ function MoreFinish({ s, idx, agg, cards }) {
   const hot = useMoreHot();
   const W = Math.max(300, Math.round(useWidth(hot.box, 1000))), narrow = W < 600, keep = who === "keepers";
   const rows = useMemo(() => (keep ?
-    Object.entries(agg.keepers).filter(([id, d]) => idx[id] && d.sotf > 0).map(([id, d]) => ({ id, name: idx[id].name, team: d.team, x: d.xgotf, y: d.ga, og: d.oga, gc: d.ga + d.oga, n: d.sotf, d: d.xgotf - d.ga })) :
+    Object.entries(agg.keepers).filter(([id, d]) => idx[id] && d.sotf > 0).map(([id, d]) => ({ id, name: idx[id].name, team: d.team, x: d.xgotf, y: d.ga + d.oga, og: d.oga, gc: d.ga + d.oga, n: d.sotf, d: d.xgotf - d.ga })) :
     Object.entries(agg.players).filter(([id, d]) => idx[id] && d.sh >= MORE_SHOTS).map(([id, d]) => ({ id, name: idx[id].name, team: d.team, x: d.xg, y: d.g, n: d.sh, d: d.g - d.xg }))), [keep, agg, idx]);
   const go = (id) => cards.go(keep ? "keepers" : "players", id), href = (id) => cards.href(keep ? "keepers" : "players", id);
   const switcher = h("div", { className: "mo-ctl" }, h("div", { className: "seg", role: "group", "aria-label": "Whose" }, [["players", "Players' finishing"], ["keepers", "Keepers' shot-stopping"]].map(([k, l]) =>
@@ -4577,7 +4577,7 @@ function MoreFinish({ s, idx, agg, cards }) {
   const crest = (k) => h("use", { className: "ar-crest" + (CREST_OUTLINE.has(k.r.team) ? " edge" : ""), href: "#mo-crest-" + k.r.team, x: k.x - k.rad, y: k.y - k.rad, width: 2 * k.rad, height: 2 * k.rad });
   const hm = hot.hot ? marks.find((k) => k.r.id === hot.hot.key) : null;
   const by = (f) => marks.slice().sort((a, b) => f(b) - f(a));
-  const want = keep ? by((k) => Math.abs(k.r.d)) : [...by((k) => k.r.d).slice(0, 5), ...by((k) => -k.r.d).slice(0, 5), ...by((k) => k.r.x).slice(0, 4), ...by((k) => k.r.y).slice(0, 4)];
+  const want = keep ? by((k) => Math.abs(k.r.x - k.r.y)) : [...by((k) => k.r.d).slice(0, 5), ...by((k) => -k.r.d).slice(0, 5), ...by((k) => k.r.x).slice(0, 4), ...by((k) => k.r.y).slice(0, 4)];
   const regions = keep ? [moreCorner(["Let in more than expected"], false, true, m, pw, ph), moreCorner(["Let in fewer than expected"], true, false, m, pw, ph)]
     : [moreCorner(["Scored more than expected"], false, true, m, pw, ph), moreCorner(["Scored fewer than expected"], true, false, m, pw, ph)];
   const labels = morePlace(marks, [...new Set(want)].slice(0, narrow ? 10 : 22), [m.l + 2, m.t + 2, m.l + pw - 2, m.t + ph - 2], moreFont(), regions.map((c) => c.box));
@@ -4598,14 +4598,14 @@ function MoreFinish({ s, idx, agg, cards }) {
     switcher,
     h("div", { className: "mo-chart", ref: hot.box },
       h("svg", { viewBox: "0 0 " + W + " " + H, width: W, height: H, role: "group",
-        "aria-label": keep ? "Keepers' shot-stopping: " + rows.length + " keepers, xGOT faced across and goals conceded from shots on target up, with the line where the two are equal. The table below lists every keeper."
+        "aria-label": keep ? "Keepers' shot-stopping: " + rows.length + " keepers, xGOT faced across and goals conceded up, own goals included, with the line where the two are equal. The table below lists every keeper."
           : "Players' finishing: " + rows.length + " players with five shots or more, xG across and goals up, with the line where the two are equal. The table below lists every player." },
-        moreAxes({ m, W, H, sx, sy, xt: ticks, yt: ticks, narrow, xLabel: (keep ? "xGOT faced" : "xG") + " \u2192", yLabel: (keep ? (narrow ? "Goals from shots on target" : "Goals conceded from shots on target") : "Goals") + " \u2192" }),
+        moreAxes({ m, W, H, sx, sy, xt: ticks, yt: ticks, narrow, xLabel: (keep ? "xGOT faced" : "xG") + " \u2192", yLabel: (keep ? "Goals conceded" : "Goals") + " \u2192" }),
         h("defs", null, clubsDrawn.map((tm) => h("symbol", { key: tm, id: "mo-crest-" + tm, viewBox: "0 0 1 1" }, h("image", { href: CLUB_CRESTS[tm], width: 1, height: 1 })))),
         h("line", { className: "mo-even", x1: sx(0), y1: sy(0), x2: sx(M), y2: sy(M) }),
         regions.map((c) => c.el),
         marks.map((k) => h("a", Object.assign({ key: k.r.id, href: href(k.r.id), className: "mo-mark", "data-id": k.r.id,
-          "aria-label": k.r.name + ": " + (keep ? k.r.y + " goals from shots on target against " + f2(k.r.x) + " xGOT" + (k.r.og ? ", and " + k.r.og + (k.r.og === 1 ? " own goal" : " own goals") : "") : k.r.y + " goals from " + f2(k.r.x) + " xG") },
+          "aria-label": k.r.name + ": " + (keep ? k.r.y + " goals conceded" + (k.r.og ? " (" + k.r.og + (k.r.og === 1 ? " an own goal)" : " own goals)") : "") + " against " + f2(k.r.x) + " xGOT" : k.r.y + " goals from " + f2(k.r.x) + " xG") },
           hot.on(k.r.id, k.x, k.y, () => go(k.r.id))),
           h("circle", { className: "mo-hit", cx: k.x, cy: k.y, r: Math.max(10, k.rad + 3) }),
           crested(k.r.team) ? crest(k) : h("circle", { className: "mo-dot" + (hot.hot && hot.hot.key === k.r.id ? " hot" : ""), cx: k.x, cy: k.y, r: R }))),
@@ -4615,7 +4615,7 @@ function MoreFinish({ s, idx, agg, cards }) {
         keep ? [moreRow("On target faced", t.n), moreRow("Goals conceded", t.gc), t.og ? moreRow("Own goals among them", t.og, true) : null, moreRow("xGOT faced", f2(t.x)), moreRow(KEEPER_NAMES.sae, signed(t.d))]
           : [moreRow("Shots", t.n), moreRow("Goals", t.y), moreRow("xG", f2(t.x)), moreRow("Goals minus xG", signed(t.d))],
         moreGo(hot.hot.touch, "his card")) : null),
-    h("p", { className: "mo-key" }, keep ? "Goals conceded count own goals, as on the Keepers tab. The chart plots only the goals from shots on target, the ones xGOT prices, so a keeper's gap to the dashed line is his Goals Prevented. On the line he lets in what an average keeper would." :
+    h("p", { className: "mo-key" }, keep ? "Every goal conceded, own goals included, as on the Keepers tab. On the dashed line a keeper has let in as many as the xGOT of the shots he faced. xGOT never prices an own goal, so Goals Prevented leaves them out." :
       "Players with five shots or more, penalties included. On the dashed line goals equal xG."),
     moreTable("The " + rows.length + (keep ? " keepers" : " players") + " as a table", h(SortTable, { cols: COLS, rows, initial: { key: "d", dir: -1 }, rowKey: (r) => r.id, onRow: go, rowHref: href,
       caption: keep ? "Every keeper's goals conceded against xGOT faced" : "Every player with five shots or more, goals against xG" })));
