@@ -669,6 +669,99 @@ dialog.pop::backdrop { background: rgba(10, 14, 12, 0.3); -webkit-backdrop-filte
   .ar-cmp-head .ar-full { display: none; }
   .ar-cmp-head .ar-short { display: inline; }
 }
+
+/* the Visualiser's views: two groups of buttons at the top of its card, Charts and Head to head, ruled off from the view's
+   title under them; on a phone each group is one row that scrolls sideways, out to the screen's edges */
+.ar-views { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 24px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.ar-group { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ar-group-l { font-size: 11.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+@media (max-width: 640px) {
+  .ar-views { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 10px; }
+  .ar-group .ar-modes { flex-wrap: nowrap; overflow-x: auto; margin-inline: -16px; padding: 2px 16px 4px; scrollbar-width: none; }
+  .ar-group .ar-modes::-webkit-scrollbar { display: none; }
+  .ar-group .seg-btn { flex: none; white-space: nowrap; }
+}
+
+/* the other charts (MoreAttack, MoreShare, MoreFinish, MoreZones, MoreForm): each drawn at its box's width, its pop-up over it */
+.mo-chart { position: relative; width: 100%; touch-action: pan-y; }
+.mo-chart > svg { display: block; max-width: 100%; height: auto; overflow: visible; }
+.mo-chart text { -webkit-user-select: none; user-select: none; }
+.mo-tip { max-width: 290px; }
+.mo-tip .ar-row > * { white-space: nowrap; }
+.mo-mark { cursor: pointer; }
+.mo-mark.lg { cursor: default; }
+.mo-hit { fill: transparent; }
+.mo-ring { fill: none; stroke: var(--ink); stroke-width: 2.5; pointer-events: none; }
+.mo-dot { fill: var(--home); stroke: var(--surface); stroke-width: 1.5; }
+.mo-dot.hot { stroke: var(--ink); stroke-width: 2.5; }
+.mo-q { fill: var(--muted); font-size: 12px; font-weight: 600; paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; pointer-events: none; }
+.mo-even { stroke: var(--ink-2); stroke-width: 1.5; stroke-dasharray: 6 5; fill: none; }
+.mo-key { color: var(--ink-2); font-size: 12.5px; }
+.mo-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.mo-pick select { width: auto; min-width: 210px; }
+.mo-sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; flex: none; }
+.mo-sw.ind { background: var(--home); }
+.mo-sw.ovs { background: var(--away); }
+.mo-sw.unk { background: var(--line-2); }
+.mo-sw.pos { background: var(--form-pos); }
+.mo-sw.neg { background: var(--form-neg); }
+.mo-line { width: 18px; height: 0; border-top: 2px solid var(--ink); display: inline-block; flex: none; }
+/* each chart's table, at the foot of its card */
+.mo-table { margin: 0 -16px -16px; border-top: 1px solid var(--line); }
+.mo-table > summary { cursor: pointer; padding: 14px 16px; font-weight: 600; }
+.mo-table[open] > summary { border-bottom: 1px solid var(--line); }
+.mo-table .tbl-wrap { border: 0; border-radius: 0 0 12px 12px; }
+/* Indian vs overseas: the bars' parts, the club's name and the Indian share */
+.mo-ind { fill: var(--home); }
+.mo-ovs { fill: var(--away); }
+.mo-unk { fill: var(--line-2); }
+.mo-rl { fill: var(--ink); font-size: 13px; font-weight: 600; }
+.mo-pc { fill: var(--ink-2); font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.mo-rowhot { fill: none; stroke: var(--ink); stroke-width: 2; pointer-events: none; }
+/* where shots come from: the pitch at most 640px wide, in the middle, its zones in five steps of the site's blue (the dataviz
+   reference ramp's steps 100, 250, 400, 550 and 700; the other way round on the dark page, so a low number always sits near
+   the turf), each number in the ink that reads on its step. Form's bars: the site's blue up, a red down. */
+:root { --z1: #cde2fb; --z2: #86b6ef; --z3: #3987e5; --z4: #1c5cab; --z5: #0d366b; --zt1: #111714; --zt2: #111714; --zt3: #111714; --zt4: #ffffff; --zt5: #ffffff; --form-pos: #2a78d6; --form-neg: #c8402d; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --z1: #0d366b; --z2: #1c5cab; --z3: #3987e5; --z4: #86b6ef; --z5: #cde2fb; --zt1: #f2f5f1; --zt2: #f2f5f1; --zt3: #111714; --zt4: #111714; --zt5: #111714; --form-pos: #3987e5; --form-neg: #e0604c; }
+}
+:root[data-theme="dark"] { --z1: #0d366b; --z2: #1c5cab; --z3: #3987e5; --z4: #86b6ef; --z5: #cde2fb; --zt1: #f2f5f1; --zt2: #f2f5f1; --zt3: #111714; --zt4: #111714; --zt5: #111714; --form-pos: #3987e5; --form-neg: #e0604c; }
+.mo-pitch { width: 100%; max-width: 640px; margin-inline: auto; }
+.mo-zf { fill: transparent; }
+.mo-zf.z1 { fill: var(--z1); }
+.mo-zf.z2 { fill: var(--z2); }
+.mo-zf.z3 { fill: var(--z3); }
+.mo-zf.z4 { fill: var(--z4); }
+.mo-zf.z5 { fill: var(--z5); }
+.mo-zv { font-weight: 600; font-variant-numeric: tabular-nums; pointer-events: none; }
+.mo-zv.z1 { fill: var(--zt1); }
+.mo-zv.z2 { fill: var(--zt2); }
+.mo-zv.z3 { fill: var(--zt3); }
+.mo-zv.z4 { fill: var(--zt4); }
+.mo-zv.z5 { fill: var(--zt5); }
+.mo-zhot { fill: none; stroke: var(--ink); stroke-width: 2.5px; vector-effect: non-scaling-stroke; pointer-events: none; }
+.mo-zl { stroke: var(--line-2); stroke-width: 1px; stroke-dasharray: 2 3; vector-effect: non-scaling-stroke; }
+.mo-ramp { display: inline-flex; gap: 2px; }
+.mo-ramp i { width: 18px; height: 12px; border-radius: 2px; display: inline-block; }
+.mo-ramp i.z1 { background: var(--z1); }
+.mo-ramp i.z2 { background: var(--z2); }
+.mo-ramp i.z3 { background: var(--z3); }
+.mo-ramp i.z4 { background: var(--z4); }
+.mo-ramp i.z5 { background: var(--z5); }
+/* form: the clubs' panels, side by side */
+.mo-form { position: relative; }
+.mo-panel { position: absolute; }
+.mo-panel > svg { display: block; overflow: visible; }
+.mo-pn { fill: var(--ink); font-size: 13.5px; font-weight: 600; }
+.mo-pv { fill: var(--ink-2); font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.mo-pt { font-size: 10.5px; }
+.mo-pos { fill: var(--form-pos); }
+.mo-neg { fill: var(--form-neg); }
+.mo-pos.hot, .mo-neg.hot { stroke: var(--ink); stroke-width: 2; }
+.mo-px { fill: var(--muted); font-size: 10.5px; }
+.mo-roll-halo { fill: none; stroke: var(--surface); stroke-width: 4.5; stroke-linejoin: round; stroke-linecap: round; pointer-events: none; }
+.mo-roll { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; pointer-events: none; }
+.mo-rollp { fill: var(--ink); stroke: var(--surface); stroke-width: 1.2; pointer-events: none; }
 </style>
 </head>
 <body>
@@ -3645,8 +3738,9 @@ function TeamDetail({ s, idx, r, close }) {
    the page does not spell that out. The 82nd percentile and the square root are the chart, with no switches for them. Pointing
    at a dot shows the player's numbers; clicking it (on a touch screen, a second tap) opens their card on Players, and each dot
    is a real link to that card, so the browser can open it in a new tab.
-   Beside the title the reader picks what the tab shows (see VisualiserView): the chart, every club or only some; or two
-   players, or two clubs, head to head in a table. The chart's axes and dashed lines are always those of every player on it.
+   Above the title the reader picks what the tab shows (see VisualiserView): this chart, every club or only some; one of five
+   more charts (THE VISUALISER'S OTHER CHARTS, below); or players, keepers or clubs head to head in a table. The chart's axes
+   and dashed lines are always those of every player on it.
    ============================================================ */
 const ARCH = {
   HH: { name: "High xG, High xA", where: "Top right" },
@@ -4179,16 +4273,504 @@ function ArchCompare({ kind, caption, heads, sides }) {
     }))));
 }
 
-/* The Visualiser tab. Next to the title, what the tab shows:
-     Chart             the chart: every club (as it opens), or only the players of the clubs picked from the chips, every
-                       one of them, each club's dots in its own colour, shown on its chip
-     Player vs player  players picked from the club menu (ArchMenu), or from its All players, compared in a table (ArchCompare)
-     Keeper vs keeper  keepers picked the same way, compared on the Keepers tab's numbers
-     Team vs team      clubs picked from the clubs' menu, compared on the club's season
-   Each head-to-head starts with two sides and takes up to five. Each keeps what was picked in it. Under the chart, the four
-   lists and the table follow whose chart it is and the clubs picked on it. The head-to-heads have nothing under their table
-   but the page's foot: the lists and the table stay in the page, hidden, so a table opened (and sorted) under the chart is
-   still that way on coming back. The chart stays in the page (hidden) under the tables, so it keeps its measurements. */
+/* ------------------------------------------------------------
+   THE VISUALISER'S OTHER CHARTS: attack vs defence, Indian vs overseas, finishing and shot-stopping, where shots come from,
+   and form. Each is a view of its own (VisualiserView's switch), drawn at the width of its own box, with a pop-up for what
+   is pointed at (a mouse while it is over it, the keyboard while it is focused, a tap until the next tap lands elsewhere; a
+   second tap on something with a card or a match opens it, as a click does) and the same numbers as a table under it.
+   ------------------------------------------------------------ */
+const MORE_MEMO = { share: "npxg", finish: "players", zm: "shots", zclub: "", zside: "for", znat: "all" };
+const moreFont = (weight) => (weight || 500) + " 12px " + (getComputedStyle(document.body).fontFamily || "sans-serif");
+
+/* what is pointed at: { key, x, y } in the chart's pixels, touch when it was tapped. on(key, x, y, follow) gives a mark its
+   handlers; follow, when given, opens what the mark stands for (a plain click, or a second tap) */
+function useMoreHot() {
+  const [hot, setHot] = useState(null);
+  const kind = useRef(""), box = useRef(null);
+  useEffect(() => {
+    if (!hot || !hot.touch) return undefined;
+    /* a tap anywhere but on a mark of this chart lets go of the one tapped */
+    const away = (e) => {
+      if (e.pointerType === "mouse") return;
+      const t = e.target;
+      if (box.current && t && box.current.contains(t) && t.closest && t.closest("[data-hot]")) return;
+      setHot(null);
+    };
+    document.addEventListener("pointerdown", away);
+    return () => document.removeEventListener("pointerdown", away);
+  }, [hot]);
+  const on = (key, x, y, follow) => ({
+    "data-hot": "",
+    onPointerDown: (e) => { kind.current = e.pointerType || ""; },
+    onPointerEnter: (e) => { if (e.pointerType === "mouse") setHot({ key, x, y }); },
+    onPointerLeave: (e) => { if (e.pointerType === "mouse") setHot((t) => (t && t.key === key && !t.touch ? null : t)); },
+    onFocus: () => setHot((t) => (t && t.key === key ? t : { key, x, y })),
+    onBlur: () => setHot((t) => (t && t.key === key && !t.touch ? null : t)),
+    onClick: (e) => {
+      const k = kind.current;
+      kind.current = "";
+      if (k && k !== "mouse" && !(hot && hot.key === key && hot.touch)) { e.preventDefault(); setHot({ key, x, y, touch: true }); return; }
+      if (follow && plainClick(e)) { e.preventDefault(); follow(); }
+    },
+  });
+  return { hot, on, box };
+}
+/* the pop-up, beside the point at (x, y): to its right, or its left in the right part of the chart; above it, or below it near
+   the top */
+function MoreTip({ hot, W, children }) {
+  if (!hot) return null;
+  const left = hot.x > W * 0.6, below = hot.y < 130;
+  return h("div", { className: "tip ar-tip mo-tip", style: { left: hot.x, top: hot.y, transform: "translate(" + (left ? "calc(-100% - 14px)" : "14px") + ", " + (below ? "14px" : "calc(-100% - 12px)") + ")" } }, children);
+}
+const moreRow = (k, v, soft) => h("span", { className: "ar-row" + (soft ? " ar-soft" : "") }, h("span", null, k), h("b", null, v));
+const moreGo = (touch, what) => h("span", { className: "ar-go" }, (touch ? "Tap again" : "Click") + " to see " + what);
+/* round ticks from lo to hi, about want of them */
+function moreTicks(lo, hi, want) {
+  const raw = (hi - lo) / Math.max(1, want), mag = Math.pow(10, Math.floor(Math.log10(raw || 1)));
+  const step = [1, 2, 2.5, 5, 10].map((k) => k * mag).find((k) => k >= raw - 1e-12);
+  const out = [];
+  for (let v = Math.ceil(lo / step - 1e-9) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(6));
+  return out;
+}
+const moreTick = (v) => (Math.abs(v - Math.round(v)) < 1e-9 ? String(Math.round(v)) : String(+v.toFixed(2)));
+/* names beside marks ({ x, y, rad, text }), in the order wanted, each in the first of eight spots round its mark that is
+   clear of every mark, of the names already placed and of the boxes in avoid (the corners' words), inside box [x0, y0, x1,
+   y1]; a name that fits nowhere is left out */
+function morePlace(marks, want, box, font, avoid) {
+  const taken = (avoid || []).slice(), out = [];
+  const onMark = (b, self) => marks.some((k) => k !== self && Math.hypot(Math.min(Math.max(k.x, b.x0), b.x1) - k.x, Math.min(Math.max(k.y, b.y0), b.y1) - k.y) < k.rad + 1.5);
+  const onName = (b) => taken.some((t) => b.x0 < t.x1 && b.x1 > t.x0 && b.y0 < t.y1 && b.y1 > t.y0);
+  for (const k of want) {
+    const w = archMeasure(k.text, font), hh = 14, R = k.rad;
+    const spots = [[R + 4, -hh / 2], [-R - 4 - w, -hh / 2], [-w / 2, -R - 3 - hh], [-w / 2, R + 3], [R + 1, -R - hh + 1], [-R - 1 - w, -R - hh + 1], [R + 1, R - 1], [-R - 1 - w, R - 1]];
+    for (const [dx, dy] of spots) {
+      const b = { x0: k.x + dx, x1: k.x + dx + w, y0: k.y + dy, y1: k.y + dy + hh };
+      if (b.x0 < box[0] || b.x1 > box[2] || b.y0 < box[1] || b.y1 > box[3] || onName(b) || onMark(b, k)) continue;
+      taken.push(b); out.push({ k, x: b.x0, y: b.y0 + 11 }); break;
+    }
+  }
+  return out;
+}
+/* a scatter's frame: gridlines at the ticks, the two axes, their numbers and their titles */
+function moreAxes({ m, W, H, sx, sy, xt, yt, xLabel, yLabel, narrow }) {
+  const pw = W - m.l - m.r, ph = H - m.t - m.b;
+  return [
+    xt.map((v) => h("line", { key: "gx" + v, className: "ar-grid", x1: sx(v), x2: sx(v), y1: m.t, y2: m.t + ph })),
+    yt.map((v) => h("line", { key: "gy" + v, className: "ar-grid", x1: m.l, x2: m.l + pw, y1: sy(v), y2: sy(v) })),
+    h("line", { key: "ax", className: "ar-axis", x1: m.l, x2: m.l + pw, y1: m.t + ph, y2: m.t + ph }),
+    h("line", { key: "ay", className: "ar-axis", x1: m.l, x2: m.l, y1: m.t, y2: m.t + ph }),
+    xt.map((v) => h("text", { key: "tx" + v, className: "ar-tick", x: sx(v), y: m.t + ph + 17, textAnchor: "middle" }, moreTick(v))),
+    yt.map((v) => h("text", { key: "ty" + v, className: "ar-tick", x: m.l - 8, y: sy(v) + 4, textAnchor: "end" }, moreTick(v))),
+    h("text", { key: "lx", className: "ar-title", x: m.l + pw / 2, y: H - 8, textAnchor: "middle" }, xLabel),
+    h("text", { key: "ly", className: "ar-title", transform: "translate(" + (narrow ? 13 : 16) + " " + (m.t + ph / 2) + ") rotate(-90)", textAnchor: "middle" }, yLabel),
+  ];
+}
+/* words in a corner of a plot (top or bottom, left or right), a line each (two on a phone where they would meet), and the box
+   they take, for the names to keep clear of */
+function moreCorner(lines, right, top, m, pw, ph) {
+  const font = moreFont(600), w = Math.max(...lines.map((l) => archMeasure(l, font)));
+  const x = right ? m.l + pw - 8 : m.l + 8, y0 = top ? m.t + 18 : m.t + ph - 10 - 14 * (lines.length - 1);
+  return {
+    el: h("text", { key: lines.join(" "), className: "mo-q", x, y: y0, textAnchor: right ? "end" : "start" }, lines.map((l, i) => h("tspan", { key: i, x, dy: i ? 14 : 0 }, l))),
+    box: { x0: right ? x - w - 3 : x - 3, x1: right ? x + 3 : x + w + 3, y0: y0 - 13, y1: y0 + 14 * (lines.length - 1) + 4 },
+  };
+}
+/* a chart's table, at the foot of its card, closed until opened */
+const moreTable = (summary, table) => h("details", { className: "mo-table" }, h("summary", null, summary), table);
+
+/* each club's season for the club charts, from its matches with a shot or an own goal (as the season tables count them):
+   non-penalty xG for and against, and match by match the date, the other side, home or away, and the non-penalty xG each
+   way, in the order they were played */
+function moreClubs(s) {
+  const C = {};
+  for (const { id: mid, m } of sortedMatches(s.matches)) {
+    if (!(m.shots || []).length && !(m.og || []).length) continue;
+    const g = { h: 0, a: 0 };
+    for (const x of m.shots || []) if (x.sit !== "pen") g[x.t] += Model.xg(x);
+    for (const [sd, tid, opp] of [["h", m.home, m.away], ["a", m.away, m.home]]) {
+      const c = C[tid] || (C[tid] = { id: tid, mp: 0, npxg: 0, npxga: 0, games: [] });
+      const f = g[sd], ag = g[sd === "h" ? "a" : "h"];
+      c.mp += 1; c.npxg += f; c.npxga += ag;
+      c.games.push({ mid, date: m.date, opp, home: sd === "h", f, ag });
+    }
+  }
+  return C;
+}
+/* each club's non-penalty xG (its players' shots), xA (the passes before its open-play shots, as xA is counted everywhere)
+   and minutes (its line-ups, match by match), split by whose: Indian players (ind), overseas players (ovs), and players
+   whose nationality is not set (unk). "*" is the whole league. */
+function moreShare(s, idx) {
+  const grp = (pid) => { const n = idx[pid] && idx[pid].nat; return !n ? "unk" : isIndian(n) ? "ind" : "ovs"; };
+  const out = { npxg: {}, xa: {}, mins: {} };
+  const add = (k, tid, g, v) => { for (const t of [tid, "*"]) { const o = out[k][t] || (out[k][t] = { ind: 0, ovs: 0, unk: 0 }); o[g] += v; } };
+  for (const m of Object.values(s.matches)) {
+    for (const x of m.shots || []) {
+      const tid = x.t === "h" ? m.home : m.away, v = Model.xg(x);
+      if (x.sit !== "pen") add("npxg", tid, grp(x.p), v);
+      if ((x.sit || "open") === "open" && x.ap) add("xa", tid, grp(x.ap), v);
+    }
+    const mn = Stats.minutes(m);
+    for (const sd of ["h", "a"]) if (mn[sd]) for (const [pid, d] of Object.entries(mn[sd])) add("mins", sd === "h" ? m.home : m.away, grp(pid), d.mins);
+  }
+  return out;
+}
+
+/* ATTACK VS DEFENCE: every club as its crest, its non-penalty xG for a match across, against a match up, fewer at the top, on
+   one scale both ways; dashed lines at the league's average (the same both ways, as every chance for one club is against
+   another), so the top right is strong at both ends */
+function MoreAttack({ s, clubs, nav }) {
+  const hot = useMoreHot();
+  const W = Math.max(300, Math.round(useWidth(hot.box, 1000))), narrow = W < 600;
+  const rows = useMemo(() => Object.values(clubs).filter((c) => c.mp > 0 && s.teams[c.id])
+    .map((c) => ({ id: c.id, name: tname(s.teams, c.id), short: tshort(s.teams, c.id), mp: c.mp, f: c.npxg / c.mp, a: c.npxga / c.mp, d: (c.npxg - c.npxga) / c.mp })), [clubs, s.teams]);
+  if (!rows.length) return h("div", { className: "empty" }, h("strong", null, "No matches yet"), "The chart needs a match with a shot.");
+  const go = (id) => nav.go({ tab: "teams", item: id }), href = (id) => nav.href({ tab: "teams", item: id });
+  const lg = rows.reduce((t, r) => t + r.f * r.mp, 0) / rows.reduce((t, r) => t + r.mp, 0);
+  const vals = rows.flatMap((r) => [r.f, r.a]), lo = Math.min(...vals), hi = Math.max(...vals), pad = Math.max((hi - lo) * 0.12, 0.1);
+  const v0 = Math.max(0, Math.floor((lo - pad) * 10) / 10), v1 = Math.ceil((hi + pad) * 10) / 10;
+  const m = { l: narrow ? 46 : 60, r: narrow ? 10 : 16, t: 12, b: narrow ? 46 : 54 };
+  const H = Math.round(narrow ? W * 1.05 : Math.min(W * 0.6, 620)), pw = W - m.l - m.r, ph = H - m.t - m.b;
+  const sx = (v) => m.l + ((v - v0) / (v1 - v0)) * pw, sy = (v) => m.t + ((v - v0) / (v1 - v0)) * ph;
+  const ticks = moreTicks(v0, v1, narrow ? 4 : 7), CS = narrow ? 24 : 30;
+  const corner = (a, d, right, top) => moreCorner(narrow ? [a + " attack,", d + " defence"] : [a + " attack, " + d + " defence"], right, top, m, pw, ph);
+  const corners = [corner("Strong", "strong", true, true), corner("Weak", "strong", false, true), corner("Weak", "weak", false, false), corner("Strong", "weak", true, false)];
+  const marks = rows.map((r) => ({ r, x: sx(r.f), y: sy(r.a), rad: CS / 2, text: r.short }));
+  const labels = morePlace(marks, marks, [m.l + 2, m.t + 2, m.l + pw - 2, m.t + ph - 2], moreFont(), corners.map((c) => c.box));
+  const t = hot.hot ? rows.find((r) => r.id === hot.hot.key) : null;
+  const COLS = [
+    { key: "name", label: "Club", get: (r) => r.name, strong: true },
+    { key: "mp", label: "Matches", num: true, get: (r) => r.mp },
+    { key: "f", label: "npxG for per match", num: true, get: (r) => r.f, fmt: f2 },
+    { key: "a", label: "npxG against per match", num: true, get: (r) => r.a, fmt: f2 },
+    { key: "d", label: "Difference", num: true, get: (r) => r.d, fmt: signed },
+  ];
+  return h(Frag, null,
+    h("div", { className: "mo-chart", ref: hot.box },
+      h("svg", { viewBox: "0 0 " + W + " " + H, width: W, height: H, role: "group",
+        "aria-label": "Attack vs defence: " + rows.length + " clubs, non-penalty xG for per match across and against per match up, fewer against at the top; dashed lines at the league's average of " + f2(lg) + ". The table below lists every club." },
+        moreAxes({ m, W, H, sx, sy, xt: ticks, yt: ticks, narrow, xLabel: (narrow ? "npxG for per match" : "Non-penalty xG for per match") + " \u2192",
+          yLabel: (narrow ? "npxG against per match" : "Non-penalty xG against per match") + ", fewer at the top" }),
+        h("line", { className: "ar-cut", x1: sx(lg), x2: sx(lg), y1: m.t, y2: m.t + ph }),
+        h("line", { className: "ar-cut", x1: m.l, x2: m.l + pw, y1: sy(lg), y2: sy(lg) }),
+        corners.map((c) => c.el),
+        marks.map((k) => h("a", Object.assign({ key: k.r.id, href: href(k.r.id), "aria-label": k.r.name + ": " + f2(k.r.f) + " for, " + f2(k.r.a) + " against a match", className: "mo-mark", "data-club": k.r.id },
+          hot.on(k.r.id, k.x, k.y, () => go(k.r.id))),
+          h("circle", { className: "mo-hit", cx: k.x, cy: k.y, r: k.rad + 3 }),
+          CLUB_CRESTS[k.r.id] ? h("image", { className: "ar-crest" + (CREST_OUTLINE.has(k.r.id) ? " edge" : ""), href: CLUB_CRESTS[k.r.id], x: k.x - k.rad, y: k.y - k.rad, width: CS, height: CS })
+            : h("circle", { className: "mo-dot", cx: k.x, cy: k.y, r: 7 }),
+          hot.hot && hot.hot.key === k.r.id ? h("circle", { className: "mo-ring", cx: k.x, cy: k.y, r: k.rad + 4 }) : null)),
+        labels.map((l) => h("text", { key: "l" + l.k.r.id, className: "ar-lab", x: l.x, y: l.y }, l.k.text))),
+      t ? h(MoreTip, { hot: hot.hot, W }, h("strong", null, t.name), moreRow("npxG for per match", f2(t.f)), moreRow("npxG against per match", f2(t.a)),
+        moreRow("Difference", signed(t.d)), moreRow("Matches", t.mp, true), moreGo(hot.hot.touch, "their card")) : null),
+    h("p", { className: "mo-key" }, "Dashed lines: the league's average, " + f2(lg) + " non-penalty xG a match. Penalties are left out."),
+    moreTable("The " + rows.length + " clubs as a table", h(SortTable, { cols: COLS, rows, initial: { key: "d", dir: -1 }, rowKey: (r) => r.id, onRow: go, rowHref: href, caption: "Every club's non-penalty xG for and against per match" })));
+}
+
+/* INDIAN VS OVERSEAS: a bar for the league and one for each club, split between its Indian players, its overseas players and
+   any whose nationality is not set, by non-penalty xG, xA or minutes; the clubs from the most Indian to the least */
+function MoreShare({ s, share, nav }) {
+  const [measure, setMeasure] = useState(MORE_MEMO.share);
+  useEffect(() => { MORE_MEMO.share = measure; }, [measure]);
+  const hot = useMoreHot();
+  const W = Math.max(300, Math.round(useWidth(hot.box, 1000))), narrow = W < 600;
+  const data = share[measure] || {};
+  const tot = (o) => o.ind + o.ovs + o.unk;
+  const rows = Object.keys(data).filter((k) => k !== "*" && s.teams[k] && tot(data[k]) > 0)
+    .map((k) => Object.assign({ id: k, name: tname(s.teams, k), short: tshort(s.teams, k) }, data[k]))
+    .sort((a, b) => b.ind / tot(b) - a.ind / tot(a) || a.name.localeCompare(b.name));
+  const league = data["*"] && tot(data["*"]) > 0 ? Object.assign({ id: "*", name: "All clubs", short: "All clubs" }, data["*"]) : null;
+  const list = (league ? [league] : []).concat(rows);
+  const go = (id) => nav.go({ tab: "teams", item: id }), href = (id) => nav.href({ tab: "teams", item: id });
+  const unit = { npxg: "non-penalty xG", xa: "xA", mins: "minutes" }[measure];
+  const fmt = (v) => (measure === "mins" ? Math.round(v).toLocaleString("en-US") : v.toFixed(2));
+  const pc = (v, all) => (all > 0 ? Math.round((v / all) * 100) : 0) + "%";
+  const anyUnk = list.some((r) => r.unk > 0);
+  const lab = narrow ? 74 : 112, right = 46, rowH = 30, top = 22, sep = league ? 12 : 0;
+  const bx0 = lab, bx1 = W - right, bw = bx1 - bx0;
+  const y = (i) => top + i * rowH + (i > 0 ? sep : 0);
+  const H = list.length ? y(list.length - 1) + rowH + 4 : top;
+  const t = hot.hot ? list.find((r) => r.id === hot.hot.key) : null;
+  /* each bar's parts, Indian first, with a 2px gap between them */
+  const seg = (r, i) => {
+    const all = tot(r), parts = [["ind", r.ind], ["ovs", r.ovs], ["unk", r.unk]].filter(([, v]) => v > 0);
+    let x = bx0;
+    return parts.map(([k, v], j) => {
+      const w = (v / all) * bw, at = x;
+      x += w;
+      return h("rect", { key: k, className: "mo-" + k, x: at, y: y(i) + 6, width: Math.max(0.5, w - (j < parts.length - 1 ? 2 : 0)), height: rowH - 12, rx: 2 });
+    });
+  };
+  const COLS = [
+    { key: "name", label: "Club", get: (r) => r.name, strong: true },
+    { key: "ind", label: "Indian players", num: true, get: (r) => r.ind, fmt },
+    { key: "ovs", label: "Overseas players", num: true, get: (r) => r.ovs, fmt },
+  ].concat(anyUnk ? [{ key: "unk", label: "Nationality not set", num: true, get: (r) => r.unk, fmt }] : [],
+    [{ key: "share", label: "Indian share", num: true, get: (r) => (tot(r) > 0 ? r.ind / tot(r) : null), fmt: (v) => (v == null ? "\u2013" : Math.round(v * 100) + "%") }]);
+  const keyNote = measure === "npxg" ? "Penalties are left out." : measure === "xa" ? "xA is the xG of the open-play shots a player set up." : "Minutes from the line-ups, keepers included.";
+  return h(Frag, null,
+    h("div", { className: "mo-ctl" },
+      h("div", { className: "seg", role: "group", "aria-label": "Split by" }, [["npxg", "Non-penalty xG"], ["xa", "xA"], ["mins", "Minutes"]].map(([k, l]) =>
+        h("button", { key: k, type: "button", className: "seg-btn" + (measure === k ? " on" : ""), "aria-pressed": measure === k, onClick: () => setMeasure(k) }, l)))),
+    h("div", { className: "legend start" },
+      h("span", null, h("i", { className: "mo-sw ind" }), "Indian players"), h("span", null, h("i", { className: "mo-sw ovs" }), "Overseas players"),
+      anyUnk ? h("span", null, h("i", { className: "mo-sw unk" }), "Nationality not set") : null),
+    list.length ? h("div", { className: "mo-chart", ref: hot.box },
+      h("svg", { viewBox: "0 0 " + W + " " + H, width: W, height: H, role: "group",
+        "aria-label": "Indian vs overseas: the share of each club's " + unit + " from Indian and from overseas players, the league first, then the clubs from the most Indian to the least. The table below has the numbers." },
+        [0, 0.25, 0.5, 0.75, 1].map((p) => h("g", { key: p },
+          h("line", { className: "ar-grid", x1: bx0 + p * bw, x2: bx0 + p * bw, y1: top - 4, y2: H - 2 }),
+          h("text", { className: "ar-tick", x: bx0 + p * bw, y: top - 9, textAnchor: "middle" }, Math.round(p * 100) + "%"))),
+        league ? h("line", { className: "ar-axis", x1: 0, x2: W, y1: y(1) - sep / 2, y2: y(1) - sep / 2 }) : null,
+        list.map((r, i) => h(r.id === "*" ? "g" : "a", Object.assign({ key: r.id, className: "mo-mark" + (r.id === "*" ? " lg" : ""), "data-club": r.id },
+          r.id === "*" ? { tabIndex: 0, "aria-label": "All clubs: " + pc(r.ind, tot(r)) + " Indian" } : { href: href(r.id), "aria-label": r.name + ": " + pc(r.ind, tot(r)) + " Indian" },
+          hot.on(r.id, bx0 + (r.ind / tot(r)) * bw, y(i) + rowH / 2, r.id === "*" ? null : () => go(r.id))),
+          h("rect", { className: "mo-hit", x: 0, y: y(i), width: W, height: rowH }),
+          r.id !== "*" && CLUB_CRESTS[r.id] ? h("image", { className: "ar-crest" + (CREST_OUTLINE.has(r.id) ? " edge" : ""), href: CLUB_CRESTS[r.id], x: 0, y: y(i) + 6, width: 18, height: 18 }) : null,
+          h("text", { className: "mo-rl" + (r.id === "*" ? " lg" : ""), x: r.id === "*" || !CLUB_CRESTS[r.id] ? 0 : 24, y: y(i) + rowH / 2 + 4 }, r.short),
+          seg(r, i),
+          hot.hot && hot.hot.key === r.id ? h("rect", { className: "mo-rowhot", x: bx0 - 3, y: y(i) + 3, width: bw + 6, height: rowH - 6, rx: 4 }) : null,
+          h("text", { className: "mo-pc", x: W, y: y(i) + rowH / 2 + 4, textAnchor: "end" }, pc(r.ind, tot(r)))))),
+      t ? h(MoreTip, { hot: hot.hot, W }, h("strong", null, t.name), moreRow("Indian players", fmt(t.ind) + " \u00b7 " + pc(t.ind, tot(t))),
+        moreRow("Overseas players", fmt(t.ovs) + " \u00b7 " + pc(t.ovs, tot(t))), t.unk > 0 ? moreRow("Nationality not set", fmt(t.unk) + " \u00b7 " + pc(t.unk, tot(t))) : null,
+        moreRow("All " + unit, fmt(tot(t)), true), t.id !== "*" ? moreGo(hot.hot.touch, "their card") : null) : null)
+      : h("div", { className: "empty" }, h("strong", null, "Nothing to split yet"), "The chart needs " + unit + " to split."),
+    h("p", { className: "mo-key" }, "The percentage is the Indian players' share. " + keyNote),
+    moreTable("The league and the " + rows.length + " clubs as a table", h(SortTable, { cols: COLS, rows: list, initial: { key: "share", dir: -1 }, rowKey: (r) => r.id,
+      onRow: (id) => { if (id !== "*") go(id); }, rowHref: (id) => (id !== "*" ? href(id) : null), caption: "Each club's " + unit + " by Indian and overseas players" })));
+}
+
+/* FINISHING AND SHOT-STOPPING: players (five shots or more), their goals against their xG; or keepers, the goals they let in
+   from shots on target against the xGOT of those shots. Both on one scale, with the line where the two are equal: a player
+   above it has scored more than his chances were worth, a keeper below it has let in fewer than an average keeper would. */
+const MORE_SHOTS = 5;
+function MoreFinish({ s, idx, agg, nav }) {
+  const [who, setWho] = useState(MORE_MEMO.finish);
+  useEffect(() => { MORE_MEMO.finish = who; }, [who]);
+  const hot = useMoreHot();
+  const W = Math.max(300, Math.round(useWidth(hot.box, 1000))), narrow = W < 600, keep = who === "keepers";
+  const rows = useMemo(() => (keep ?
+    Object.entries(agg.keepers).filter(([id, d]) => idx[id] && d.sotf > 0).map(([id, d]) => ({ id, name: idx[id].name, team: d.team, x: d.xgotf, y: d.ga, n: d.sotf, d: d.xgotf - d.ga })) :
+    Object.entries(agg.players).filter(([id, d]) => idx[id] && d.sh >= MORE_SHOTS).map(([id, d]) => ({ id, name: idx[id].name, team: d.team, x: d.xg, y: d.g, n: d.sh, d: d.g - d.xg }))), [keep, agg, idx]);
+  const go = (id) => nav.go({ tab: keep ? "keepers" : "players", item: id }), href = (id) => nav.href({ tab: keep ? "keepers" : "players", item: id });
+  const switcher = h("div", { className: "mo-ctl" }, h("div", { className: "seg", role: "group", "aria-label": "Whose" }, [["players", "Players' finishing"], ["keepers", "Keepers' shot-stopping"]].map(([k, l]) =>
+    h("button", { key: k, type: "button", className: "seg-btn" + (who === k ? " on" : ""), "aria-pressed": who === k, onClick: () => setWho(k) }, l))));
+  if (!rows.length) return h(Frag, null, switcher, h("div", { className: "empty" }, h("strong", null, "Nobody here yet"), keep ? "No keeper has faced a shot on target yet." : "No player has five shots yet."));
+  const top = Math.max(...rows.map((r) => Math.max(r.x, r.y))), M = Math.max(1, Math.ceil(top + 0.4));
+  const m = { l: narrow ? 46 : 60, r: narrow ? 10 : 16, t: 12, b: narrow ? 46 : 54 };
+  const H = Math.round(narrow ? W * 1.0 : Math.min(W * 0.58, 600)), pw = W - m.l - m.r, ph = H - m.t - m.b;
+  const sx = (v) => m.l + (v / M) * pw, sy = (v) => m.t + ph - (v / M) * ph;
+  const ticks = moreTicks(0, M, narrow ? 4 : 8), R = narrow ? 4.5 : 5.5;
+  const marks = rows.map((r) => ({ r, x: sx(r.x), y: sy(r.y), rad: R, text: archShortName(r.name) }));
+  const by = (f) => marks.slice().sort((a, b) => f(b) - f(a));
+  const want = keep ? by((k) => Math.abs(k.r.d)) : [...by((k) => k.r.d).slice(0, 5), ...by((k) => -k.r.d).slice(0, 5), ...by((k) => k.r.x).slice(0, 4), ...by((k) => k.r.y).slice(0, 4)];
+  const regions = keep ? [moreCorner(["Let in more than expected"], false, true, m, pw, ph), moreCorner(["Let in fewer than expected"], true, false, m, pw, ph)]
+    : [moreCorner(["Scored more than expected"], false, true, m, pw, ph), moreCorner(["Scored fewer than expected"], true, false, m, pw, ph)];
+  const labels = morePlace(marks, [...new Set(want)].slice(0, narrow ? 10 : 22), [m.l + 2, m.t + 2, m.l + pw - 2, m.t + ph - 2], moreFont(), regions.map((c) => c.box));
+  const t = hot.hot ? rows.find((r) => r.id === hot.hot.key) : null;
+  const short = (team) => tshort(s.teams, team);
+  const COLS = keep ? [
+    { key: "name", label: "Keeper", get: (r) => r.name, strong: true }, { key: "club", label: "Club", get: (r) => short(r.team) },
+    { key: "n", label: "On target faced", num: true, get: (r) => r.n }, { key: "y", label: "Goals conceded", num: true, get: (r) => r.y },
+    { key: "x", label: "xGOT faced", num: true, get: (r) => r.x, fmt: f2 }, { key: "d", label: KEEPER_NAMES.sae, num: true, get: (r) => r.d, fmt: signed },
+  ] : [
+    { key: "name", label: "Player", get: (r) => r.name, strong: true }, { key: "club", label: "Club", get: (r) => short(r.team) },
+    { key: "n", label: "Shots", num: true, get: (r) => r.n }, { key: "y", label: "Goals", num: true, get: (r) => r.y },
+    { key: "x", label: "xG", num: true, get: (r) => r.x, fmt: f2 }, { key: "d", label: "Goals minus xG", num: true, get: (r) => r.d, fmt: signed },
+  ];
+  return h(Frag, null,
+    switcher,
+    h("div", { className: "mo-chart", ref: hot.box },
+      h("svg", { viewBox: "0 0 " + W + " " + H, width: W, height: H, role: "group",
+        "aria-label": keep ? "Keepers' shot-stopping: " + rows.length + " keepers, xGOT faced across and goals conceded from shots on target up, with the line where the two are equal. The table below lists every keeper."
+          : "Players' finishing: " + rows.length + " players with five shots or more, xG across and goals up, with the line where the two are equal. The table below lists every player." },
+        moreAxes({ m, W, H, sx, sy, xt: ticks, yt: ticks, narrow, xLabel: (keep ? "xGOT faced" : "xG") + " \u2192", yLabel: (keep ? "Goals conceded from shots" : "Goals") + " \u2192" }),
+        h("line", { className: "mo-even", x1: sx(0), y1: sy(0), x2: sx(M), y2: sy(M) }),
+        regions.map((c) => c.el),
+        marks.map((k) => h("a", Object.assign({ key: k.r.id, href: href(k.r.id), "aria-label": k.r.name + ": " + k.r.y + (keep ? " conceded from " : " goals from ") + f2(k.r.x) + (keep ? " xGOT" : " xG"), className: "mo-mark", "data-id": k.r.id },
+          hot.on(k.r.id, k.x, k.y, () => go(k.r.id))),
+          h("circle", { className: "mo-hit", cx: k.x, cy: k.y, r: Math.max(10, R + 4) }),
+          h("circle", { className: "mo-dot" + (hot.hot && hot.hot.key === k.r.id ? " hot" : ""), cx: k.x, cy: k.y, r: R }))),
+        labels.map((l) => h("text", { key: "l" + l.k.r.id, className: "ar-lab", x: l.x, y: l.y }, l.k.text))),
+      t ? h(MoreTip, { hot: hot.hot, W }, h("strong", null, t.name), h("span", { className: "ar-soft" }, tname(s.teams, t.team)),
+        keep ? [moreRow("On target faced", t.n), moreRow("Goals conceded", t.y), moreRow("xGOT faced", f2(t.x)), moreRow(KEEPER_NAMES.sae, signed(t.d))]
+          : [moreRow("Shots", t.n), moreRow("Goals", t.y), moreRow("xG", f2(t.x)), moreRow("Goals minus xG", signed(t.d))],
+        moreGo(hot.hot.touch, "his card")) : null),
+    h("p", { className: "mo-key" }, keep ? "Goals from shots on target, own goals left out. On the dashed line a keeper lets in what an average keeper would." :
+      "Players with five shots or more, penalties included. On the dashed line goals equal xG."),
+    moreTable("The " + rows.length + (keep ? " keepers" : " players") + " as a table", h(SortTable, { cols: COLS, rows, initial: { key: "d", dir: -1 }, rowKey: (r) => r.id, onRow: go, rowHref: href,
+      caption: keep ? "Every keeper's goals conceded against xGOT faced" : "Every player with five shots or more, goals against xG" })));
+}
+
+/* WHERE SHOTS COME FROM: the attacking half in zones, ruled off where the pitch is (the width of the box and of the six-yard
+   box, six yards deep at a time out to 30, then everything further out), each shaded by its shots, xG, goals or xG per shot
+   in five steps of the highest zone's number, with the number written in it. Penalties are left out. A club can be picked,
+   for its shots or those against it, and the shooters can be Indian or overseas only. */
+const ZONE_ROWS = [[0, 6, "0\u20136 yd"], [6, 12, "6\u201312 yd"], [12, 18, "12\u201318 yd"], [18, 24, "18\u201324 yd"], [24, 30, "24\u201330 yd"], [30, Infinity, "30+ yd"]];
+const ZONE_COLS = [[0, 18, "Wide left"], [18, 30, "Left"], [30, 50, "Central"], [50, 62, "Right"], [62, Infinity, "Wide right"]];
+const ZONE_DEEP = 40;                                        // how far out the drawing goes (the last zone runs on past it)
+function moreZoneOf(x) {
+  const d = Math.max(0, 120 - x.x), ri = ZONE_ROWS.findIndex(([a, b]) => d >= a && d < b), ci = ZONE_COLS.findIndex(([a, b]) => x.y >= a && x.y < b);
+  return ri < 0 || ci < 0 ? null : [ri, ci];
+}
+function MoreZones({ s, idx, anyNat }) {
+  const [zm, setZm] = useState(MORE_MEMO.zm), [clubRaw, setClub] = useState(MORE_MEMO.zclub), [side, setSide] = useState(MORE_MEMO.zside), [natRaw, setNat] = useState(MORE_MEMO.znat);
+  useEffect(() => { Object.assign(MORE_MEMO, { zm, zclub: clubRaw, zside: side, znat: natRaw }); }, [zm, clubRaw, side, natRaw]);
+  const club = clubRaw && s.teams[clubRaw] ? clubRaw : "", nat = anyNat ? natRaw : "all";
+  const hot = useMoreHot();
+  const W = Math.min(640, Math.max(280, Math.round(useWidth(hot.box, 600))));
+  const clubIds = Object.keys(s.teams).sort((a, b) => tname(s.teams, a).localeCompare(tname(s.teams, b)));
+  const cells = useMemo(() => {
+    const z = ZONE_ROWS.map(() => ZONE_COLS.map(() => ({ n: 0, g: 0, xg: 0 })));
+    for (const m of Object.values(s.matches)) for (const x of m.shots || []) {
+      if (x.sit === "pen") continue;
+      const tid = x.t === "h" ? m.home : m.away, opp = x.t === "h" ? m.away : m.home;
+      if (club && (side === "for" ? tid : opp) !== club) continue;
+      if (nat !== "all") { const n = idx[x.p] && idx[x.p].nat; if (!n || (nat === "ind") !== isIndian(n)) continue; }
+      const at = moreZoneOf(x);
+      if (!at) continue;
+      const c = z[at[0]][at[1]];
+      c.n += 1; c.xg += Model.xg(x); if (x.out === "goal") c.g += 1;
+    }
+    return z;
+  }, [s.matches, idx, club, side, nat]);
+  const val = (c) => (zm === "shots" ? c.n : zm === "xg" ? c.xg : zm === "goals" ? c.g : c.n ? c.xg / c.n : null);
+  const show = (v) => (zm === "shots" || zm === "goals" ? String(v) : v.toFixed(2));
+  const all = cells.flat(), max = Math.max(0, ...all.map((c) => val(c) || 0));
+  const step = (v) => (max > 0 && v ? Math.max(1, Math.min(5, Math.ceil((v / max) * 5 - 1e-9))) : 0);
+  const total = all.reduce((t, c) => ({ n: t.n + c.n, g: t.g + c.g, xg: t.xg + c.xg }), { n: 0, g: 0, xg: 0 });
+  const vb = { x: -3, y: -4.5, w: 86, h: ZONE_DEEP + 7 }, k = W / vb.w, H = Math.round(vb.h * k), fs = 12 / k, gap = 1 / k;
+  const zx = (ci) => [ZONE_COLS[ci][0], Math.min(ZONE_COLS[ci][1], 80)], zy = (ri) => [ZONE_ROWS[ri][0], Math.min(ZONE_ROWS[ri][1], ZONE_DEEP)];
+  const name = (ri, ci) => ZONE_COLS[ci][2] + ", " + ZONE_ROWS[ri][2];
+  const t = hot.hot ? hot.hot.key.split(":").map(Number) : null, tc = t ? cells[t[0]][t[1]] : null;
+  const what = { shots: "shots", xg: "xG", goals: "goals", per: "xG per shot" }[zm];
+  const seg = (aria, items, cur, set) => h("div", { className: "seg", role: "group", "aria-label": aria }, items.map(([key, l]) =>
+    h("button", { key, type: "button", className: "seg-btn" + (cur === key ? " on" : ""), "aria-pressed": cur === key, onClick: () => set(key) }, l)));
+  const zones = [];
+  ZONE_ROWS.forEach((r, ri) => ZONE_COLS.forEach((c, ci) => {
+    const [x0, x1] = zx(ci), [y0, y1] = zy(ri), cell = cells[ri][ci], v = val(cell), z = step(v);
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, key = ri + ":" + ci;
+    zones.push(h("g", Object.assign({ key, className: "mo-zone", "data-zone": key, tabIndex: 0, role: "img",
+      "aria-label": name(ri, ci) + ": " + cell.n + (cell.n === 1 ? " shot, " : " shots, ") + cell.g + (cell.g === 1 ? " goal, " : " goals, ") + cell.xg.toFixed(2) + " xG" }, hot.on(key, (cx - vb.x) * k, (cy - vb.y) * k, null)),
+      h("rect", { className: "mo-zf" + (z ? " z" + z : ""), x: x0 + gap, y: y0 + gap, width: x1 - x0 - 2 * gap, height: y1 - y0 - 2 * gap }),
+      hot.hot && hot.hot.key === key ? h("rect", { className: "mo-zhot", x: x0 + gap, y: y0 + gap, width: x1 - x0 - 2 * gap, height: y1 - y0 - 2 * gap }) : null,
+      z ? h("text", { className: "mo-zv z" + z, x: cx, y: cy + fs * 0.36, textAnchor: "middle", style: { fontSize: fs + "px" } }, show(v)) : null));
+  }));
+  const ROWS = [];
+  ZONE_ROWS.forEach((r, ri) => ZONE_COLS.forEach((c, ci) => { const cell = cells[ri][ci]; ROWS.push({ id: ri + ":" + ci, ri, ci, zone: name(ri, ci), n: cell.n, g: cell.g, xg: cell.xg, per: cell.n ? cell.xg / cell.n : null }); }));
+  const COLS = [
+    { key: "zone", label: "Zone", get: (r) => r.ri * 10 + r.ci, fmt: (v, r) => r.zone, strong: true }, { key: "n", label: "Shots", num: true, get: (r) => r.n }, { key: "g", label: "Goals", num: true, get: (r) => r.g },
+    { key: "xg", label: "xG", num: true, get: (r) => r.xg, fmt: f2 }, { key: "per", label: "xG per shot", num: true, get: (r) => r.per, fmt: (v) => (v == null ? "\u2013" : v.toFixed(2)) },
+  ];
+  const whose = club ? (side === "for" ? tname(s.teams, club) + "'s shots" : "shots against " + tname(s.teams, club)) : "every club's shots";
+  return h(Frag, null,
+    h("div", { className: "mo-ctl" },
+      seg("Shade by", [["shots", "Shots"], ["xg", "xG"], ["goals", "Goals"], ["per", "xG per shot"]], zm, setZm),
+      h("label", { className: "mo-pick" }, h("span", { className: "sr" }, "Club"),
+        h("select", { className: "input", value: club, onChange: (e) => setClub(e.target.value) }, [h("option", { key: "", value: "" }, "All clubs")].concat(clubIds.map((id) => h("option", { key: id, value: id }, tname(s.teams, id)))))),
+      club ? seg("Whose shots", [["for", "Shots taken"], ["against", "Shots conceded"]], side, setSide) : null,
+      anyNat ? seg("Shooters", [["all", "All shooters"], ["ind", "Indian"], ["ovs", "Overseas"]], nat, setNat) : null),
+    h("div", { className: "mo-pitch" },
+      h("div", { className: "mo-chart", ref: hot.box },
+        h("svg", { viewBox: vb.x + " " + vb.y + " " + vb.w + " " + vb.h, width: W, height: H, role: "group",
+          "aria-label": "Where shots come from: " + whose + ", the attacking half in zones, each shaded by its " + what + ". " + total.n + " non-penalty shots. The table below has every zone." },
+          h("rect", { className: "turf", x: 0, y: 0, width: 80, height: ZONE_DEEP }),
+          h("g", { className: "mo-zgrid", "aria-hidden": "true" },
+            ZONE_COLS.slice(1).map((c) => h("line", { key: "c" + c[0], className: "mo-zl", x1: c[0], x2: c[0], y1: 0, y2: ZONE_DEEP })),
+            ZONE_ROWS.slice(1).map((r) => h("line", { key: "r" + r[0], className: "mo-zl", x1: 0, x2: 80, y1: r[0], y2: r[0] }))),
+          zones,
+          h("g", { "aria-hidden": "true", pointerEvents: "none" },
+            h("path", { className: "pl", d: "M0," + ZONE_DEEP + " V0 H80 V" + ZONE_DEEP }),
+            h("rect", { className: "pl", x: 18, y: 0, width: 44, height: 18 }), h("rect", { className: "pl", x: 30, y: 0, width: 20, height: 6 }),
+            h("rect", { className: "pl", x: 36, y: -2.4, width: 8, height: 2.4 }), h("path", { className: "pl", d: "M32,18 A10,10 0 0 0 48,18" }),
+            h("path", { className: "pl", d: "M1,0 A1,1 0 0 1 0,1" }), h("path", { className: "pl", d: "M79,0 A1,1 0 0 0 80,1" }))),
+        tc ? h(MoreTip, { hot: hot.hot, W }, h("strong", null, name(t[0], t[1])), moreRow("Shots", tc.n), moreRow("Goals", tc.g), moreRow("xG", f2(tc.xg)),
+          moreRow("xG per shot", tc.n ? (tc.xg / tc.n).toFixed(2) : "\u2013", true)) : null)),
+    h("div", { className: "legend" },
+      h("span", null, "Lower", h("span", { className: "mo-ramp", "aria-hidden": "true" }, [1, 2, 3, 4, 5].map((z) => h("i", { key: z, className: "z" + z }))), "Higher " + what),
+      h("span", null, total.n + " non-penalty shots \u00b7 " + total.g + (total.g === 1 ? " goal \u00b7 " : " goals \u00b7 ") + f2(total.xg) + " xG")),
+    h("p", { className: "mo-key" }, "Bands of six yards out from the goal line, the last everything from 30 yards out. Each shade is a fifth of the highest zone's number. Penalties are left out."),
+    moreTable("The " + ROWS.length + " zones as a table", h(SortTable, { cols: COLS, rows: ROWS, initial: { key: "n", dir: -1 }, rowKey: (r) => r.id, caption: "Non-penalty shots by zone: " + whose })));
+}
+
+/* FORM: a small chart for each club, its non-penalty xG difference in each match as a bar (up when it made more than it gave
+   away), and the average over its last three matches as a line; every club on one scale, the best run first */
+function MoreForm({ s, clubs, nav }) {
+  const hot = useMoreHot();
+  const W = Math.max(300, Math.round(useWidth(hot.box, 1000)));
+  const cols = W >= 980 ? 4 : W >= 700 ? 3 : 2, gapX = 14, gapY = 10, pw = Math.floor((W - gapX * (cols - 1)) / cols);
+  const rows = useMemo(() => Object.values(clubs).filter((c) => c.games.length && s.teams[c.id]).map((c) => {
+    const games = c.games.map((g, i, a) => { const last = a.slice(Math.max(0, i - 2), i + 1); return Object.assign({}, g, { d: g.f - g.ag, roll: last.reduce((t, y) => t + (y.f - y.ag), 0) / last.length }); });
+    return { id: c.id, name: tname(s.teams, c.id), short: tshort(s.teams, c.id), games, now: games[games.length - 1].roll, per: (c.npxg - c.npxga) / c.mp, mp: c.mp };
+  }).sort((a, b) => b.now - a.now || a.name.localeCompare(b.name)), [clubs, s.teams]);
+  if (!rows.length) return h("div", { className: "empty" }, h("strong", null, "No matches yet"), "The chart needs a match with a shot.");
+  const N = Math.max(6, ...rows.map((r) => r.games.length));
+  const R = Math.max(0.5, Math.ceil(Math.max(...rows.flatMap((r) => r.games.map((g) => Math.abs(g.d)))) * 2) / 2);
+  const head = 30, ph = 112, foot = 16, PH = head + ph + foot, gut = 30;
+  const slot = (pw - gut - 2) / N, bw = Math.max(4, Math.min(26, slot * 0.62)), mid = head + ph / 2, half = ph / 2 - 6;
+  const bx = (i) => gut + i * slot + slot / 2, by = (v) => mid - (v / R) * half;
+  const tick = (v) => (v > 0 ? "+" : v < 0 ? MINUS : "") + moreTick(Math.abs(v));
+  const t = hot.hot ? hot.hot.key.split("|") : null, tr = t ? rows.find((r) => r.id === t[0]) : null, tg = tr ? tr.games[+t[1]] : null;
+  const where = (i) => ({ x: (i % cols) * (pw + gapX), y: Math.floor(i / cols) * (PH + gapY) });
+  const wide = pw >= 220;
+  const COLS = [
+    { key: "name", label: "Club", get: (r) => r.name, strong: true }, { key: "mp", label: "Matches", num: true, get: (r) => r.mp },
+    { key: "per", label: "npxG difference per match", num: true, get: (r) => r.per, fmt: signed }, { key: "now", label: "Last three matches", num: true, get: (r) => r.now, fmt: signed },
+  ];
+  return h(Frag, null,
+    h("div", { className: "legend start" },
+      h("span", null, h("i", { className: "mo-sw pos" }), "Made more than it gave away"), h("span", null, h("i", { className: "mo-sw neg" }), "Gave away more"),
+      h("span", null, h("i", { className: "mo-line" }), "Average of the last three matches")),
+    h("div", { className: "mo-chart mo-form", ref: hot.box, style: { height: Math.ceil(rows.length / cols) * (PH + gapY) - gapY } },
+      rows.map((r, i) => {
+        const at = where(i);
+        const pts = r.games.map((g, j) => bx(j).toFixed(1) + "," + by(g.roll).toFixed(1)).join(" ");
+        return h("div", { key: r.id, className: "mo-panel", "data-club": r.id, style: { left: at.x, top: at.y, width: pw, height: PH } },
+          h("svg", { viewBox: "0 0 " + pw + " " + PH, width: pw, height: PH, role: "group",
+            "aria-label": r.name + ": non-penalty xG difference in each of its " + r.games.length + " matches, " + signed(r.now) + " a match over the last three" },
+            CLUB_CRESTS[r.id] ? h("image", { className: "ar-crest" + (CREST_OUTLINE.has(r.id) ? " edge" : ""), href: CLUB_CRESTS[r.id], x: 0, y: 4, width: 20, height: 20 }) : null,
+            h("text", { className: "mo-pn", x: CLUB_CRESTS[r.id] ? 26 : 0, y: 19 }, r.short),
+            h("text", { className: "mo-pv", x: pw, y: 19, textAnchor: "end" }, (wide ? "Last three " : "") + signed(r.now)),
+            [R, 0, -R].map((v) => h("text", { key: "t" + v, className: "ar-tick mo-pt", x: gut - 6, y: by(v) + 3.5, textAnchor: "end" }, tick(v))),
+            h("line", { className: "ar-grid", x1: gut, x2: pw, y1: by(R), y2: by(R) }), h("line", { className: "ar-grid", x1: gut, x2: pw, y1: by(-R), y2: by(-R) }),
+            h("line", { className: "ar-axis", x1: gut, x2: pw, y1: mid, y2: mid }),
+            r.games.map((g, j) => {
+              const key = r.id + "|" + j, y0 = by(Math.max(g.d, 0)), y1 = by(Math.min(g.d, 0));
+              return h("a", Object.assign({ key, href: nav.href({ tab: "matches", matchId: g.mid }), className: "mo-mark",
+                "aria-label": "vs " + tname(s.teams, g.opp) + (g.home ? " at home: " : " away: ") + f2(g.f) + " to " + f2(g.ag) + " npxG, " + signed(g.d) },
+                hot.on(key, at.x + bx(j), at.y + by(g.d), () => nav.go({ tab: "matches", matchId: g.mid }))),
+                h("rect", { className: "mo-hit", x: bx(j) - slot / 2, y: head, width: slot, height: ph }),
+                h("rect", { className: (g.d >= 0 ? "mo-pos" : "mo-neg") + (hot.hot && hot.hot.key === key ? " hot" : ""), x: bx(j) - bw / 2, y: y0, width: bw, height: Math.max(1, y1 - y0), rx: 1.5 }),
+                slot >= 30 ? h("text", { className: "mo-px", x: bx(j), y: head + ph + 12, textAnchor: "middle" }, tshort(s.teams, g.opp)) : null);
+            }),
+            h("polyline", { className: "mo-roll-halo", points: pts }),
+            h("polyline", { className: "mo-roll", points: pts }),
+            r.games.map((g, j) => h("circle", { key: "p" + j, className: "mo-rollp", cx: bx(j), cy: by(g.roll), r: 2.4 }))));
+      }),
+      tg ? h(MoreTip, { hot: hot.hot, W }, h("strong", null, "vs " + tname(s.teams, tg.opp)), h("span", { className: "ar-soft" }, tr.name + " \u00b7 " + (tg.home ? "home" : "away") + (tg.date ? " \u00b7 " + fmtDate(tg.date) : "")),
+        moreRow("npxG", f2(tg.f) + " \u2013 " + f2(tg.ag)), moreRow("Difference", signed(tg.d)), moreRow("Last three average", signed(tg.roll), true), moreGo(hot.hot.touch, "the match")) : null),
+    h("p", { className: "mo-key" }, "Each bar is one match: the club's non-penalty xG minus the other side's. The line averages it over the last three matches (fewer at the start). Every club is on the same scale, the best run first."),
+    moreTable("The " + rows.length + " clubs as a table", h(SortTable, { cols: COLS, rows, initial: { key: "now", dir: -1 }, rowKey: (r) => r.id,
+      onRow: (id) => nav.go({ tab: "teams", item: id }), rowHref: (id) => nav.href({ tab: "teams", item: id }), caption: "Every club's non-penalty xG difference" })));
+}
+
+/* The Visualiser tab. At the top of its card, what the tab shows, in two groups, with the title (which follows it) under them:
+   Charts
+     Goal threat         the chart: every club (as it opens), or only the players of the clubs picked from the chips, every
+                         one of them, each club's dots in its own colour, shown on its chip
+     Attack vs defence   every club's non-penalty xG for and against a match (MoreAttack)
+     Indian vs overseas  each club's npxG, xA or minutes split by nationality (MoreShare), offered once the squads set any
+     Finishing           players' goals against their xG, or keepers' goals let in against xGOT faced (MoreFinish)
+     Shot zones          where the shots come from (MoreZones)
+     Form                each club's npxG difference, match by match (MoreForm)
+   Head to head
+     Player vs player    players picked from the club menu (ArchMenu), or from its All players, compared in a table (ArchCompare)
+     Keeper vs keeper    keepers picked the same way, compared on the Keepers tab's numbers
+     Team vs team        clubs picked from the clubs' menu, compared on the club's season
+   Each head-to-head starts with two sides and takes up to five. Each keeps what was picked in it, as each chart keeps its
+   switches. Under the goal threat chart, the four lists and the table follow whose chart it is and the clubs picked on it.
+   The other views have nothing under their card but the page's foot: the lists and the table stay in the page, hidden, so a
+   table opened (and sorted) under the chart is still that way on coming back. The chart stays in the page (hidden) under
+   the others, so it keeps its measurements. */
 function VisualiserView({ s, idx, agg }) {
   const nav = useContext(NavCtx);
   const rows = useMemo(() => archetypeRows(s, idx, agg), [s, idx, agg]);
@@ -4210,13 +4792,18 @@ function VisualiserView({ s, idx, agg }) {
   const keeperClubs = useMemo(() => [...new Set(keeperRows.map((r) => r.team))].sort((a, b) => tname(s.teams, a).localeCompare(tname(s.teams, b))), [keeperRows, s.teams]);
   /* the player menu's All players: everyone tagged for a shot, A to Z */
   const everyone = useMemo(() => allRows.filter((r) => r.tagged).sort((a, b) => a.name.localeCompare(b.name)), [allRows]);
-  const [mode, setMode] = useState(() => ({ clubs: "chart", find: "chart", vs: "players" }[ARCH_MEMO.mode] || ARCH_MEMO.mode));
+  /* the other charts' numbers: each club's season, and the split by nationality (its chart is offered once any is set) */
+  const anyNat = useMemo(() => Object.values(idx).some((p) => p && p.nat), [idx]);
+  const clubSeason = useMemo(() => moreClubs(s), [s.matches]);
+  const share = useMemo(() => moreShare(s, idx), [s.matches, idx]);
+  const [modeRaw, setMode] = useState(() => ({ clubs: "chart", find: "chart", vs: "players" }[ARCH_MEMO.mode] || ARCH_MEMO.mode));
+  const mode = modeRaw === "share" && !anyNat ? "chart" : modeRaw;
   const [clubsAll, setClubs] = useState(ARCH_MEMO.clubs);
   const [kits, setKits] = useState(ARCH_MEMO.kits);
   const [vsAll, setVs] = useState(ARCH_MEMO.vs);
   const [gvAll, setGv] = useState(ARCH_MEMO.gv);
   const [tvAll, setTv] = useState(ARCH_MEMO.tv);
-  useEffect(() => { Object.assign(ARCH_MEMO, { mode, whose: whoseRaw, clubs: clubsAll, kits, vs: vsAll, gv: gvAll, tv: tvAll }); }, [mode, whoseRaw, clubsAll, kits, vsAll, gvAll, tvAll]);
+  useEffect(() => { Object.assign(ARCH_MEMO, { mode: modeRaw, whose: whoseRaw, clubs: clubsAll, kits, vs: vsAll, gv: gvAll, tv: tvAll }); }, [modeRaw, whoseRaw, clubsAll, kits, vsAll, gvAll, tvAll]);
   /* only players, keepers and clubs the page still has count (a later upload can change who is on the chart) */
   const playable = (id) => !!(id && byIdAll[id] && (byIdAll[id].mins || byIdAll[id].tagged));
   const clubs = clubsAll.filter((id) => clubIds.includes(id)).slice(0, ARCH_CLUBS), vs = vsAll.map((id) => (playable(id) ? id : null));
@@ -4300,11 +4887,15 @@ function VisualiserView({ s, idx, agg }) {
       h("circle", { className: "ar-ring" + (d.fl || d.cr ? " flag" : "") + (d.kc ? " club-colors" : ""), style: archKitStyle(d.kc), cx: d.x, cy: d.y, r: d.rad + 1.5 }));
   }
 
-  /* what the tab shows, next to the title (which follows it), and under it the picking for that */
-  const modes = [["chart", "Chart"], ["players", "Player vs player"], ["keepers", "Keeper vs keeper"], ["teams", "Team vs team"]];
-  const title = { chart: "Goal threat and chance creation", players: "Player performance", keepers: "Goalkeeper performance", teams: "Team performance" }[mode];
-  const modeSwitch = h("div", { className: "seg ar-modes", role: "group", "aria-label": "What the tab shows" }, modes.map(([k, l]) =>
-    h("button", { key: k, type: "button", className: "seg-btn" + (mode === k ? " on" : ""), "aria-pressed": mode === k, onClick: () => setMode(k) }, l)));
+  /* what the tab shows, in two groups above the title (which follows it), and under the title the picking for that */
+  const chartViews = [["chart", "Goal threat"], ["attack", "Attack vs defence"]].concat(anyNat ? [["share", "Indian vs overseas"]] : [], [["finish", "Finishing"], ["zones", "Shot zones"], ["form", "Form"]]);
+  const headViews = [["players", "Player vs player"], ["keepers", "Keeper vs keeper"], ["teams", "Team vs team"]];
+  const title = { chart: "Goal threat and chance creation", attack: "Attack vs defence", share: "Indian and overseas players", finish: "Finishing and shot-stopping",
+    zones: "Where shots come from", form: "Form", players: "Player performance", keepers: "Goalkeeper performance", teams: "Team performance" }[mode];
+  const group = (gid, label, items) => h("div", { className: "ar-group" }, h("span", { className: "ar-group-l", id: gid }, label),
+    h("div", { className: "seg ar-modes", role: "group", "aria-labelledby": gid }, items.map(([k, l]) =>
+      h("button", { key: k, type: "button", className: "seg-btn" + (mode === k ? " on" : ""), "aria-pressed": mode === k, onClick: () => setMode(k) }, l))));
+  const modeSwitch = h("div", { className: "ar-views" }, group("ar-g-charts", "Charts", chartViews), group("ar-g-heads", "Head to head", headViews));
   /* a club picked takes its colour then (archKit), against the clubs already picked; picked off, it gives it up */
   const full = clubs.length >= ARCH_CLUBS;
   const toggleClub = (id) => {
@@ -4360,7 +4951,7 @@ function VisualiserView({ s, idx, agg }) {
     const sides = gv.map((id) => (id ? byKeeper[id] : null));
     compare = h(ArchCompare, { kind: "keepers", sides, heads: sides.map((r, i) => named(r, ARCH_NTH[i] + " keeper")),
       caption: "Keeper vs keeper: " + listed(sides.map((r, i) => (r ? r.name : ARCH_NTH[i].toLowerCase() + " keeper not picked"))) });
-  } else {
+  } else if (mode === "teams") {
     tools = pickers(tv, setTv, "club", (id) => ({ clubsOnly: true, value: id ? { team: id, name: tname(s.teams, id) } : null }));
     const sides = tv.map((id) => (id ? archTeamStats(s, id) : null));
     compare = h(ArchCompare, { kind: "teams", sides,
@@ -4368,6 +4959,9 @@ function VisualiserView({ s, idx, agg }) {
         h("span", { className: "faint" }, ARCH_NTH[i] + " club"))),
       caption: "Team vs team: " + listed(tv.map((id, i) => (id ? tname(s.teams, id) : ARCH_NTH[i].toLowerCase() + " club not picked"))) });
   }
+  const more = mode === "attack" ? h(MoreAttack, { s, clubs: clubSeason, nav, fonts }) : mode === "share" ? h(MoreShare, { s, share, nav, fonts }) :
+    mode === "finish" ? h(MoreFinish, { s, idx, agg, nav, fonts }) : mode === "zones" ? h(MoreZones, { s, idx, anyNat, fonts }) :
+    mode === "form" ? h(MoreForm, { s, clubs: clubSeason, nav, fonts }) : null;
 
   /* who sits where: each quadrant's count and its leading players, each a link to their card */
   const listRows = view.mode === "clubs" ? pool : base;
@@ -4397,13 +4991,15 @@ function VisualiserView({ s, idx, agg }) {
   const n = listRows.length, them = n + (whose === "india" ? " Indian" : "") + " players";
   const who = view.mode === "clubs" ? them + " from " + clubs.map((id) => tname(s.teams, id)).join(", ") : them;
   const split = (whose === "india" ? "split where the All players chart is, at every regular's 82nd percentile of each, into " : "split at the 82nd percentile of each into ") + ARCH_ORDER.map((k) => ARCH[k].name + " (" + (chart ? chart.counts[k] : 0) + ")").join(", ") + (fifth ? "; only the top 20% of the bottom left are drawn" : "");
-  /* the title with what the tab shows beside it, the picking, then the chart with the four lists and the button that opens the
-     table under it (nothing written below the button), or the comparison with nothing under it */
+  /* what the tab shows, the title, the picking, then the chart with the four lists and the button that opens the table under it
+     (nothing written below the button), or the comparison or another chart with nothing under its card */
   return h("div", { className: "stack" },
     h("div", { className: "card stack" },
-      h("div", { className: "ar-head" }, h("h2", { className: "h2" }, title), modeSwitch),
+      modeSwitch,
+      h("div", { className: "ar-head" }, h("h2", { className: "h2" }, title)),
       tools,
       compare,
+      more,
       h("div", Object.assign({ className: "ar-chart", ref: boxRef, role: "img", hidden: mode !== "chart",
         "aria-label": "Chart of " + who + ": xA per 90 across, non-penalty xG per 90 up, " + split + ". The table below lists every player." }, pointing),
         chart ? h("div", { className: "ar-svg", dangerouslySetInnerHTML: { __html: chart.html } }) : null, ring, tipEl)),
