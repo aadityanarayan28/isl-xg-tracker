@@ -521,6 +521,10 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: 13.5px; }
 .ar-pt { fill: var(--home); stroke: var(--surface); stroke-width: 2; }
 .ar-chart a .ar-pt { cursor: pointer; }
 .ar-ring { fill: var(--home); stroke: var(--ink); stroke-width: 2.5; }
+/* a player's flag in place of his dot: edged faintly, or in his club's colour with clubs picked; pointed at, ringed */
+.ar-fl-edge { fill: none; stroke: var(--ink); stroke-opacity: 0.22; stroke-width: 0.75; }
+.ar-fl-edge.club-colors { stroke: var(--home); stroke-opacity: 1; stroke-width: 2; }
+.ar-ring.flag { fill: none; }
 .ar-lab { fill: var(--ink-2); font-size: 12px; font-weight: 500; paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; pointer-events: none; }
 .ar-tip { min-width: 190px; max-width: 250px; }
 .ar-tip strong { font-size: 13.5px; }
@@ -1743,12 +1747,12 @@ const NATIONS = ["India", "Afghanistan", "Albania", "Algeria", "Angola", "Argent
   "Bangladesh", "Belarus", "Belgium", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Brazil", "Bulgaria", "Burkina Faso", "Burundi",
   "Cameroon", "Canada", "Cape Verde", "Chile", "China", "Colombia", "Congo", "Costa Rica", "Croatia", "Cuba", "Curacao", "Cyprus",
   "Czech Republic", "Denmark", "DR Congo", "Ecuador", "Egypt", "England", "Equatorial Guinea", "Estonia", "Ethiopia", "Fiji", "Finland",
-  "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Guinea", "Guinea-Bissau", "Haiti", "Honduras", "Hungary", "Iceland",
+  "France", "French Guiana", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Guadeloupe", "Guinea", "Guinea-Bissau", "Haiti", "Honduras", "Hungary", "Iceland",
   "Indonesia", "Iran", "Iraq", "Israel", "Italy", "Ivory Coast", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kosovo", "Kuwait",
   "Kyrgyzstan", "Latvia", "Lebanon", "Liberia", "Libya", "Lithuania", "Luxembourg", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali",
-  "Malta", "Mauritania", "Mexico", "Moldova", "Mongolia", "Montenegro", "Morocco", "Mozambique", "Myanmar", "Nepal", "Netherlands",
-  "New Zealand", "Nigeria", "North Macedonia", "Northern Ireland", "Norway", "Oman", "Pakistan", "Palestine", "Panama", "Paraguay", "Peru",
-  "Philippines", "Poland", "Portugal", "Qatar", "Republic of Ireland", "Romania", "Russia", "Rwanda", "Saudi Arabia", "Scotland", "Senegal",
+  "Malta", "Martinique", "Mauritania", "Mexico", "Moldova", "Mongolia", "Montenegro", "Morocco", "Mozambique", "Myanmar", "Nepal", "Netherlands",
+  "New Zealand", "Niger", "Nigeria", "North Macedonia", "Northern Ireland", "Norway", "Oman", "Pakistan", "Palestine", "Panama", "Paraguay", "Peru",
+  "Philippines", "Poland", "Portugal", "Qatar", "Republic of Ireland", "Reunion", "Romania", "Russia", "Rwanda", "Saudi Arabia", "Scotland", "Senegal",
   "Serbia", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "South Africa", "South Korea", "Spain", "Sri Lanka", "Sudan", "Suriname",
   "Sweden", "Switzerland", "Syria", "Tajikistan", "Tanzania", "Thailand", "Togo", "Trinidad and Tobago", "Tunisia", "Turkey",
   "Turkmenistan", "Uganda", "Ukraine", "United Arab Emirates", "United States", "Uruguay", "Uzbekistan", "Venezuela", "Vietnam", "Wales",
@@ -1764,7 +1768,7 @@ const NAT_ALSO = {
   iraqi: "Iraq", irish: "Republic of Ireland", ireland: "Republic of Ireland", israeli: "Israel", italian: "Italy", ivorian: "Ivory Coast",
   "cote d'ivoire": "Ivory Coast", jamaican: "Jamaica", japanese: "Japan", jordanian: "Jordan", kenyan: "Kenya", kosovan: "Kosovo", kosovar: "Kosovo",
   kyrgyz: "Kyrgyzstan", latvian: "Latvia", lebanese: "Lebanon", liberian: "Liberia", lithuanian: "Lithuania", malaysian: "Malaysia",
-  maldivian: "Maldives", malian: "Mali", mexican: "Mexico", montenegrin: "Montenegro", moroccan: "Morocco", burmese: "Myanmar", nepali: "Nepal",
+  maldivian: "Maldives", martinican: "Martinique", guadeloupean: "Guadeloupe", reunionese: "Reunion", malian: "Mali", mexican: "Mexico", montenegrin: "Montenegro", moroccan: "Morocco", burmese: "Myanmar", nepali: "Nepal",
   nepalese: "Nepal", "new zealander": "New Zealand", nigerian: "Nigeria", macedonian: "North Macedonia", norwegian: "Norway", pakistani: "Pakistan",
   palestinian: "Palestine", paraguayan: "Paraguay", peruvian: "Peru", filipino: "Philippines", polish: "Poland", portuguese: "Portugal",
   romanian: "Romania", russian: "Russia", scottish: "Scotland", senegalese: "Senegal", serbian: "Serbia", slovak: "Slovakia", slovenian: "Slovenia",
@@ -1776,6 +1780,28 @@ const NAT_ALSO = {
 const NAT_FOLD = Object.fromEntries(NATIONS.map((n) => [fold(n), n]));
 const tidyNat = (str) => { const t = String(str || "").replace(/\s+/g, " ").trim().slice(0, 40), f = fold(t); return NAT_FOLD[f] || NAT_ALSO[f] || t; };
 const isIndian = (nat) => !!nat && tidyNat(nat) === "India";
+/* each country's code, for its flag on the Visualiser's chart */
+const NAT_CODE = {
+  India: "in", Afghanistan: "af", Albania: "al", Algeria: "dz", Angola: "ao", Argentina: "ar", Armenia: "am", Australia: "au", Austria: "at",
+  Azerbaijan: "az", Bahrain: "bh", Bangladesh: "bd", Belarus: "by", Belgium: "be", Benin: "bj", Bhutan: "bt", Bolivia: "bo",
+  "Bosnia and Herzegovina": "ba", Brazil: "br", Bulgaria: "bg", "Burkina Faso": "bf", Burundi: "bi", Cameroon: "cm", Canada: "ca",
+  "Cape Verde": "cv", Chile: "cl", China: "cn", Colombia: "co", Congo: "cg", "Costa Rica": "cr", Croatia: "hr", Cuba: "cu", Curacao: "cw",
+  Cyprus: "cy", "Czech Republic": "cz", Denmark: "dk", "DR Congo": "cd", Ecuador: "ec", Egypt: "eg", England: "gb-eng", "Equatorial Guinea": "gq",
+  Estonia: "ee", Ethiopia: "et", Fiji: "fj", Finland: "fi", France: "fr", "French Guiana": "gf", Gabon: "ga", Gambia: "gm", Georgia: "ge",
+  Germany: "de", Ghana: "gh", Greece: "gr", Guadeloupe: "gp", Guinea: "gn", "Guinea-Bissau": "gw", Haiti: "ht", Honduras: "hn", Hungary: "hu",
+  Iceland: "is", Indonesia: "id", Iran: "ir", Iraq: "iq", Israel: "il", Italy: "it", "Ivory Coast": "ci", Jamaica: "jm", Japan: "jp", Jordan: "jo",
+  Kazakhstan: "kz", Kenya: "ke", Kosovo: "xk", Kuwait: "kw", Kyrgyzstan: "kg", Latvia: "lv", Lebanon: "lb", Liberia: "lr", Libya: "ly",
+  Lithuania: "lt", Luxembourg: "lu", Madagascar: "mg", Malawi: "mw", Malaysia: "my", Maldives: "mv", Mali: "ml", Malta: "mt", Martinique: "mq",
+  Mauritania: "mr", Mexico: "mx", Moldova: "md", Mongolia: "mn", Montenegro: "me", Morocco: "ma", Mozambique: "mz", Myanmar: "mm", Nepal: "np",
+  Netherlands: "nl", "New Zealand": "nz", Niger: "ne", Nigeria: "ng", "North Macedonia": "mk", "Northern Ireland": "gb-nir", Norway: "no",
+  Oman: "om", Pakistan: "pk", Palestine: "ps", Panama: "pa", Paraguay: "py", Peru: "pe", Philippines: "ph", Poland: "pl", Portugal: "pt",
+  Qatar: "qa", "Republic of Ireland": "ie", Reunion: "re", Romania: "ro", Russia: "ru", Rwanda: "rw", "Saudi Arabia": "sa", Scotland: "gb-sct",
+  Senegal: "sn", Serbia: "rs", "Sierra Leone": "sl", Singapore: "sg", Slovakia: "sk", Slovenia: "si", "South Africa": "za", "South Korea": "kr",
+  Spain: "es", "Sri Lanka": "lk", Sudan: "sd", Suriname: "sr", Sweden: "se", Switzerland: "ch", Syria: "sy", Tajikistan: "tj", Tanzania: "tz",
+  Thailand: "th", Togo: "tg", "Trinidad and Tobago": "tt", Tunisia: "tn", Turkey: "tr", Turkmenistan: "tm", Uganda: "ug", Ukraine: "ua",
+  "United Arab Emirates": "ae", "United States": "us", Uruguay: "uy", Uzbekistan: "uz", Venezuela: "ve", Vietnam: "vn", Wales: "gb-wls",
+  Zambia: "zm", Zimbabwe: "zw",
+};
 /* only, when set, keeps the list to those players (a Set of ids); skip leaves those out */
 function PlayerPicker({ id, teams, teamId, value, onChange, placeholder, canAdd, exclude, only, skip }) {
   const team = teams[teamId];
@@ -3588,7 +3614,9 @@ function TeamDetail({ s, idx, r, close }) {
    every outfield player of theirs with a minute is on it, and one too far out for the scale sits at its edge, with an arrow.
    A player the page has no name for (a public file saved before line-up players were named) is left off too.
    Whose chart: All players, or Indian players (offered once the squads say who is Indian). The Indian players' chart is
-   theirs alone: the regulars among them, with axes and dashed lines from them, and with clubs picked, theirs only.
+   theirs alone: the regulars among them, with axes from them and the dashed lines fixed at 0.2 npxG/90 and 0.2 xA/90, and
+   with clubs picked, theirs only. On the All players chart a player whose country is known is drawn as its round flag, a
+   little bigger than a dot.
    Both axes use a square-root scale, which spreads out the many players near zero (a player's quadrant does not depend on it);
    the page does not spell that out. The 82nd percentile and the square root are the chart, with no switches for them. Pointing
    at a dot shows the player's numbers; clicking it (on a touch screen, a second tap) opens their card on Players, and each dot
@@ -3605,9 +3633,14 @@ const ARCH = {
 const ARCH_ORDER = ["HH", "HL", "LH", "LL"];
 const ARCH_MIN = 270;
 const ARCH_CLUBS = 3;                                        // the most clubs picked on the chart at once
+const ARCH_INDIA_CUT = { x: 0.2, y: 0.2 };                   // the Indian players' chart's dashed lines: xA/90 and npxG/90
 const ARCH_PCT = 0.82;                                       // where the dashed lines go: this percentile of each measure
 const ARCH_LL_SHOWN = 0.2;                                   // the share of the bottom left drawn: its top fifth
 const ARCH_R = 4.5;                                          // a dot's radius
+/* a player's flag: his country's round flag (circle-flags, MIT licensed, one small file a country, a pinned version) */
+const ARCH_FLAGS = "https://cdn.jsdelivr.net/npm/circle-flags@2.8.3/flags/";
+const ARCH_FR = 7.5;                                         // a flag's radius (one less on a phone)
+const archFlag = (nat) => { const c = nat ? NAT_CODE[tidyNat(nat)] : null; return c ? ARCH_FLAGS + c + ".svg" : null; };
 const archQuad = (r, c) => (r.npxg90 >= c.y ? "H" : "L") + (r.xa90 >= c.x ? "H" : "L");
 
 /* the players on the chart, from the season totals: minutes from the line-ups (agg.played), xG and xA from the shots. Those
@@ -3714,6 +3747,8 @@ const archKitStyle = (k) => (k ? { "--ch-l": k[0], "--ch-d": k[1] } : undefined)
                               corners, with names for as many as fit
    The scale is the regulars' (rows), so a player of a picked club with few minutes can be too far out for it: his dot sits at
    the edge he is beyond (off), with a small arrow past it pointing the way.
+   With flags, a player whose country is known (archFlag) is drawn as its flag in place of his dot, over a dot of the same
+   size that shows if the flag cannot load, edged faintly, or in his club's colour with clubs picked; names keep clear of it.
  */
 function archChart(rows, cut, scale, W, hrefOf, view) {
   const v = view || { mode: "all" };
@@ -3757,17 +3792,19 @@ function archChart(rows, cut, scale, W, hrefOf, view) {
   const counts = { HH: 0, HL: 0, LH: 0, LL: 0 };
   for (const r of pool) counts[archQuad(r, cut)] += 1;
   const drawn = v.mode === "clubs" ? pool : rows.filter((r) => archQuad(r, cut) !== "LL" || ll.shown.has(r.id));
+  const FR = narrow ? ARCH_FR - 1 : ARCH_FR;
   const dots = drawn.map((r) => {
+    const fl = v.flags ? archFlag(r.nat) : null, rad = fl ? FR : R;
     const offX = r.xa90 > XMAX, offY = r.npxg90 > YMAX;
-    return { r, x: offX ? m.l + pw - R - 1 : sx(r.xa90), y: offY ? m.t + R + 1 : sy(r.npxg90), off: offX || offY ? [offX, offY] : null,
+    return { r, fl, rad, x: offX ? m.l + pw - rad - 1 : sx(r.xa90), y: offY ? m.t + rad + 1 : sy(r.npxg90), off: offX || offY ? [offX, offY] : null,
       q: archQuad(r, cut), href: hrefOf(r), kc: v.mode === "clubs" && v.kit ? v.kit(r.team) : null };
   });
-  const onDot = (b, except) => dots.some((d) => d !== except && Math.hypot(Math.min(Math.max(d.x, b.x0), b.x1) - d.x, Math.min(Math.max(d.y, b.y0), b.y1) - d.y) < R + 1.5);
+  const onDot = (b, except) => dots.some((d) => d !== except && Math.hypot(Math.min(Math.max(d.x, b.x0), b.x1) - d.x, Math.min(Math.max(d.y, b.y0), b.y1) - d.y) < d.rad + 1.5);
   const inPlot = (b) => b.x0 >= m.l + 3 && b.x1 <= m.l + pw - 3 && b.y0 >= m.t + 2 && b.y1 <= m.t + ph - 3;
   const score = (d) => archScore(d.r, cut);
   const put = (b, t, cls) => { taken.push(b); out.push('<text class="' + cls + '" x="' + b.x0.toFixed(1) + '" y="' + (b.y0 + 11).toFixed(1) + '">' + archEsc(t) + "</text>"); return true; };
   const label = (d, font, cls) => {
-    const t = archShortName(d.r.name), w = archMeasure(t, font), hh = 14;
+    const t = archShortName(d.r.name), w = archMeasure(t, font), hh = 14, R = d.rad;
     const spots = [[R + 4, -hh / 2], [-R - 4 - w, -hh / 2], [-w / 2, -R - 3 - hh], [-w / 2, R + 3], [R + 1, -R - hh + 1], [-R - 1 - w, -R - hh + 1], [R + 1, R - 1], [-R - 1 - w, R - 1]];
     for (const [dx, dy] of spots) {
       const b = { x0: d.x + dx, x1: d.x + dx + w, y0: d.y + dy, y1: d.y + dy + hh };
@@ -3817,8 +3854,11 @@ function archChart(rows, cut, scale, W, hrefOf, view) {
 
   /* the dots, the busiest first so the standouts sit on top; each is a link to the player's card where they have one */
   for (const d of dots.slice().sort((a, b) => score(a) - score(b))) {
-    const c = '<circle class="ar-pt' + (d.kc ? ' club-colors" style="--ch-l:' + d.kc[0] + ";--ch-d:" + d.kc[1] : "") + '" cx="' + d.x.toFixed(1) + '" cy="' + d.y.toFixed(1) + '" r="' + R + '"/>';
-    out.push(d.href ? '<a href="' + archEsc(d.href) + '" aria-label="' + archEsc(d.r.name) + '">' + c + "</a>" : c);
+    const kc = d.kc ? ' club-colors" style="--ch-l:' + d.kc[0] + ";--ch-d:" + d.kc[1] : "", cx = d.x.toFixed(1), cy = d.y.toFixed(1);
+    let c = '<circle class="ar-pt' + kc + '" cx="' + cx + '" cy="' + cy + '" r="' + d.rad + '"/>';
+    if (d.fl) c += '<image class="ar-fl" href="' + d.fl + '" x="' + (d.x - d.rad).toFixed(1) + '" y="' + (d.y - d.rad).toFixed(1) + '" width="' + 2 * d.rad + '" height="' + 2 * d.rad + '"/>' +
+      '<circle class="ar-fl-edge' + kc + '" cx="' + cx + '" cy="' + cy + '" r="' + d.rad + '"/>';
+    out.push(d.href ? '<a href="' + archEsc(d.href) + '" aria-label="' + archEsc(d.r.name) + '">' + c + "</a>" : d.fl ? "<g>" + c + "</g>" : c);
   }
   out.push(...late);
   /* the arrows for a player too far out for the scale: in the margin past the edge his dot sits at */
@@ -4125,7 +4165,7 @@ function VisualiserView({ s, idx, agg }) {
   const whose = anyIndian && whoseRaw === "india" ? "india" : "all";
   const base = useMemo(() => (whose === "india" ? rows.filter((r) => isIndian(r.nat)) : rows), [rows, whose]);
   const baseEvery = useMemo(() => (whose === "india" ? everyRows.filter((r) => isIndian(r.nat)) : everyRows), [everyRows, whose]);
-  const cut = useMemo(() => (base.length ? archCut(base) : null), [base]);
+  const cut = useMemo(() => (!base.length ? null : whose === "india" ? ARCH_INDIA_CUT : archCut(base)), [base, whose]);
   const byId = useMemo(() => Object.fromEntries(everyRows.map((r) => [r.id, r])), [everyRows]);
   const allRows = useMemo(() => archAllRows(s, idx, agg, rows), [s, idx, agg, rows]);
   const byIdAll = useMemo(() => Object.fromEntries(allRows.map((r) => [r.id, r])), [allRows]);
@@ -4159,8 +4199,9 @@ function VisualiserView({ s, idx, agg }) {
   const clubSet = new Set(clubs);
   const pool = clubs.length ? baseEvery.filter((r) => clubSet.has(r.team)) : base;
   const kitOf = (team) => archKitColours(team, kits[team] || 0);
-  const view = clubs.length ? { mode: "clubs", pool, kit: kitOf } : { mode: "all" };
-  const viewKey = view.mode + ":" + clubs.map((c) => c + "." + (kits[c] || 0)).join(",");
+  /* flags on the All players chart (on the Indian players' they would all be India's) */
+  const view = Object.assign(clubs.length ? { mode: "clubs", pool, kit: kitOf } : { mode: "all" }, whose === "all" ? { flags: true } : {});
+  const viewKey = whose + "|" + view.mode + ":" + clubs.map((c) => c + "." + (kits[c] || 0)).join(",");
   const chart = useMemo(() => (cut && width > 0 ? archChart(base, cut, "sqrt", Math.max(300, Math.round(width)), cardHref, view) : null), [base, cut, width, fonts, viewKey]);
   /* the player being pointed at (or, on a touch screen, tapped): an index into chart.dots */
   const [tip, setTip] = useState(null);
@@ -4212,7 +4253,7 @@ function VisualiserView({ s, idx, agg }) {
     const left = px > cw * 0.6, below = py < 140;
     tipEl = h("div", { className: "tip ar-tip", style: { left: px, top: py, transform: "translate(" + (left ? "calc(-100% - 14px)" : "14px") + ", " + (below ? "14px" : "calc(-100% - 12px)") + ")" } },
       h("strong", null, r.name),
-      h("span", { className: "ar-soft" }, r.club + " \u00b7 " + r.mins.toLocaleString("en-US") + " min"),
+      h("span", { className: "ar-soft" }, r.club + (r.nat ? " \u00b7 " + tidyNat(r.nat) : "") + " \u00b7 " + r.mins.toLocaleString("en-US") + " min"),
       h("span", { className: "ar-row" }, h("span", null, "npxG/90"), h("b", null, r.npxg90.toFixed(2))),
       h("span", { className: "ar-row" }, h("span", null, "xA/90"), h("b", null, r.xa90.toFixed(2))),
       h("span", { className: "ar-row ar-soft" }, h("span", null, "npxG, xA"), h("span", null, r.npxg.toFixed(2) + ", " + r.xa.toFixed(2))),
@@ -4220,7 +4261,7 @@ function VisualiserView({ s, idx, agg }) {
       d.off ? h("span", { className: "ar-note" }, "Too far out for the scale, so drawn at its edge") : null,
       d.href ? h("span", { className: "ar-go" }, (tip.touch ? "Tap again" : "Click") + " to see their " + (r.sh ? "shot map" : "numbers on Players")) : null);
     ring = h("svg", { className: "ar-hot", viewBox: "0 0 " + chart.W + " " + chart.H, "aria-hidden": "true" },
-      h("circle", { className: "ar-ring" + (d.kc ? " club-colors" : ""), style: archKitStyle(d.kc), cx: d.x, cy: d.y, r: ARCH_R + 1.5 }));
+      h("circle", { className: "ar-ring" + (d.fl ? " flag" : "") + (d.kc ? " club-colors" : ""), style: archKitStyle(d.kc), cx: d.x, cy: d.y, r: d.rad + 1.5 }));
   }
 
   /* what the tab shows, next to the title (which follows it), and under it the picking for that */
@@ -4319,7 +4360,7 @@ function VisualiserView({ s, idx, agg }) {
   ];
   const n = listRows.length, them = n + (whose === "india" ? " Indian" : "") + " players";
   const who = view.mode === "clubs" ? them + " from " + clubs.map((id) => tname(s.teams, id)).join(", ") : them;
-  const split = "split at the 82nd percentile of each into " + ARCH_ORDER.map((k) => ARCH[k].name + " (" + (chart ? chart.counts[k] : 0) + ")").join(", ") + (fifth ? "; only the top 20% of the bottom left are drawn" : "");
+  const split = (whose === "india" ? "split at 0.2 of each into " : "split at the 82nd percentile of each into ") + ARCH_ORDER.map((k) => ARCH[k].name + " (" + (chart ? chart.counts[k] : 0) + ")").join(", ") + (fifth ? "; only the top 20% of the bottom left are drawn" : "");
   /* the title with what the tab shows beside it, the picking, then the chart with the four lists and the button that opens the
      table under it (nothing written below the button), or the comparison with nothing under it */
   return h("div", { className: "stack" },
