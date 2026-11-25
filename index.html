@@ -546,6 +546,8 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: 13.5px; }
 /* what the tab shows, beside its title, and the picking for it under them: the club chips for the chart, or a menu for each
    side of a head-to-head. On a phone the club chips sit in one row that scrolls sideways, out to the screen's edges. */
 .ar-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+/* whose chart, above the chips: All players or Indian players */
+.ar-whose { align-self: flex-start; }
 .ar-chips { display: flex; flex-wrap: wrap; gap: 5px; }
 .ar-chip { appearance: none; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; min-height: 32px; padding: 4px 9px; border: 1px solid var(--line-2); border-radius: 999px; background: var(--surface); color: var(--ink); font-size: 13px; font-weight: 500; white-space: nowrap; flex: none; }
 .ar-chip:hover { border-color: var(--ink-2); }
@@ -1029,7 +1031,8 @@ const Reader = (() => {
   /* what goes public: finished matches only, every club's name, and only the players who appear in those matches
      (shooters, the players who set them up, keepers, anyone who put the ball into his own net, and anyone in a line-up). A
      match's line-ups go too, where they are in, so the public page can count matches and minutes, and the Visualiser can
-     place every regular player, those who never shot included. */
+     place every regular player, those who never shot included. A player's nationality goes too, where his squad has it (the
+     Visualiser's chart of the Indian players). */
   function data(teams, matches, now) {
     const outM = {}, used = new Set();
     for (const id of Object.keys(matches)) {
@@ -1055,7 +1058,7 @@ const Reader = (() => {
     const outT = {};
     for (const id of Object.keys(teams)) {
       const t = teams[id];
-      outT[id] = { name: t.name, short: t.short, players: (t.players || []).filter((p) => used.has(p.id)).map((p) => ({ id: p.id, name: p.name, num: p.num })) };
+      outT[id] = { name: t.name, short: t.short, players: (t.players || []).filter((p) => used.has(p.id)).map((p) => (p.nat ? { id: p.id, name: p.name, num: p.num, nat: p.nat } : { id: p.id, name: p.name, num: p.num })) };
     }
     return { v: 1, generated: now, teams: outT, matches: outM };
   }
@@ -1309,7 +1312,7 @@ const Store = (() => {
     if (kind === "teams") {
       const name = str(d.name, 60) || "Unnamed club";
       const players = (Array.isArray(d.players) ? d.players : []).filter((p) => p && idOrNull(p.id))
-        .map((p) => ({ id: p.id, name: str(p.name, 80) || "Unnamed player", num: numOrNull(p.num) }));
+        .map((p) => { const q = { id: p.id, name: str(p.name, 80) || "Unnamed player", num: numOrNull(p.num) }, nat = str(p.nat, 40).trim(); if (nat) q.nat = nat; return q; });
       return { name, short: str(d.short, 6) || name.slice(0, 3).toUpperCase(), players, rev };
     }
     const gk = d.gk && typeof d.gk === "object" ? d.gk : {};
@@ -1440,9 +1443,13 @@ const Store = (() => {
     put("teams", id, { name: clean, short: code, players: [] });
     return id;
   }
-  function addPlayer(teamId, name, num) {
+  function addPlayer(teamId, name, num, nat) {
     const pid = uid(teamId + "_");
-    updateTeam(teamId, (t) => { t.players.push({ id: pid, name: String(name).trim().slice(0, 80), num: num === "" || num == null ? null : Number(num) }); });
+    updateTeam(teamId, (t) => {
+      const p = { id: pid, name: String(name).trim().slice(0, 80), num: num === "" || num == null ? null : Number(num) };
+      if (nat) p.nat = String(nat).trim().slice(0, 40);
+      t.players.push(p);
+    });
     return pid;
   }
 
@@ -1625,7 +1632,7 @@ function describeSpot(x, y) {
 }
 function buildIndex(teams) {
   const idx = {};
-  for (const tid of Object.keys(teams)) for (const p of teams[tid].players) idx[p.id] = { id: p.id, name: p.name, num: p.num, team: tid };
+  for (const tid of Object.keys(teams)) for (const p of teams[tid].players) idx[p.id] = { id: p.id, name: p.name, num: p.num, team: tid, nat: p.nat || null };
   return idx;
 }
 const pname = (idx, id) => (!id ? "" : idx[id] ? idx[id].name : "Unknown player");
@@ -1730,6 +1737,45 @@ function ConfirmButton({ label, ask, yes, onYes, className, disabled, title }) {
 /* ---------- player picker: type to search a squad, or add someone new ---------- */
 const fold = (str) => String(str).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 const tidyName = (str) => String(str).replace(/\s+/g, " ").trim().slice(0, 80);
+/* a player's nationality, as his country: the list offered while typing one (India first), and the other words for a country
+   (the people's, or a short form), so "Indian" or "india" is kept as India. Anything else is kept as typed. */
+const NATIONS = ["India", "Afghanistan", "Albania", "Algeria", "Angola", "Argentina", "Armenia", "Australia", "Austria", "Azerbaijan", "Bahrain",
+  "Bangladesh", "Belarus", "Belgium", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Brazil", "Bulgaria", "Burkina Faso", "Burundi",
+  "Cameroon", "Canada", "Cape Verde", "Chile", "China", "Colombia", "Congo", "Costa Rica", "Croatia", "Cuba", "Curacao", "Cyprus",
+  "Czech Republic", "Denmark", "DR Congo", "Ecuador", "Egypt", "England", "Equatorial Guinea", "Estonia", "Ethiopia", "Fiji", "Finland",
+  "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Guinea", "Guinea-Bissau", "Haiti", "Honduras", "Hungary", "Iceland",
+  "Indonesia", "Iran", "Iraq", "Israel", "Italy", "Ivory Coast", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kosovo", "Kuwait",
+  "Kyrgyzstan", "Latvia", "Lebanon", "Liberia", "Libya", "Lithuania", "Luxembourg", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali",
+  "Malta", "Mauritania", "Mexico", "Moldova", "Mongolia", "Montenegro", "Morocco", "Mozambique", "Myanmar", "Nepal", "Netherlands",
+  "New Zealand", "Nigeria", "North Macedonia", "Northern Ireland", "Norway", "Oman", "Pakistan", "Palestine", "Panama", "Paraguay", "Peru",
+  "Philippines", "Poland", "Portugal", "Qatar", "Republic of Ireland", "Romania", "Russia", "Rwanda", "Saudi Arabia", "Scotland", "Senegal",
+  "Serbia", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "South Africa", "South Korea", "Spain", "Sri Lanka", "Sudan", "Suriname",
+  "Sweden", "Switzerland", "Syria", "Tajikistan", "Tanzania", "Thailand", "Togo", "Trinidad and Tobago", "Tunisia", "Turkey",
+  "Turkmenistan", "Uganda", "Ukraine", "United Arab Emirates", "United States", "Uruguay", "Uzbekistan", "Venezuela", "Vietnam", "Wales",
+  "Zambia", "Zimbabwe"];
+const NAT_ALSO = {
+  indian: "India", ind: "India", afghan: "Afghanistan", albanian: "Albania", algerian: "Algeria", argentine: "Argentina", argentinian: "Argentina",
+  armenian: "Armenia", australian: "Australia", austrian: "Austria", bangladeshi: "Bangladesh", belgian: "Belgium", bhutanese: "Bhutan",
+  bosnian: "Bosnia and Herzegovina", brazilian: "Brazil", bulgarian: "Bulgaria", cameroonian: "Cameroon", canadian: "Canada", chilean: "Chile",
+  colombian: "Colombia", "costa rican": "Costa Rica", croatian: "Croatia", cypriot: "Cyprus", czech: "Czech Republic", danish: "Denmark",
+  dutch: "Netherlands", ecuadorian: "Ecuador", egyptian: "Egypt", english: "England", estonian: "Estonia", ethiopian: "Ethiopia", finnish: "Finland",
+  french: "France", gabonese: "Gabon", gambian: "Gambia", georgian: "Georgia", german: "Germany", ghanaian: "Ghana", greek: "Greece",
+  guinean: "Guinea", haitian: "Haiti", honduran: "Honduras", hungarian: "Hungary", icelandic: "Iceland", indonesian: "Indonesia", iranian: "Iran",
+  iraqi: "Iraq", irish: "Republic of Ireland", ireland: "Republic of Ireland", israeli: "Israel", italian: "Italy", ivorian: "Ivory Coast",
+  "cote d'ivoire": "Ivory Coast", jamaican: "Jamaica", japanese: "Japan", jordanian: "Jordan", kenyan: "Kenya", kosovan: "Kosovo", kosovar: "Kosovo",
+  kyrgyz: "Kyrgyzstan", latvian: "Latvia", lebanese: "Lebanon", liberian: "Liberia", lithuanian: "Lithuania", malaysian: "Malaysia",
+  maldivian: "Maldives", malian: "Mali", mexican: "Mexico", montenegrin: "Montenegro", moroccan: "Morocco", burmese: "Myanmar", nepali: "Nepal",
+  nepalese: "Nepal", "new zealander": "New Zealand", nigerian: "Nigeria", macedonian: "North Macedonia", norwegian: "Norway", pakistani: "Pakistan",
+  palestinian: "Palestine", paraguayan: "Paraguay", peruvian: "Peru", filipino: "Philippines", polish: "Poland", portuguese: "Portugal",
+  romanian: "Romania", russian: "Russia", scottish: "Scotland", senegalese: "Senegal", serbian: "Serbia", slovak: "Slovakia", slovenian: "Slovenia",
+  "south african": "South Africa", korean: "South Korea", "south korean": "South Korea", spanish: "Spain", "sri lankan": "Sri Lanka",
+  swedish: "Sweden", swiss: "Switzerland", syrian: "Syria", tajik: "Tajikistan", thai: "Thailand", togolese: "Togo", tunisian: "Tunisia",
+  turkish: "Turkey", ugandan: "Uganda", ukrainian: "Ukraine", american: "United States", usa: "United States", us: "United States",
+  uruguayan: "Uruguay", uzbek: "Uzbekistan", venezuelan: "Venezuela", vietnamese: "Vietnam", welsh: "Wales", zambian: "Zambia", zimbabwean: "Zimbabwe",
+};
+const NAT_FOLD = Object.fromEntries(NATIONS.map((n) => [fold(n), n]));
+const tidyNat = (str) => { const t = String(str || "").replace(/\s+/g, " ").trim().slice(0, 40), f = fold(t); return NAT_FOLD[f] || NAT_ALSO[f] || t; };
+const isIndian = (nat) => !!nat && tidyNat(nat) === "India";
 /* only, when set, keeps the list to those players (a Set of ids); skip leaves those out */
 function PlayerPicker({ id, teams, teamId, value, onChange, placeholder, canAdd, exclude, only, skip }) {
   const team = teams[teamId];
@@ -3541,6 +3587,8 @@ function TeamDetail({ s, idx, r, close }) {
    club's minutes once that is more, so the bar rises with the season. With clubs picked (three at most) there is no bar:
    every outfield player of theirs with a minute is on it, and one too far out for the scale sits at its edge, with an arrow.
    A player the page has no name for (a public file saved before line-up players were named) is left off too.
+   Whose chart: All players, or Indian players (offered once the squads say who is Indian). The Indian players' chart is
+   theirs alone: the regulars among them, with axes and dashed lines from them, and with clubs picked, theirs only.
    Both axes use a square-root scale, which spreads out the many players near zero (a player's quadrant does not depend on it);
    the page does not spell that out. The 82nd percentile and the square root are the chart, with no switches for them. Pointing
    at a dot shows the player's numbers; clicking it (on a touch screen, a second tap) opens their card on Players, and each dot
@@ -3576,7 +3624,7 @@ function archetypeRows(s, idx, agg, every) {
     if (!regular && !every) continue;
     const npxg = d ? d.npxg : 0, xa = d ? d.xa : 0;
     out.push({ id, name: idx[id].name, team, short: tshort(s.teams, team), club: tname(s.teams, team), mins: a.mins, npxg, xa,
-      npxg90: (npxg / a.mins) * 90, xa90: (xa / a.mins) * 90, sh: d ? d.sh : 0, card: !!d, regular, keeper: false });
+      npxg90: (npxg / a.mins) * 90, xa90: (xa / a.mins) * 90, sh: d ? d.sh : 0, card: !!d, regular, keeper: false, nat: idx[id].nat || null });
   }
   return out;
 }
@@ -3801,7 +3849,7 @@ function archChart(rows, cut, scale, W, hrefOf, view) {
 }
 
 /* what the reader has picked on the tab (see VisualiserView), kept while they look at a card or another tab and come back */
-const ARCH_MEMO = { mode: "chart", clubs: [], kits: {}, vs: [null, null], gv: [null, null], tv: [null, null] };
+const ARCH_MEMO = { mode: "chart", whose: "all", clubs: [], kits: {}, vs: [null, null], gv: [null, null], tv: [null, null] };
 const ARCH_MAX = 5;                                          // the most sides a head-to-head takes (it starts with two)
 const ARCH_NTH = ["First", "Second", "Third", "Fourth", "Fifth"];
 const ARCH_ALL = "*";                                        // the player menu's All players, above the clubs
@@ -4063,15 +4111,21 @@ function ArchCompare({ kind, caption, heads, sides }) {
      Player vs player  players picked from the club menu (ArchMenu), or from its All players, compared in a table (ArchCompare)
      Keeper vs keeper  keepers picked the same way, compared on the Keepers tab's numbers
      Team vs team      clubs picked from the clubs' menu, compared on the club's season
-   Each head-to-head starts with two sides and takes up to five. Each keeps what was picked in it. Under the chart, the four lists and the table follow the clubs picked on it, and otherwise
-   list everyone. The head-to-heads have nothing under their table but the page's foot: the lists and the table stay in the
-   page, hidden, so a table opened (and sorted) under the chart is still that way on coming back. The chart stays in the page
-   (hidden) under the tables, so it keeps its measurements. */
+   Each head-to-head starts with two sides and takes up to five. Each keeps what was picked in it. Under the chart, the four
+   lists and the table follow whose chart it is and the clubs picked on it. The head-to-heads have nothing under their table
+   but the page's foot: the lists and the table stay in the page, hidden, so a table opened (and sorted) under the chart is
+   still that way on coming back. The chart stays in the page (hidden) under the tables, so it keeps its measurements. */
 function VisualiserView({ s, idx, agg }) {
   const nav = useContext(NavCtx);
   const rows = useMemo(() => archetypeRows(s, idx, agg), [s, idx, agg]);
   const everyRows = useMemo(() => archetypeRows(s, idx, agg, true), [s, idx, agg]);
-  const cut = useMemo(() => (rows.length ? archCut(rows) : null), [rows]);
+  /* whose chart: everyone's, or the Indian players' alone, offered once the squads say who is Indian */
+  const anyIndian = useMemo(() => rows.some((r) => isIndian(r.nat)), [rows]);
+  const [whoseRaw, setWhose] = useState(ARCH_MEMO.whose);
+  const whose = anyIndian && whoseRaw === "india" ? "india" : "all";
+  const base = useMemo(() => (whose === "india" ? rows.filter((r) => isIndian(r.nat)) : rows), [rows, whose]);
+  const baseEvery = useMemo(() => (whose === "india" ? everyRows.filter((r) => isIndian(r.nat)) : everyRows), [everyRows, whose]);
+  const cut = useMemo(() => (base.length ? archCut(base) : null), [base]);
   const byId = useMemo(() => Object.fromEntries(everyRows.map((r) => [r.id, r])), [everyRows]);
   const allRows = useMemo(() => archAllRows(s, idx, agg, rows), [s, idx, agg, rows]);
   const byIdAll = useMemo(() => Object.fromEntries(allRows.map((r) => [r.id, r])), [allRows]);
@@ -4087,7 +4141,7 @@ function VisualiserView({ s, idx, agg }) {
   const [vsAll, setVs] = useState(ARCH_MEMO.vs);
   const [gvAll, setGv] = useState(ARCH_MEMO.gv);
   const [tvAll, setTv] = useState(ARCH_MEMO.tv);
-  useEffect(() => { Object.assign(ARCH_MEMO, { mode, clubs: clubsAll, kits, vs: vsAll, gv: gvAll, tv: tvAll }); }, [mode, clubsAll, kits, vsAll, gvAll, tvAll]);
+  useEffect(() => { Object.assign(ARCH_MEMO, { mode, whose: whoseRaw, clubs: clubsAll, kits, vs: vsAll, gv: gvAll, tv: tvAll }); }, [mode, whoseRaw, clubsAll, kits, vsAll, gvAll, tvAll]);
   /* only players, keepers and clubs the page still has count (a later upload can change who is on the chart) */
   const playable = (id) => !!(id && byIdAll[id] && (byIdAll[id].mins || byIdAll[id].tagged));
   const clubs = clubsAll.filter((id) => clubIds.includes(id)).slice(0, ARCH_CLUBS), vs = vsAll.map((id) => (playable(id) ? id : null));
@@ -4103,11 +4157,11 @@ function VisualiserView({ s, idx, agg }) {
   }, []);
   const cardHref = (r) => (r.card && nav ? nav.href({ tab: "players", item: r.id }) : null);
   const clubSet = new Set(clubs);
-  const pool = clubs.length ? everyRows.filter((r) => clubSet.has(r.team)) : rows;
+  const pool = clubs.length ? baseEvery.filter((r) => clubSet.has(r.team)) : base;
   const kitOf = (team) => archKitColours(team, kits[team] || 0);
   const view = clubs.length ? { mode: "clubs", pool, kit: kitOf } : { mode: "all" };
   const viewKey = view.mode + ":" + clubs.map((c) => c + "." + (kits[c] || 0)).join(",");
-  const chart = useMemo(() => (cut && width > 0 ? archChart(rows, cut, "sqrt", Math.max(300, Math.round(width)), cardHref, view) : null), [rows, cut, width, fonts, viewKey]);
+  const chart = useMemo(() => (cut && width > 0 ? archChart(base, cut, "sqrt", Math.max(300, Math.round(width)), cardHref, view) : null), [base, cut, width, fonts, viewKey]);
   /* the player being pointed at (or, on a touch screen, tapped): an index into chart.dots */
   const [tip, setTip] = useState(null);
   const lastPointer = useRef("mouse");
@@ -4206,8 +4260,11 @@ function VisualiserView({ s, idx, agg }) {
   const listed = (a) => (a.length > 1 ? a.slice(0, -1).join(", ") + " and " + a[a.length - 1] : a[0]);
   let tools = null, compare = null;
   if (mode === "chart") {
-    /* the chips: each club picked shows the colour of its dots, so the chips are the chart's key */
-    tools = h("div", { className: "ar-chips", role: "group", "aria-label": "Clubs on the chart" },
+    /* whose chart (once the squads say who is Indian), then the chips: each club picked shows the colour of its dots, so the
+       chips are the chart's key */
+    const whoseSwitch = anyIndian ? h("div", { className: "seg ar-whose", role: "group", "aria-label": "Whose chart" }, [["all", "All players"], ["india", "Indian players"]].map(([k, l]) =>
+      h("button", { key: k, type: "button", className: "seg-btn" + (whose === k ? " on" : ""), "aria-pressed": whose === k, onClick: () => setWhose(k) }, l))) : null;
+    tools = h(Frag, null, whoseSwitch, h("div", { className: "ar-chips", role: "group", "aria-label": "Clubs on the chart" },
       h("button", { type: "button", className: "ar-chip" + (clubs.length ? "" : " on"), "aria-pressed": !clubs.length, onClick: () => { setClubs([]); setKits({}); } }, "All clubs"),
       clubIds.map((id) => h("button", {
         /* with three picked, the rest wait until one is taken off */
@@ -4215,7 +4272,7 @@ function VisualiserView({ s, idx, agg }) {
         title: tname(s.teams, id) + (full && !clubSet.has(id) ? " (three clubs at most)" : ""), "aria-label": tname(s.teams, id), disabled: full && !clubSet.has(id),
         onClick: () => toggleClub(id),
       }, clubSet.has(id) && kitOf(id) ? h("i", { className: "dot home club-colors", style: archKitStyle(kitOf(id)), "aria-hidden": "true" }) : null,
-        h(Crest, { id, size: 18 }), tshort(s.teams, id))));
+        h(Crest, { id, size: 18 }), tshort(s.teams, id)))));
   } else if (mode === "players") {
     tools = pickers(vs, setVs, "player", (id) => ({ rows: allRows, everyone, value: id ? { team: byIdAll[id].team, name: byIdAll[id].name, sub: byIdAll[id].short } : null }));
     const sides = vs.map((id) => (id ? byIdAll[id] : null));
@@ -4236,7 +4293,7 @@ function VisualiserView({ s, idx, agg }) {
   }
 
   /* who sits where: each quadrant's count and its leading players, each a link to their card */
-  const listRows = view.mode === "clubs" ? pool : rows;
+  const listRows = view.mode === "clubs" ? pool : base;
   const by = { HH: (r) => r.npxg90 + r.xa90, HL: (r) => r.npxg90, LH: (r) => r.xa90, LL: (r) => r.npxg90 + r.xa90 };
   const lead = { HH: "npxG/90 + xA/90", HL: "npxG/90", LH: "xA/90", LL: "npxG/90 + xA/90" };
   const follow = (r) => (e) => { if (!plainClick(e)) return; e.preventDefault(); nav.go({ tab: "players", item: r.id }); };
@@ -4260,8 +4317,8 @@ function VisualiserView({ s, idx, agg }) {
     { key: "xa90", label: "xA/90", num: true, get: (r) => r.xa90, fmt: (v) => v.toFixed(2) },
     { key: "q", label: "Profile", get: (r) => ARCH[archQuad(r, cut)].name },
   ];
-  const n = listRows.length;
-  const who = view.mode === "clubs" ? n + " players from " + clubs.map((id) => tname(s.teams, id)).join(", ") : n + " players";
+  const n = listRows.length, them = n + (whose === "india" ? " Indian" : "") + " players";
+  const who = view.mode === "clubs" ? them + " from " + clubs.map((id) => tname(s.teams, id)).join(", ") : them;
   const split = "split at the 82nd percentile of each into " + ARCH_ORDER.map((k) => ARCH[k].name + " (" + (chart ? chart.counts[k] : 0) + ")").join(", ") + (fifth ? "; only the top 20% of the bottom left are drawn" : "");
   /* the title with what the tab shows beside it, the picking, then the chart with the four lists and the button that opens the
      table under it (nothing written below the button), or the comparison with nothing under it */
@@ -4275,7 +4332,7 @@ function VisualiserView({ s, idx, agg }) {
         chart ? h("div", { className: "ar-svg", dangerouslySetInnerHTML: { __html: chart.html } }) : null, ring, tipEl)),
     quads,
     h("details", { className: "card ar-all", hidden: mode !== "chart" },
-      h("summary", null, (view.mode === "clubs" ? "These " : "All ") + n + " players as a table"),
+      h("summary", null, (view.mode === "clubs" ? "These " : "All ") + them + " as a table"),
       h(SortTable, { cols: COLS, rows: listRows, initial: { key: "npxg90", dir: -1 }, rowKey: (r) => r.id, onRow: (id) => { const r = byId[id]; if (r && r.card) nav.go({ tab: "players", item: id }); }, rowHref: (id) => { const r = byId[id]; return r && r.card && nav ? nav.href({ tab: "players", item: id }) : null; }, caption: view.mode === "clubs" ? "Every player from the clubs picked" : "Every player on the chart" })));
 }
 
@@ -4287,18 +4344,24 @@ const cleanNum = (v) => { const n = Number(v); return v === "" || v == null || !
 function PlayerRow({ tid, p, used, inLu, others, can }) {
   const [name, setName] = useState(p.name);
   const [num, setNum] = useState(p.num == null ? "" : String(p.num));
+  const [nat, setNat] = useState(p.nat || "");
   const [into, setInto] = useState("");
-  useEffect(() => { setName(p.name); setNum(p.num == null ? "" : String(p.num)); }, [p.name, p.num]);
+  useEffect(() => { setName(p.name); setNum(p.num == null ? "" : String(p.num)); setNat(p.nat || ""); }, [p.name, p.num, p.nat]);
   const commit = () => {
-    const n = tidyName(name), nn = cleanNum(num);
+    const n = tidyName(name), nn = cleanNum(num), nt = tidyNat(nat);
     if (!n) { setName(p.name); return; }
-    if (n !== p.name || nn !== p.num) Store.updateTeam(tid, (t) => { const q = t.players.find((x) => x.id === p.id); if (q) { q.name = n; q.num = nn; } });
+    if (nt !== nat) setNat(nt);
+    if (n !== p.name || nn !== p.num || nt !== (p.nat || "")) Store.updateTeam(tid, (t) => {
+      const q = t.players.find((x) => x.id === p.id);
+      if (q) { q.name = n; q.num = nn; if (nt) q.nat = nt; else delete q.nat; }
+    });
   };
   const onEnter = (e) => { if (e.key === "Enter") e.target.blur(); };
-  if (!can) return h("tr", null, h("td", { className: "num" }, p.num != null ? p.num : ""), h("td", { className: "strong" }, p.name), h("td", { className: "num" }, used || ""));
+  if (!can) return h("tr", null, h("td", { className: "num" }, p.num != null ? p.num : ""), h("td", { className: "strong" }, p.name), h("td", null, p.nat || ""), h("td", { className: "num" }, used || ""));
   return h("tr", null,
     h("td", { style: { width: 84, minWidth: 76 } }, h("input", { className: "input", type: "number", inputMode: "numeric", min: 0, max: 99, "aria-label": "Shirt number for " + p.name, value: num, onChange: (e) => setNum(e.target.value), onBlur: commit, onKeyDown: onEnter })),
     h("td", { style: { minWidth: 200 } }, h("input", { className: "input", type: "text", "aria-label": "Name", value: name, onChange: (e) => setName(e.target.value), onBlur: commit, onKeyDown: onEnter })),
+    h("td", { style: { minWidth: 150 } }, h("input", { className: "input", type: "text", list: "nat-list", placeholder: "Nationality", "aria-label": "Nationality of " + p.name, value: nat, onChange: (e) => setNat(e.target.value), onBlur: commit, onKeyDown: onEnter })),
     h("td", { className: "num" }, used || ""),
     h("td", null, h("div", { className: "acts" },
       others.length ? (into ?
@@ -4316,7 +4379,8 @@ function PlayerRow({ tid, p, used, inLu, others, can }) {
 function SquadsView({ s }) {
   const clubs = useMemo(() => Object.keys(s.teams).sort((a, b) => s.teams[a].name.localeCompare(s.teams[b].name)), [s.teams]);
   const [tidRaw, setTid] = useState("");
-  const [np, setNp] = useState({ name: "", num: "" });
+  const [np, setNp] = useState({ name: "", num: "", nat: "" });
+  const [toIndia, setToIndia] = useState(false);
   const [paste, setPaste] = useState(null);
   const [msg, setMsg] = useState("");
   const [nc, setNc] = useState(null);
@@ -4338,12 +4402,14 @@ function SquadsView({ s }) {
   if (!team) return h("div", { className: "stack" }, h("div", { className: "empty" }, h("strong", null, "No clubs yet"), can ? "Add the clubs first, then their players." : "Nothing has been set up yet."), addClubForm);
 
   const players = [...team.players].sort((a, b) => (a.num == null ? 999 : a.num) - (b.num == null ? 999 : b.num) || a.name.localeCompare(b.name));
+  const blank = team.players.filter((p) => !p.nat).length;
+  const setIndia = () => { Store.updateTeam(tid, (t) => { for (const q of t.players) if (!q.nat) q.nat = "India"; }); setToIndia(false); };
   const addOne = () => {
     const n = tidyName(np.name);
     if (!n) return;
     if (team.players.some((p) => fold(p.name) === fold(n))) { setMsg(n + " is already in this squad."); return; }
-    Store.addPlayer(tid, n, cleanNum(np.num));
-    setNp({ name: "", num: "" }); setMsg("");
+    Store.addPlayer(tid, n, cleanNum(np.num), tidyNat(np.nat));
+    setNp({ name: "", num: "", nat: "" }); setMsg("");
   };
   const addMany = () => {
     const have = new Set(team.players.map((p) => fold(p.name)));
@@ -4363,7 +4429,7 @@ function SquadsView({ s }) {
   };
 
   return h("div", { className: "stack" },
-    h("div", { className: "chips", role: "group", "aria-label": "Club" }, clubs.map((id) => h("button", { key: id, type: "button", className: "seg-btn" + (id === tid ? " on" : ""), "aria-pressed": id === tid, onClick: () => { setTid(id); setMsg(""); setPaste(null); } }, s.teams[id].short))),
+    h("div", { className: "chips", role: "group", "aria-label": "Club" }, clubs.map((id) => h("button", { key: id, type: "button", className: "seg-btn" + (id === tid ? " on" : ""), "aria-pressed": id === tid, onClick: () => { setTid(id); setMsg(""); setPaste(null); setToIndia(false); } }, s.teams[id].short))),
     h("div", { className: "toolbar" },
       h("div", null, h("h2", { className: "h2" }, team.name), h("p", { className: "sub" }, team.players.length + (team.players.length === 1 ? " player" : " players") + ". You can also add players while tagging, just by typing a new name.")),
       addClubForm && !nc ? addClubForm : null),
@@ -4372,6 +4438,7 @@ function SquadsView({ s }) {
       h("div", { className: "row" },
         h("div", { className: "field", style: { width: 84 } }, h("label", { className: "label", htmlFor: "np-num" }, "Number"), h("input", { id: "np-num", className: "input", type: "number", inputMode: "numeric", min: 0, max: 99, value: np.num, onChange: (e) => setNp({ ...np, num: e.target.value }) })),
         h("div", { className: "field grow" }, h("label", { className: "label", htmlFor: "np-name" }, "Player name"), h("input", { id: "np-name", className: "input", type: "text", value: np.name, onChange: (e) => setNp({ ...np, name: e.target.value }), onKeyDown: (e) => { if (e.key === "Enter") addOne(); } })),
+        h("div", { className: "field", style: { width: 170 } }, h("label", { className: "label", htmlFor: "np-nat" }, "Nationality"), h("input", { id: "np-nat", className: "input", type: "text", list: "nat-list", value: np.nat, onChange: (e) => setNp({ ...np, nat: e.target.value }), onKeyDown: (e) => { if (e.key === "Enter") addOne(); } })),
         h("button", { type: "button", className: "btn primary", onClick: addOne }, "Add player"),
         h("button", { type: "button", className: "btn", onClick: () => setPaste(paste == null ? "" : null) }, paste == null ? "Paste a whole squad" : "Close")),
       paste != null ? h("div", { className: "stack tight" },
@@ -4380,10 +4447,18 @@ function SquadsView({ s }) {
         h("button", { type: "button", className: "btn primary", style: { alignSelf: "flex-start" }, onClick: addMany }, "Add these players")) : null,
       msg ? h("p", { className: "sub", role: "status" }, msg) : null) : null,
     players.length ? h("div", { className: "tbl-wrap" }, h("table", { className: "tbl" },
-      h("thead", null, h("tr", null, h("th", { scope: "col", className: can ? undefined : "num" }, "No."), h("th", { scope: "col" }, "Name"), h("th", { className: "num", scope: "col", title: "Shots, key passes, shots faced and own goals tagged for this player" }, "Tagged"), can ? h("th", { scope: "col" }, h("span", { className: "sr" }, "Actions")) : null)),
+      h("thead", null, h("tr", null, h("th", { scope: "col", className: can ? undefined : "num" }, "No."), h("th", { scope: "col" }, "Name"), h("th", { scope: "col" }, "Nationality"), h("th", { className: "num", scope: "col", title: "Shots, key passes, shots faced and own goals tagged for this player" }, "Tagged"), can ? h("th", { scope: "col" }, h("span", { className: "sr" }, "Actions")) : null)),
       h("tbody", null, players.map((p) => h(PlayerRow, { key: p.id, tid, p, used: usage[p.id] || 0, inLu: luUse[p.id] || 0, others: players.filter((o) => o.id !== p.id), can }))))) :
       h("div", { className: "empty" }, h("strong", null, "No players yet"), can ? "Add them here, paste a squad list, or just type names while you tag." : "No players have been added for this club."),
-    can && players.length ? h("p", { className: "sub" }, "Spelled a name two ways? Use Merge to fold one into the other. Nothing tagged is lost.") : null);
+    /* set every player with no nationality to India, once asked to, so only the overseas players need typing in */
+    can && blank ? h("div", { className: "acts" }, toIndia ?
+      h(Frag, null,
+        h("span", { className: "sub", style: { alignSelf: "center" } }, "Set " + (blank === 1 ? "the 1 player" : "all " + blank + " players") + " with no nationality to India?"),
+        h("button", { type: "button", className: "btn primary", onClick: setIndia }, "Set to India"),
+        h("button", { type: "button", className: "btn", onClick: () => setToIndia(false) }, "Cancel")) :
+      h("button", { type: "button", className: "btn", onClick: () => setToIndia(true) }, blank === 1 ? "Set the 1 with no nationality to India" : "Set the " + blank + " with no nationality to India")) : null,
+    can && players.length ? h("p", { className: "sub" }, "Spelled a name two ways? Use Merge to fold one into the other. Nothing tagged is lost.") : null,
+    can ? h("datalist", { id: "nat-list" }, NATIONS.map((n) => h("option", { key: n, value: n }))) : null);
 }
 
 /* ============================================================
