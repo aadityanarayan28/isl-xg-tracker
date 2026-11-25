@@ -762,6 +762,9 @@ dialog.pop::backdrop { background: rgba(10, 14, 12, 0.3); -webkit-backdrop-filte
 .mo-roll-halo { fill: none; stroke: var(--surface); stroke-width: 4.5; stroke-linejoin: round; stroke-linecap: round; pointer-events: none; }
 .mo-roll { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; pointer-events: none; }
 .mo-rollp { fill: var(--ink); stroke: var(--surface); stroke-width: 1.2; pointer-events: none; }
+
+/* a keeper's card: the own goals he conceded, under his goal mouth */
+.legend .kp-og { flex-basis: 100%; justify-content: center; }
 </style>
 </head>
 <body>
@@ -1052,7 +1055,8 @@ const Stats = (() => {
         tm(side[o.t]).ogf += 1;
         tm(side[other(o.t)]).oga += 1;
         /* the keeper in goal for the side that conceded it (set at the top of the match) let it in too. It counts in his
-           goals against; his saves, xGOT faced and goals prevented are about shots on target, so it stays out of those. */
+           goals against, and on the public page in his goals prevented; his saves and xGOT faced are about shots on target,
+           so it stays out of those. */
         const kid = mt.gk && mt.gk[other(o.t)];
         if (kid) { const k = kp(kid, side[other(o.t)]); k._m.add(mid); k.oga += 1; } else totals.ogunassigned += 1;
       }
@@ -3505,15 +3509,17 @@ const KEEPER_COLS = [
   { key: "svp", label: "Save %", num: true, get: (r) => r.svp, fmt: pct },
   { key: "xgotf", label: "xGOT faced", num: true, get: (r) => r.xgotf, fmt: f2, title: "Goals an average keeper would concede from the same shots" },
   { key: "xsv", label: KEEPER_NAMES.xsv, num: true, get: (r) => r.xsv, fmt: f2, title: "Saves an average keeper would make from the same shots" },
-  { key: "sae", label: KEEPER_NAMES.sae, num: true, get: (r) => r.sae, fmt: signed, title: READER ? "Saves minus xSaves: the goals kept out beyond an average keeper. Own goals are left out." : "Saves minus expected saves. Also called goals prevented. Own goals are left out." },
+  { key: "sae", label: KEEPER_NAMES.sae, num: true, get: (r) => r.sae, fmt: signed, title: READER ? "xGOT faced minus every goal conceded, own goals included: the goals kept out beyond an average keeper" : "Saves minus expected saves. Also called goals prevented. Own goals are left out." },
   { key: "xsvp", label: KEEPER_NAMES.xsvp, num: true, get: (r) => r.xsvp, fmt: pct },
 ];
 
-/* a keeper's row on Keepers, which his card takes too. Goals against: every goal he let in, own goals included. Saves, save %
-   and the expected numbers come from the shots on target he faced, so an own goal never counts against his shot-stopping. */
+/* a keeper's row on Keepers, which his card takes too. Goals against: every goal he let in, own goals included (og of them).
+   Saves, save % and the expected numbers come from the shots on target he faced. On the public page an own goal counts
+   against him wherever goals conceded do, so his Goals Prevented is xGOT faced minus every goal he let in; the tracker's
+   leaves own goals out, as xGOT never prices one. */
 function keeperRow(s, idx, agg, id) {
   const d = agg.keepers[id], sv = d.sotf - d.ga, xsv = d.sotf - d.xgotf;
-  return { id, name: pname(idx, id), mp: d.mp, mins: d.mins, club: tshort(s.teams, d.team), team: d.team, sotf: d.sotf, ga: d.ga + d.oga, sv, svp: d.sotf ? sv / d.sotf : null, xgotf: d.xgotf, xsv, sae: d.xgotf - d.ga, xsvp: d.sotf ? xsv / d.sotf : null };
+  return { id, name: pname(idx, id), mp: d.mp, mins: d.mins, club: tshort(s.teams, d.team), team: d.team, sotf: d.sotf, ga: d.ga + d.oga, og: d.oga, sv, svp: d.sotf ? sv / d.sotf : null, xgotf: d.xgotf, xsv, sae: d.xgotf - d.ga - (READER ? d.oga : 0), xsvp: d.sotf ? xsv / d.sotf : null };
 }
 function KeepersView({ s, idx, agg }) {
   const [team, setTeam] = useState("");
@@ -3536,11 +3542,12 @@ function KeepersView({ s, idx, agg }) {
       h("div", { className: "empty" }, h("strong", null, "No keepers for this club yet"), "Pick another club."),
     READER ? null : hint,
     h(Defs, { items: [
-      ["Goals against", "Every goal conceded while he was in goal, own goals included. Saves and the numbers below count shots on target only, so an own goal never counts against his shot-stopping."],
+      ["Goals against", READER ? "Every goal conceded while he was in goal, own goals included. Saves, xGOT faced and xSaves count shots on target only." :
+        "Every goal conceded while he was in goal, own goals included. Saves and the numbers below count shots on target only, so an own goal never counts against his shot-stopping."],
       ["xGOT faced", "For every shot on target, the chance it goes in given where it was struck from and where in the goal it was heading. Added up, it is the goals an average keeper would concede."],
     ].concat(READER ? [
       ["xSaves", "Expected saves: shots on target faced minus xGOT faced. The saves an average keeper would make."],
-      ["Goals Prevented", "Saves minus xSaves. Above zero is better than average shot-stopping."],
+      ["Goals Prevented", "xGOT faced minus every goal conceded, own goals included: saves minus xSaves, less any own goals. Above zero is better than average shot-stopping."],
       PLAYED_DEF,
     ] : [
       ["Expected saves", "Shots on target faced minus xGOT faced: the saves an average keeper would make."],
@@ -3570,7 +3577,9 @@ function KeeperDetail({ s, idx, r, close }) {
     h("div", { className: "kpis" }, h(Kpi, { v: r.sotf, k: "On target faced" }), h(Kpi, { v: r.sv, k: "Saves" }), h(Kpi, { v: f2(r.xsv), k: KEEPER_NAMES.xsv }), h(Kpi, { v: signed(r.sae), k: KEEPER_NAMES.sae })),
     h(GoalMouth, { marks, label: "Shots on target faced by " + r.name }),
     h("div", { className: "legend" }, h("span", null, h("i", { className: "dot home" }), "Goal conceded"), h("span", null, h("i", { className: "dot soft" }), "Saved"),
-      READER ? h("span", null, h(RingKey, { cls: "home" }), "Big chance missed") : null, h("span", null, "Bigger means harder to save")));
+      READER ? h("span", null, h(RingKey, { cls: "home" }), "Big chance missed") : null, h("span", null, "Bigger means harder to save"),
+      /* an own goal has no place in the goal mouth, but counts against him in Goals Prevented */
+      READER && r.og ? h("span", { className: "kp-og" }, "Also " + r.og + (r.og === 1 ? " own goal" : " own goals") + " conceded, counted in " + KEEPER_NAMES.sae) : null));
 }
 
 const TEAM_COLS = [
@@ -4206,7 +4215,7 @@ function archTeamStats(s, tid) {
 
 /* every keeper the page knows of (in goal for a match, or on a shot on target), with his numbers as the Keepers tab counts
    them: shots on target faced, every goal conceded while in goal (own goals included), saves, xGOT faced (and per 90 of his
-   minutes), xSaves, and goals prevented (xGOT faced minus the goals from those shots, so own goals stay out of it) */
+   minutes), xSaves, and goals prevented (xGOT faced minus every goal conceded, own goals included, as across the page) */
 function archKeeperRows(s, idx, agg) {
   const teamOf = {};
   for (const id of Object.keys(agg.keepers)) teamOf[id] = agg.keepers[id].team;
@@ -4217,7 +4226,7 @@ function archKeeperRows(s, idx, agg) {
   return Object.keys(teamOf).map((id) => {
     const d = agg.keepers[id] || { sotf: 0, ga: 0, oga: 0, xgotf: 0 }, a = (agg.played || {})[id], team = teamOf[id];
     return { id, name: pname(idx, id), team, short: tshort(s.teams, team), club: tname(s.teams, team), mins: a ? a.mins : 0, regular: true, tagged: true,
-      sotf: d.sotf, gc: d.ga + d.oga, sv: d.sotf - d.ga, xgotf: d.xgotf, xsv: d.sotf - d.xgotf, gp: d.xgotf - d.ga };
+      sotf: d.sotf, gc: d.ga + d.oga, sv: d.sotf - d.ga, xgotf: d.xgotf, xsv: d.sotf - d.xgotf, gp: d.xgotf - d.ga - d.oga };
   });
 }
 
@@ -4249,7 +4258,7 @@ const ARCH_M = {
   xgotf: { label: "xGOT faced", get: (t) => t.xgotf, dp: 2, low: true },
   xgotf90: { label: "xGOT faced/90", get: (t) => archPer90(t.xgotf, t.mins), dp: 2, low: true },
   xsv: { label: KEEPER_NAMES.xsv, get: (t) => t.xsv, dp: 2 },
-  gp: { label: KEEPER_NAMES.sae, get: (t) => t.gp, dp: 2, fmt: signed, note: "Saves minus xSaves: the goals kept out beyond an average keeper. Own goals are left out." },
+  gp: { label: KEEPER_NAMES.sae, get: (t) => t.gp, dp: 2, fmt: signed, note: "xGOT faced minus every goal conceded, own goals included: the goals kept out beyond an average keeper" },
 };
 /* the rows of each head-to-head, in her order */
 const ARCH_ROWS = {
@@ -4551,9 +4560,8 @@ function MoreShare({ s, share, cards }) {
    Each is drawn as his club's crest (each club's once, in defs, and used where it is wanted; a club with no crest keeps a
    dot), and the one pointed at is drawn again on top of the rest, ringed, so a crowd never hides it.
    A keeper's goals conceded count the own goals he let in, as on the Keepers tab (and a column of them, once there are
-   any), and the chart plots every one of them. His Goals Prevented here counts them too: xGOT faced minus every goal
-   conceded, so his gap to the line is his Goals Prevented. (The Keepers tab, his card and Keeper vs keeper still leave own
-   goals out of it, as xGOT never prices one.) */
+   any), and the chart plots every one of them. His Goals Prevented counts them too, as everywhere on the page: xGOT faced
+   minus every goal conceded, so his gap to the line is his Goals Prevented. */
 const MORE_SHOTS = 5;
 function MoreFinish({ s, idx, agg, cards }) {
   const [who, setWho] = useState(MORE_MEMO.finish);
@@ -4617,7 +4625,7 @@ function MoreFinish({ s, idx, agg, cards }) {
         keep ? [moreRow("On target faced", t.n), moreRow("Goals conceded", t.gc), t.og ? moreRow("Own goals among them", t.og, true) : null, moreRow("xGOT faced", f2(t.x)), moreRow(KEEPER_NAMES.sae, signed(t.d))]
           : [moreRow("Shots", t.n), moreRow("Goals", t.y), moreRow("xG", f2(t.x)), moreRow("Goals minus xG", signed(t.d))],
         moreGo(hot.hot.touch, "his card")) : null),
-    h("p", { className: "mo-key" }, keep ? "Every goal conceded, own goals included, as on the Keepers tab. On the dashed line a keeper has let in as many as the xGOT of the shots he faced. Goals Prevented here is xGOT faced minus every goal conceded, so his gap to the line is his Goals Prevented. The Keepers tab leaves own goals out of it." :
+    h("p", { className: "mo-key" }, keep ? "Every goal conceded, own goals included. On the dashed line a keeper has let in as many as the xGOT of the shots he faced. Goals Prevented is xGOT faced minus every goal conceded, so his gap to the line is his Goals Prevented." :
       "Players with five shots or more, penalties included. On the dashed line goals equal xG."),
     moreTable("The " + rows.length + (keep ? " keepers" : " players") + " as a table", h(SortTable, { cols: COLS, rows, initial: { key: "d", dir: -1 }, rowKey: (r) => r.id, onRow: go, rowHref: href,
       caption: keep ? "Every keeper's goals conceded against xGOT faced" : "Every player with five shots or more, goals against xG" })));
@@ -5254,7 +5262,7 @@ function MethodView({ s, idx, agg }) {
         h("p", null, h("strong", null, "The xG worm"), " on a match's Timeline tab adds up each team's xG as the match goes on. The line steps up at every shot, by that shot's xG. A shot saved without a minute cannot be placed, so it is left off the worm but still counts in every total."),
         s.reader ? h("p", null, h("strong", null, "The shot map"), " draws every shot where it was taken, sized by its xG, with each side attacking its own end. Point at a shot and a line shows where it ended up: where a shot on target crossed the goal line (or would have, without the save), the post or bar it hit, where it went out, or where it was blocked. The box that comes up gives the shot's xG and, for a shot on target, its xGOT. A club's map on the Teams tab does the same for its whole season: the shots it took at one end, in its colour, and the shots it conceded at the other, in grey.") : null,
         h("p", null, h("strong", null, "xG on target"), " (xGOT) rates a shot again once you know where in the goal it was heading. A shot into the top corner is worth more than one straight at the keeper. Headers differ on height: a header aimed low is harder to save than one aimed high."),
-        s.reader ? h("p", null, h("strong", null, "xSaves"), " (expected saves) is what an average goalkeeper would save from the same shots: shots on target faced minus xG on target faced. ", h("strong", null, "Goals Prevented"), " is real saves minus that.") :
+        s.reader ? h("p", null, h("strong", null, "xSaves"), " (expected saves) is what an average goalkeeper would save from the same shots: shots on target faced minus xG on target faced. ", h("strong", null, "Goals Prevented"), " is real saves minus that, less any own goals he let in: xG on target faced minus every goal he conceded.") :
           h("p", null, h("strong", null, "Expected saves"), " is what an average goalkeeper would save from the same shots: shots on target faced minus xG on target faced. ", h("strong", null, "Saves above expected"), " is real saves minus that, the same number as goals prevented."))),
     /* the model's background stays in the tracker; the public page credits StatsBomb in the line at the foot of every tab */
     s.reader ? null : h("section", { className: "stack tight" },
