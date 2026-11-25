@@ -4545,14 +4545,15 @@ function MoreShare({ s, share, cards }) {
       onRow: (id) => { if (id !== "*") go(id); }, rowHref: (id) => (id !== "*" ? href(id) : null), caption: "Each club's " + unit + " by Indian and overseas players" })));
 }
 
-/* FINISHING AND SHOT-STOPPING: players (five shots or more), their goals against their xG; or keepers, the goals they let in
-   from shots on target against the xGOT of those shots. Both on one scale, with the line where the two are equal: a player
+/* FINISHING AND SHOT-STOPPING: players (five shots or more), their goals against their xG; or keepers, every goal they let
+   in against the xGOT of the shots on target they faced. Both on one scale, with the line where the two are equal: a player
    above it has scored more than his chances were worth, a keeper below it has let in fewer than an average keeper would.
    Each is drawn as his club's crest (each club's once, in defs, and used where it is wanted; a club with no crest keeps a
    dot), and the one pointed at is drawn again on top of the rest, ringed, so a crowd never hides it.
    A keeper's goals conceded count the own goals he let in, as on the Keepers tab (and a column of them, once there are
-   any), and the chart plots every one of them, so a keeper with an own goal sits that much above where his Goals
-   Prevented alone would put him (xGOT prices shots, never an own goal). */
+   any), and the chart plots every one of them. His Goals Prevented here counts them too: xGOT faced minus every goal
+   conceded, so his gap to the line is his Goals Prevented. (The Keepers tab, his card and Keeper vs keeper still leave own
+   goals out of it, as xGOT never prices one.) */
 const MORE_SHOTS = 5;
 function MoreFinish({ s, idx, agg, cards }) {
   const [who, setWho] = useState(MORE_MEMO.finish);
@@ -4560,7 +4561,7 @@ function MoreFinish({ s, idx, agg, cards }) {
   const hot = useMoreHot();
   const W = Math.max(300, Math.round(useWidth(hot.box, 1000))), narrow = W < 600, keep = who === "keepers";
   const rows = useMemo(() => (keep ?
-    Object.entries(agg.keepers).filter(([id, d]) => idx[id] && d.sotf > 0).map(([id, d]) => ({ id, name: idx[id].name, team: d.team, x: d.xgotf, y: d.ga + d.oga, og: d.oga, gc: d.ga + d.oga, n: d.sotf, d: d.xgotf - d.ga })) :
+    Object.entries(agg.keepers).filter(([id, d]) => idx[id] && d.sotf > 0).map(([id, d]) => ({ id, name: idx[id].name, team: d.team, x: d.xgotf, y: d.ga + d.oga, og: d.oga, gc: d.ga + d.oga, n: d.sotf, d: d.xgotf - d.ga - d.oga })) :
     Object.entries(agg.players).filter(([id, d]) => idx[id] && d.sh >= MORE_SHOTS).map(([id, d]) => ({ id, name: idx[id].name, team: d.team, x: d.xg, y: d.g, n: d.sh, d: d.g - d.xg }))), [keep, agg, idx]);
   const go = (id) => cards.go(keep ? "keepers" : "players", id), href = (id) => cards.href(keep ? "keepers" : "players", id);
   const switcher = h("div", { className: "mo-ctl" }, h("div", { className: "seg", role: "group", "aria-label": "Whose" }, [["players", "Players' finishing"], ["keepers", "Keepers' shot-stopping"]].map(([k, l]) =>
@@ -4588,7 +4589,8 @@ function MoreFinish({ s, idx, agg, cards }) {
     { key: "name", label: "Keeper", get: (r) => r.name, strong: true }, { key: "club", label: "Club", get: (r) => short(r.team) },
     { key: "n", label: "On target faced", num: true, get: (r) => r.n }, { key: "gc", label: "Goals conceded", num: true, get: (r) => r.gc, title: "Every goal conceded while in goal, own goals included" },
   ].concat(anyOg ? [{ key: "og", label: "Own goals", num: true, get: (r) => r.og, title: "Own goals conceded while in goal" }] : [], [
-    { key: "x", label: "xGOT faced", num: true, get: (r) => r.x, fmt: f2 }, { key: "d", label: KEEPER_NAMES.sae, num: true, get: (r) => r.d, fmt: signed },
+    { key: "x", label: "xGOT faced", num: true, get: (r) => r.x, fmt: f2 },
+    { key: "d", label: KEEPER_NAMES.sae, num: true, get: (r) => r.d, fmt: signed, title: "xGOT faced minus every goal conceded, own goals included" },
   ]) : [
     { key: "name", label: "Player", get: (r) => r.name, strong: true }, { key: "club", label: "Club", get: (r) => short(r.team) },
     { key: "n", label: "Shots", num: true, get: (r) => r.n }, { key: "y", label: "Goals", num: true, get: (r) => r.y },
@@ -4615,7 +4617,7 @@ function MoreFinish({ s, idx, agg, cards }) {
         keep ? [moreRow("On target faced", t.n), moreRow("Goals conceded", t.gc), t.og ? moreRow("Own goals among them", t.og, true) : null, moreRow("xGOT faced", f2(t.x)), moreRow(KEEPER_NAMES.sae, signed(t.d))]
           : [moreRow("Shots", t.n), moreRow("Goals", t.y), moreRow("xG", f2(t.x)), moreRow("Goals minus xG", signed(t.d))],
         moreGo(hot.hot.touch, "his card")) : null),
-    h("p", { className: "mo-key" }, keep ? "Every goal conceded, own goals included, as on the Keepers tab. On the dashed line a keeper has let in as many as the xGOT of the shots he faced. xGOT never prices an own goal, so Goals Prevented leaves them out." :
+    h("p", { className: "mo-key" }, keep ? "Every goal conceded, own goals included, as on the Keepers tab. On the dashed line a keeper has let in as many as the xGOT of the shots he faced. Goals Prevented here is xGOT faced minus every goal conceded, so his gap to the line is his Goals Prevented. The Keepers tab leaves own goals out of it." :
       "Players with five shots or more, penalties included. On the dashed line goals equal xG."),
     moreTable("The " + rows.length + (keep ? " keepers" : " players") + " as a table", h(SortTable, { cols: COLS, rows, initial: { key: "d", dir: -1 }, rowKey: (r) => r.id, onRow: go, rowHref: href,
       caption: keep ? "Every keeper's goals conceded against xGOT faced" : "Every player with five shots or more, goals against xG" })));
