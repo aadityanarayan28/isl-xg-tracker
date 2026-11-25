@@ -3398,15 +3398,17 @@ const PLAYER_COLS = [
   { key: "xa", label: "xA", num: true, get: (r) => r.xa, fmt: f2, title: "Expected assists: the xG of the shots this player set up" },
 ];
 
+/* a player's row on Players, which his card takes too (the Visualiser opens the same card) */
+function playerRow(s, idx, agg, id) {
+  const d = agg.players[id];
+  return { id, name: pname(idx, id), mp: d.mp, mins: d.mins, club: tshort(s.teams, d.team), team: d.team, sh: d.sh, sot: d.sot, g: d.g, xg: d.xg, diff: d.g - d.xg, npxg: d.npxg, per: d.npsh ? d.npxg / d.npsh : null, xgot: d.xgot, kp: d.kp, a: d.a, xa: d.xa, pens: d.pens, pg: d.pg, bcm: d.bcm, bcc: d.bcc };
+}
 function PlayersView({ s, idx, agg }) {
   const [team, setTeam] = useState("");
   const [q, setQ] = useState("");
   const [minSh, setMinSh] = useState(0);
   const card = useCard("players"), sel = card.sel;
-  const rows = useMemo(() => Object.keys(agg.players).map((id) => {
-    const d = agg.players[id];
-    return { id, name: pname(idx, id), mp: d.mp, mins: d.mins, club: tshort(s.teams, d.team), team: d.team, sh: d.sh, sot: d.sot, g: d.g, xg: d.xg, diff: d.g - d.xg, npxg: d.npxg, per: d.npsh ? d.npxg / d.npsh : null, xgot: d.xgot, kp: d.kp, a: d.a, xa: d.xa, pens: d.pens, pg: d.pg, bcm: d.bcm, bcc: d.bcc };
-  }), [agg, idx, s.teams]);
+  const rows = useMemo(() => Object.keys(agg.players).map((id) => playerRow(s, idx, agg, id)), [agg, idx, s.teams]);
   if (!rows.length) return h(NoShotsYet, { what: "every player's shots, goals, xG and xA" });
   const shown = rows.filter((r) => (!team || r.team === team) && r.sh >= minSh && (!q || fold(r.name).includes(fold(q))));
   const picked = sel && agg.players[sel] ? rows.find((r) => r.id === sel) : null;
@@ -3507,15 +3509,16 @@ const KEEPER_COLS = [
   { key: "xsvp", label: KEEPER_NAMES.xsvp, num: true, get: (r) => r.xsvp, fmt: pct },
 ];
 
+/* a keeper's row on Keepers, which his card takes too. Goals against: every goal he let in, own goals included. Saves, save %
+   and the expected numbers come from the shots on target he faced, so an own goal never counts against his shot-stopping. */
+function keeperRow(s, idx, agg, id) {
+  const d = agg.keepers[id], sv = d.sotf - d.ga, xsv = d.sotf - d.xgotf;
+  return { id, name: pname(idx, id), mp: d.mp, mins: d.mins, club: tshort(s.teams, d.team), team: d.team, sotf: d.sotf, ga: d.ga + d.oga, sv, svp: d.sotf ? sv / d.sotf : null, xgotf: d.xgotf, xsv, sae: d.xgotf - d.ga, xsvp: d.sotf ? xsv / d.sotf : null };
+}
 function KeepersView({ s, idx, agg }) {
   const [team, setTeam] = useState("");
   const card = useCard("keepers"), sel = card.sel;
-  /* goals against: every goal he let in, own goals included. Saves, save % and the expected numbers come from the
-     shots on target he faced, so an own goal never counts against his shot-stopping. */
-  const rows = useMemo(() => Object.keys(agg.keepers).map((id) => {
-    const d = agg.keepers[id], sv = d.sotf - d.ga, xsv = d.sotf - d.xgotf;
-    return { id, name: pname(idx, id), mp: d.mp, mins: d.mins, club: tshort(s.teams, d.team), team: d.team, sotf: d.sotf, ga: d.ga + d.oga, sv, svp: d.sotf ? sv / d.sotf : null, xgotf: d.xgotf, xsv, sae: d.xgotf - d.ga, xsvp: d.sotf ? xsv / d.sotf : null };
-  }), [agg, idx, s.teams]);
+  const rows = useMemo(() => Object.keys(agg.keepers).map((id) => keeperRow(s, idx, agg, id)), [agg, idx, s.teams]);
   const noShot = agg.totals.unassigned, noOg = agg.totals.ogunassigned;
   const missing = [noShot ? noShot + (noShot === 1 ? " shot on target" : " shots on target") : null, noOg ? noOg + (noOg === 1 ? " own goal" : " own goals") : null].filter(Boolean);
   const warn = missing.length ? h(Note, { kind: "warn" }, missing.join(" and ") + (noShot + noOg === 1 ? " has" : " have") + " no keeper recorded, so no keeper is credited or charged for " + (noShot + noOg === 1 ? "it." : "them.") + (READER ? "" : " Set the goalkeepers at the top of each match to fix this.")) : null;
@@ -3595,14 +3598,16 @@ const TEAM_COLS = [
   ...(READER ? [] : [{ key: "xgpm", label: "xG / match", num: true, get: (r) => r.xgpm, fmt: f2 }]),
 ];
 
+/* a club's row on Teams, which its card takes too (res: the league table's results) */
+function teamRow(s, agg, res, id) {
+  const d = agg.teams[id], gf = d.g + d.ogf, ga = d.ga + d.oga;
+  return { id, name: tname(s.teams, id), mp: d.mp, gf, ga, gd: gf - ga, pts: res[id] ? res[id].pts : 0, sh: d.sh, sot: d.sot, xg: d.xg, xgot: d.xgot, bc: d.bc, bcm: d.bcm, bca: d.bca,
+    sha: d.sha, sota: d.sota, xga: d.xga, xgota: d.xgota, xgd: d.xg - d.xga, xgpm: d.mp ? d.xg / d.mp : null };
+}
 function TeamsView({ s, idx, agg }) {
   const card = useCard("teams"), sel = card.sel;
   const res = useMemo(() => Stats.results(s.matches), [s.matches]);
-  const rows = useMemo(() => Object.keys(agg.teams).map((id) => {
-    const d = agg.teams[id], gf = d.g + d.ogf, ga = d.ga + d.oga;
-    return { id, name: tname(s.teams, id), mp: d.mp, gf, ga, gd: gf - ga, pts: res[id] ? res[id].pts : 0, sh: d.sh, sot: d.sot, xg: d.xg, xgot: d.xgot, bc: d.bc, bcm: d.bcm, bca: d.bca,
-      sha: d.sha, sota: d.sota, xga: d.xga, xgota: d.xgota, xgd: d.xg - d.xga, xgpm: d.mp ? d.xg / d.mp : null };
-  }), [agg, s.teams, res]);
+  const rows = useMemo(() => Object.keys(agg.teams).map((id) => teamRow(s, agg, res, id)), [agg, s.teams, res]);
   if (!rows.length) return h(NoShotsYet, { what: "each club's shots and xG for and against" });
   const picked = sel && agg.teams[sel] ? rows.find((r) => r.id === sel) : null;
   /* as on Players and Keepers: the public page says how to use the table first, the tracker under it */
@@ -3736,7 +3741,7 @@ function TeamDetail({ s, idx, r, close }) {
    known is drawn as its round flag, a little bigger than a dot.
    Both axes use a square-root scale, which spreads out the many players near zero (a player's quadrant does not depend on it);
    the page does not spell that out. The 82nd percentile and the square root are the chart, with no switches for them. Pointing
-   at a dot shows the player's numbers; clicking it (on a touch screen, a second tap) opens their card on Players, and each dot
+   at a dot shows the player's numbers; clicking it (on a touch screen, a second tap) opens their card over the Visualiser, and each dot
    is a real link to that card, so the browser can open it in a new tab.
    Above the title the reader picks what the tab shows (see VisualiserView): this chart, every club or only some; one of five
    more charts (THE VISUALISER'S OTHER CHARTS, below); or players, keepers or clubs head to head in a table. The chart's axes
@@ -4278,6 +4283,7 @@ function ArchCompare({ kind, caption, heads, sides }) {
    and form. Each is a view of its own (VisualiserView's switch), drawn at the width of its own box, with a pop-up for what
    is pointed at (a mouse while it is over it, the keyboard while it is focused, a tap until the next tap lands elsewhere; a
    second tap on something with a card or a match opens it, as a click does) and the same numbers as a table under it.
+   A player's, keeper's or club's card opens over the Visualiser (cards: see VisualiserCard); a match opens on Matches.
    ------------------------------------------------------------ */
 const MORE_MEMO = { share: "npxg", finish: "players", zm: "shots", zclub: "", zside: "for", znat: "all" };
 const moreFont = (weight) => (weight || 500) + " 12px " + (getComputedStyle(document.body).fontFamily || "sans-serif");
@@ -4418,13 +4424,13 @@ function moreShare(s, idx) {
 /* ATTACK VS DEFENCE: every club as its crest, its non-penalty xG for a match across, against a match up, fewer at the top, on
    one scale both ways; dashed lines at the league's average (the same both ways, as every chance for one club is against
    another), so the top right is strong at both ends */
-function MoreAttack({ s, clubs, nav }) {
+function MoreAttack({ s, clubs, cards }) {
   const hot = useMoreHot();
   const W = Math.max(300, Math.round(useWidth(hot.box, 1000))), narrow = W < 600;
   const rows = useMemo(() => Object.values(clubs).filter((c) => c.mp > 0 && s.teams[c.id])
     .map((c) => ({ id: c.id, name: tname(s.teams, c.id), short: tshort(s.teams, c.id), mp: c.mp, f: c.npxg / c.mp, a: c.npxga / c.mp, d: (c.npxg - c.npxga) / c.mp })), [clubs, s.teams]);
   if (!rows.length) return h("div", { className: "empty" }, h("strong", null, "No matches yet"), "The chart needs a match with a shot.");
-  const go = (id) => nav.go({ tab: "teams", item: id }), href = (id) => nav.href({ tab: "teams", item: id });
+  const go = (id) => cards.go("teams", id), href = (id) => cards.href("teams", id);
   const lg = rows.reduce((t, r) => t + r.f * r.mp, 0) / rows.reduce((t, r) => t + r.mp, 0);
   const vals = rows.flatMap((r) => [r.f, r.a]), lo = Math.min(...vals), hi = Math.max(...vals), pad = Math.max((hi - lo) * 0.12, 0.1);
   const v0 = Math.max(0, Math.floor((lo - pad) * 10) / 10), v1 = Math.ceil((hi + pad) * 10) / 10;
@@ -4468,7 +4474,7 @@ function MoreAttack({ s, clubs, nav }) {
 
 /* INDIAN VS OVERSEAS: a bar for the league and one for each club, split between its Indian players, its overseas players and
    any whose nationality is not set, by non-penalty xG, xA or minutes; the clubs from the most Indian to the least */
-function MoreShare({ s, share, nav }) {
+function MoreShare({ s, share, cards }) {
   const [measure, setMeasure] = useState(MORE_MEMO.share);
   useEffect(() => { MORE_MEMO.share = measure; }, [measure]);
   const hot = useMoreHot();
@@ -4480,7 +4486,7 @@ function MoreShare({ s, share, nav }) {
     .sort((a, b) => b.ind / tot(b) - a.ind / tot(a) || a.name.localeCompare(b.name));
   const league = data["*"] && tot(data["*"]) > 0 ? Object.assign({ id: "*", name: "All clubs", short: "All clubs" }, data["*"]) : null;
   const list = (league ? [league] : []).concat(rows);
-  const go = (id) => nav.go({ tab: "teams", item: id }), href = (id) => nav.href({ tab: "teams", item: id });
+  const go = (id) => cards.go("teams", id), href = (id) => cards.href("teams", id);
   const unit = { npxg: "non-penalty xG", xa: "xA", mins: "minutes" }[measure];
   const fmt = (v) => (measure === "mins" ? Math.round(v).toLocaleString("en-US") : v.toFixed(2));
   const pc = (v, all) => (all > 0 ? Math.round((v / all) * 100) : 0) + "%";
@@ -4541,17 +4547,22 @@ function MoreShare({ s, share, nav }) {
 
 /* FINISHING AND SHOT-STOPPING: players (five shots or more), their goals against their xG; or keepers, the goals they let in
    from shots on target against the xGOT of those shots. Both on one scale, with the line where the two are equal: a player
-   above it has scored more than his chances were worth, a keeper below it has let in fewer than an average keeper would. */
+   above it has scored more than his chances were worth, a keeper below it has let in fewer than an average keeper would.
+   Each is drawn as his club's crest (each club's once, in defs, and used where it is wanted; a club with no crest keeps a
+   dot), and the one pointed at is drawn again on top of the rest, ringed, so a crowd never hides it.
+   A keeper's goals conceded count the own goals he let in, as on the Keepers tab (and a column of them, once there are
+   any). The chart puts him at the goals from shots on target, the only ones xGOT prices, so his gap to the line is his
+   Goals Prevented. */
 const MORE_SHOTS = 5;
-function MoreFinish({ s, idx, agg, nav }) {
+function MoreFinish({ s, idx, agg, cards }) {
   const [who, setWho] = useState(MORE_MEMO.finish);
   useEffect(() => { MORE_MEMO.finish = who; }, [who]);
   const hot = useMoreHot();
   const W = Math.max(300, Math.round(useWidth(hot.box, 1000))), narrow = W < 600, keep = who === "keepers";
   const rows = useMemo(() => (keep ?
-    Object.entries(agg.keepers).filter(([id, d]) => idx[id] && d.sotf > 0).map(([id, d]) => ({ id, name: idx[id].name, team: d.team, x: d.xgotf, y: d.ga, n: d.sotf, d: d.xgotf - d.ga })) :
+    Object.entries(agg.keepers).filter(([id, d]) => idx[id] && d.sotf > 0).map(([id, d]) => ({ id, name: idx[id].name, team: d.team, x: d.xgotf, y: d.ga, og: d.oga, gc: d.ga + d.oga, n: d.sotf, d: d.xgotf - d.ga })) :
     Object.entries(agg.players).filter(([id, d]) => idx[id] && d.sh >= MORE_SHOTS).map(([id, d]) => ({ id, name: idx[id].name, team: d.team, x: d.xg, y: d.g, n: d.sh, d: d.g - d.xg }))), [keep, agg, idx]);
-  const go = (id) => nav.go({ tab: keep ? "keepers" : "players", item: id }), href = (id) => nav.href({ tab: keep ? "keepers" : "players", item: id });
+  const go = (id) => cards.go(keep ? "keepers" : "players", id), href = (id) => cards.href(keep ? "keepers" : "players", id);
   const switcher = h("div", { className: "mo-ctl" }, h("div", { className: "seg", role: "group", "aria-label": "Whose" }, [["players", "Players' finishing"], ["keepers", "Keepers' shot-stopping"]].map(([k, l]) =>
     h("button", { key: k, type: "button", className: "seg-btn" + (who === k ? " on" : ""), "aria-pressed": who === k, onClick: () => setWho(k) }, l))));
   if (!rows.length) return h(Frag, null, switcher, h("div", { className: "empty" }, h("strong", null, "Nobody here yet"), keep ? "No keeper has faced a shot on target yet." : "No player has five shots yet."));
@@ -4559,8 +4570,12 @@ function MoreFinish({ s, idx, agg, nav }) {
   const m = { l: narrow ? 46 : 60, r: narrow ? 10 : 16, t: 12, b: narrow ? 46 : 54 };
   const H = Math.round(narrow ? W * 1.0 : Math.min(W * 0.58, 600)), pw = W - m.l - m.r, ph = H - m.t - m.b;
   const sx = (v) => m.l + (v / M) * pw, sy = (v) => m.t + ph - (v / M) * ph;
-  const ticks = moreTicks(0, M, narrow ? 4 : 8), R = narrow ? 4.5 : 5.5;
-  const marks = rows.map((r) => ({ r, x: sx(r.x), y: sy(r.y), rad: R, text: archShortName(r.name) }));
+  const ticks = moreTicks(0, M, narrow ? 4 : 8), R = narrow ? 4.5 : 5.5, CR = narrow ? ARCH_CR - 2 : ARCH_CR;
+  const crested = (team) => !!CLUB_CRESTS[team];
+  const clubsDrawn = [...new Set(rows.map((r) => r.team))].filter(crested);
+  const marks = rows.map((r) => ({ r, x: sx(r.x), y: sy(r.y), rad: crested(r.team) ? CR : R, text: archShortName(r.name) }));
+  const crest = (k) => h("use", { className: "ar-crest" + (CREST_OUTLINE.has(k.r.team) ? " edge" : ""), href: "#mo-crest-" + k.r.team, x: k.x - k.rad, y: k.y - k.rad, width: 2 * k.rad, height: 2 * k.rad });
+  const hm = hot.hot ? marks.find((k) => k.r.id === hot.hot.key) : null;
   const by = (f) => marks.slice().sort((a, b) => f(b) - f(a));
   const want = keep ? by((k) => Math.abs(k.r.d)) : [...by((k) => k.r.d).slice(0, 5), ...by((k) => -k.r.d).slice(0, 5), ...by((k) => k.r.x).slice(0, 4), ...by((k) => k.r.y).slice(0, 4)];
   const regions = keep ? [moreCorner(["Let in more than expected"], false, true, m, pw, ph), moreCorner(["Let in fewer than expected"], true, false, m, pw, ph)]
@@ -4568,11 +4583,13 @@ function MoreFinish({ s, idx, agg, nav }) {
   const labels = morePlace(marks, [...new Set(want)].slice(0, narrow ? 10 : 22), [m.l + 2, m.t + 2, m.l + pw - 2, m.t + ph - 2], moreFont(), regions.map((c) => c.box));
   const t = hot.hot ? rows.find((r) => r.id === hot.hot.key) : null;
   const short = (team) => tshort(s.teams, team);
+  const anyOg = keep && rows.some((r) => r.og > 0);
   const COLS = keep ? [
     { key: "name", label: "Keeper", get: (r) => r.name, strong: true }, { key: "club", label: "Club", get: (r) => short(r.team) },
-    { key: "n", label: "On target faced", num: true, get: (r) => r.n }, { key: "y", label: "Goals conceded", num: true, get: (r) => r.y },
+    { key: "n", label: "On target faced", num: true, get: (r) => r.n }, { key: "gc", label: "Goals conceded", num: true, get: (r) => r.gc, title: "Every goal conceded while in goal, own goals included" },
+  ].concat(anyOg ? [{ key: "og", label: "Own goals", num: true, get: (r) => r.og, title: "Own goals conceded while in goal" }] : [], [
     { key: "x", label: "xGOT faced", num: true, get: (r) => r.x, fmt: f2 }, { key: "d", label: KEEPER_NAMES.sae, num: true, get: (r) => r.d, fmt: signed },
-  ] : [
+  ]) : [
     { key: "name", label: "Player", get: (r) => r.name, strong: true }, { key: "club", label: "Club", get: (r) => short(r.team) },
     { key: "n", label: "Shots", num: true, get: (r) => r.n }, { key: "y", label: "Goals", num: true, get: (r) => r.y },
     { key: "x", label: "xG", num: true, get: (r) => r.x, fmt: f2 }, { key: "d", label: "Goals minus xG", num: true, get: (r) => r.d, fmt: signed },
@@ -4583,19 +4600,22 @@ function MoreFinish({ s, idx, agg, nav }) {
       h("svg", { viewBox: "0 0 " + W + " " + H, width: W, height: H, role: "group",
         "aria-label": keep ? "Keepers' shot-stopping: " + rows.length + " keepers, xGOT faced across and goals conceded from shots on target up, with the line where the two are equal. The table below lists every keeper."
           : "Players' finishing: " + rows.length + " players with five shots or more, xG across and goals up, with the line where the two are equal. The table below lists every player." },
-        moreAxes({ m, W, H, sx, sy, xt: ticks, yt: ticks, narrow, xLabel: (keep ? "xGOT faced" : "xG") + " \u2192", yLabel: (keep ? "Goals conceded from shots" : "Goals") + " \u2192" }),
+        moreAxes({ m, W, H, sx, sy, xt: ticks, yt: ticks, narrow, xLabel: (keep ? "xGOT faced" : "xG") + " \u2192", yLabel: (keep ? (narrow ? "Goals from shots on target" : "Goals conceded from shots on target") : "Goals") + " \u2192" }),
+        h("defs", null, clubsDrawn.map((tm) => h("symbol", { key: tm, id: "mo-crest-" + tm, viewBox: "0 0 1 1" }, h("image", { href: CLUB_CRESTS[tm], width: 1, height: 1 })))),
         h("line", { className: "mo-even", x1: sx(0), y1: sy(0), x2: sx(M), y2: sy(M) }),
         regions.map((c) => c.el),
-        marks.map((k) => h("a", Object.assign({ key: k.r.id, href: href(k.r.id), "aria-label": k.r.name + ": " + k.r.y + (keep ? " conceded from " : " goals from ") + f2(k.r.x) + (keep ? " xGOT" : " xG"), className: "mo-mark", "data-id": k.r.id },
+        marks.map((k) => h("a", Object.assign({ key: k.r.id, href: href(k.r.id), className: "mo-mark", "data-id": k.r.id,
+          "aria-label": k.r.name + ": " + (keep ? k.r.y + " goals from shots on target against " + f2(k.r.x) + " xGOT" + (k.r.og ? ", and " + k.r.og + (k.r.og === 1 ? " own goal" : " own goals") : "") : k.r.y + " goals from " + f2(k.r.x) + " xG") },
           hot.on(k.r.id, k.x, k.y, () => go(k.r.id))),
-          h("circle", { className: "mo-hit", cx: k.x, cy: k.y, r: Math.max(10, R + 4) }),
-          h("circle", { className: "mo-dot" + (hot.hot && hot.hot.key === k.r.id ? " hot" : ""), cx: k.x, cy: k.y, r: R }))),
-        labels.map((l) => h("text", { key: "l" + l.k.r.id, className: "ar-lab", x: l.x, y: l.y }, l.k.text))),
+          h("circle", { className: "mo-hit", cx: k.x, cy: k.y, r: Math.max(10, k.rad + 3) }),
+          crested(k.r.team) ? crest(k) : h("circle", { className: "mo-dot" + (hot.hot && hot.hot.key === k.r.id ? " hot" : ""), cx: k.x, cy: k.y, r: R }))),
+        labels.map((l) => h("text", { key: "l" + l.k.r.id, className: "ar-lab", x: l.x, y: l.y }, l.k.text)),
+        hm && crested(hm.r.team) ? h("g", { className: "mo-top", "aria-hidden": "true", pointerEvents: "none" }, crest(hm), h("circle", { className: "mo-ring", cx: hm.x, cy: hm.y, r: hm.rad + 3 })) : null),
       t ? h(MoreTip, { hot: hot.hot, W }, h("strong", null, t.name), h("span", { className: "ar-soft" }, tname(s.teams, t.team)),
-        keep ? [moreRow("On target faced", t.n), moreRow("Goals conceded", t.y), moreRow("xGOT faced", f2(t.x)), moreRow(KEEPER_NAMES.sae, signed(t.d))]
+        keep ? [moreRow("On target faced", t.n), moreRow("Goals conceded", t.gc), t.og ? moreRow("Own goals among them", t.og, true) : null, moreRow("xGOT faced", f2(t.x)), moreRow(KEEPER_NAMES.sae, signed(t.d))]
           : [moreRow("Shots", t.n), moreRow("Goals", t.y), moreRow("xG", f2(t.x)), moreRow("Goals minus xG", signed(t.d))],
         moreGo(hot.hot.touch, "his card")) : null),
-    h("p", { className: "mo-key" }, keep ? "Goals from shots on target, own goals left out. On the dashed line a keeper lets in what an average keeper would." :
+    h("p", { className: "mo-key" }, keep ? "Goals conceded count own goals, as on the Keepers tab. The chart plots only the goals from shots on target, the ones xGOT prices, so a keeper's gap to the dashed line is his Goals Prevented. On the line he lets in what an average keeper would." :
       "Players with five shots or more, penalties included. On the dashed line goals equal xG."),
     moreTable("The " + rows.length + (keep ? " keepers" : " players") + " as a table", h(SortTable, { cols: COLS, rows, initial: { key: "d", dir: -1 }, rowKey: (r) => r.id, onRow: go, rowHref: href,
       caption: keep ? "Every keeper's goals conceded against xGOT faced" : "Every player with five shots or more, goals against xG" })));
@@ -4694,7 +4714,7 @@ function MoreZones({ s, idx, anyNat }) {
 
 /* FORM: a small chart for each club, its non-penalty xG difference in each match as a bar (up when it made more than it gave
    away), and the average over its last three matches as a line; every club on one scale, the best run first */
-function MoreForm({ s, clubs, nav }) {
+function MoreForm({ s, clubs, nav, cards }) {
   const hot = useMoreHot();
   const W = Math.max(300, Math.round(useWidth(hot.box, 1000)));
   const cols = W >= 980 ? 4 : W >= 700 ? 3 : 2, gapX = 14, gapY = 10, pw = Math.floor((W - gapX * (cols - 1)) / cols);
@@ -4750,7 +4770,20 @@ function MoreForm({ s, clubs, nav }) {
         moreRow("npxG", f2(tg.f) + " \u2013 " + f2(tg.ag)), moreRow("Difference", signed(tg.d)), moreRow("Last three average", signed(tg.roll), true), moreGo(hot.hot.touch, "the match")) : null),
     h("p", { className: "mo-key" }, "Each bar is one match: the club's non-penalty xG minus the other side's. The line averages it over the last three matches (fewer at the start). Every club is on the same scale, the best run first."),
     moreTable("The " + rows.length + " clubs as a table", h(SortTable, { cols: COLS, rows, initial: { key: "now", dir: -1 }, rowKey: (r) => r.id,
-      onRow: (id) => nav.go({ tab: "teams", item: id }), rowHref: (id) => nav.href({ tab: "teams", item: id }), caption: "Every club's non-penalty xG difference" })));
+      onRow: (id) => cards.go("teams", id), rowHref: (id) => cards.href("teams", id), caption: "Every club's non-penalty xG difference" })));
+}
+
+/* a player's, keeper's or club's card opened from the Visualiser: the same card as on its own tab, in its window over the
+   Visualiser, which stays just as it was behind it; Close (or Escape, or a click on the shade) steps back to it. The address
+   names the card (#visualiser/players/<id>/<name>), so it can be linked to and opened in a new tab too. */
+function VisualiserCard({ s, idx, agg, kind, id, close }) {
+  const res = useMemo(() => (kind === "teams" ? Stats.results(s.matches) : null), [kind, s.matches]);
+  const r = kind === "players" ? (agg.players[id] ? playerRow(s, idx, agg, id) : null) :
+    kind === "keepers" ? (agg.keepers[id] ? keeperRow(s, idx, agg, id) : null) :
+      kind === "teams" ? (agg.teams[id] ? teamRow(s, agg, res, id) : null) : null;
+  if (!r) return null;
+  const Detail = kind === "players" ? PlayerDetail : kind === "keepers" ? KeeperDetail : TeamDetail;
+  return cardShown({ close }, r, (leave) => h(Detail, { key: r.id, s, idx, r, close: leave }), kind === "teams");
 }
 
 /* The Visualiser tab. At the top of its card, what the tab shows, in two groups, with the title (which follows it) under them:
@@ -4773,6 +4806,10 @@ function MoreForm({ s, clubs, nav }) {
    the others, so it keeps its measurements. */
 function VisualiserView({ s, idx, agg }) {
   const nav = useContext(NavCtx);
+  /* a card opened from here opens over the Visualiser, and Close comes back to it */
+  const cardAt = (kind, id) => ({ tab: "visualiser", card: kind, item: id });
+  const cards = nav ? { href: (kind, id) => nav.href(cardAt(kind, id)), go: (kind, id) => nav.go(cardAt(kind, id)) } : null;
+  const route = nav ? nav.route : null;
   const rows = useMemo(() => archetypeRows(s, idx, agg), [s, idx, agg]);
   const everyRows = useMemo(() => archetypeRows(s, idx, agg, true), [s, idx, agg]);
   /* whose chart: everyone's, or the Indian players' alone, offered once the squads say who is Indian */
@@ -4817,7 +4854,7 @@ function VisualiserView({ s, idx, agg }) {
     try { if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (live) setFonts((n) => n + 1); }); } catch (e) { /* drawn with what is there */ }
     return () => { live = false; };
   }, []);
-  const cardHref = (r) => (r.card && nav ? nav.href({ tab: "players", item: r.id }) : null);
+  const cardHref = (r) => (r.card && cards ? cards.href("players", r.id) : null);
   const clubSet = new Set(clubs);
   const pool = clubs.length ? baseEvery.filter((r) => clubSet.has(r.team)) : base;
   const kitOf = (team) => archKitColours(team, kits[team] || 0);
@@ -4847,7 +4884,7 @@ function VisualiserView({ s, idx, agg }) {
     chart.dots.forEach((d, i) => { const dd = Math.hypot(d.x - x, d.y - y); if (dd < bd) { bd = dd; best = i; } });
     return best;
   };
-  const openCard = (d) => nav.go({ tab: "players", item: d.r.id });
+  const openCard = (d) => cards.go("players", d.r.id);
   const pointing = {
     onPointerDown: (e) => { lastPointer.current = e.pointerType || "mouse"; },
     onPointerMove: (e) => { if (e.pointerType !== "mouse") return; lastPointer.current = "mouse"; const i = near(e); setTip((t) => (i < 0 ? null : t && t.i === i ? t : { i, touch: false })); },
@@ -4959,15 +4996,18 @@ function VisualiserView({ s, idx, agg }) {
         h("span", { className: "faint" }, ARCH_NTH[i] + " club"))),
       caption: "Team vs team: " + listed(tv.map((id, i) => (id ? tname(s.teams, id) : ARCH_NTH[i].toLowerCase() + " club not picked"))) });
   }
-  const more = mode === "attack" ? h(MoreAttack, { s, clubs: clubSeason, nav, fonts }) : mode === "share" ? h(MoreShare, { s, share, nav, fonts }) :
-    mode === "finish" ? h(MoreFinish, { s, idx, agg, nav, fonts }) : mode === "zones" ? h(MoreZones, { s, idx, anyNat, fonts }) :
-    mode === "form" ? h(MoreForm, { s, clubs: clubSeason, nav, fonts }) : null;
+  const more = mode === "attack" ? h(MoreAttack, { s, clubs: clubSeason, cards, fonts }) : mode === "share" ? h(MoreShare, { s, share, cards, fonts }) :
+    mode === "finish" ? h(MoreFinish, { s, idx, agg, cards, fonts }) : mode === "zones" ? h(MoreZones, { s, idx, anyNat, fonts }) :
+    mode === "form" ? h(MoreForm, { s, clubs: clubSeason, nav, cards, fonts }) : null;
+  /* the card the address names, over all of it */
+  const cardOpen = route && route.tab === "visualiser" && route.card && route.item ?
+    h(VisualiserCard, { key: route.card + "/" + route.item, s, idx, agg, kind: route.card, id: route.item, close: () => nav.toList("visualiser") }) : null;
 
   /* who sits where: each quadrant's count and its leading players, each a link to their card */
   const listRows = view.mode === "clubs" ? pool : base;
   const by = { HH: (r) => r.npxg90 + r.xa90, HL: (r) => r.npxg90, LH: (r) => r.xa90, LL: (r) => r.npxg90 + r.xa90 };
   const lead = { HH: "npxG/90 + xA/90", HL: "npxG/90", LH: "xA/90", LL: "npxG/90 + xA/90" };
-  const follow = (r) => (e) => { if (!plainClick(e)) return; e.preventDefault(); nav.go({ tab: "players", item: r.id }); };
+  const follow = (r) => (e) => { if (!plainClick(e)) return; e.preventDefault(); cards.go("players", r.id); };
   const fifth = view.mode === "all";
   const quads = h("div", { className: "ar-quads", hidden: mode !== "chart" }, ARCH_ORDER.map((k) => {
     const list = listRows.filter((r) => archQuad(r, cut) === k).sort((a, b) => by[k](b) - by[k](a));
@@ -4975,7 +5015,7 @@ function VisualiserView({ s, idx, agg }) {
       h("h3", { className: "h2" }, ARCH[k].name),
       h("p", { className: "sub" }, ARCH[k].where + " \u00b7 " + list.length + (list.length === 1 ? " player" : " players") + (fifth && k === "LL" && chart && chart.llShown < list.length ? ", the top " + chart.llShown + " drawn on the chart" : "")),
       list.length ? h("ol", null, list.slice(0, 5).map((r) => h("li", { key: r.id },
-        r.card && nav ? h("a", { href: nav.href({ tab: "players", item: r.id }), onClick: follow(r) }, r.name) : h("span", null, r.name),
+        r.card && cards ? h("a", { href: cards.href("players", r.id), onClick: follow(r) }, r.name) : h("span", null, r.name),
         h("span", { className: "ar-meta" }, " " + r.short + " \u00b7 " + r.npxg90.toFixed(2) + " npxG \u00b7 " + r.xa90.toFixed(2) + " xA")))) : null,
       list.length ? h("p", { className: "sub" }, "Leaders by " + lead[k] + ".") : h("p", { className: "sub" }, "Nobody here yet."));
   }));
@@ -5006,7 +5046,8 @@ function VisualiserView({ s, idx, agg }) {
     quads,
     h("details", { className: "card ar-all", hidden: mode !== "chart" },
       h("summary", null, (view.mode === "clubs" ? "These " : "All ") + them + " as a table"),
-      h(SortTable, { cols: COLS, rows: listRows, initial: { key: "npxg90", dir: -1 }, rowKey: (r) => r.id, onRow: (id) => { const r = byId[id]; if (r && r.card) nav.go({ tab: "players", item: id }); }, rowHref: (id) => { const r = byId[id]; return r && r.card && nav ? nav.href({ tab: "players", item: id }) : null; }, caption: view.mode === "clubs" ? "Every player from the clubs picked" : "Every player on the chart" })));
+      h(SortTable, { cols: COLS, rows: listRows, initial: { key: "npxg90", dir: -1 }, rowKey: (r) => r.id, onRow: (id) => { const r = byId[id]; if (r && r.card) cards.go("players", id); }, rowHref: (id) => { const r = byId[id]; return r && r.card && cards ? cards.href("players", id) : null; }, caption: view.mode === "clubs" ? "Every player from the clubs picked" : "Every player on the chart" })),
+    cardOpen);
 }
 
 /* ============================================================
@@ -5262,16 +5303,23 @@ const SEASON_LABEL = PAGE_NAMES.season || "2026-27";
    Every screen a reader can reach has its own address after the #, so the browser's Back and Forward step through them, and
    whatever opens a screen is a real link that the browser can open in a new tab (middle click, Ctrl or Cmd click, the
    right-click menu, a long press). #matches, #players, #keepers, #teams and #method are the tabs; #matches/<id>/<home>-v-<away>
-   is one match; #players/<id>/<name>, #keepers/<id>/<name> and #teams/<id>/<name> open a player's, keeper's or club's card.
+   is one match; #players/<id>/<name>, #keepers/<id>/<name> and #teams/<id>/<name> open a player's, keeper's or club's card;
+   #visualiser/players/<id>/<name> (and keepers, and teams) opens the same card over the Visualiser, where its charts link to.
    Only the id counts: the words after it are there to read. Each screen also names itself in the browser's tab:
    "ISL 2026-27: Players", "ISL 2026-27: Bengaluru FC vs SC Delhi", "ISL 2026-27: Ryan Williams".
    The tracker keeps its own way: no addresses, one title. */
 const slugOf = (t) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-const routeKey = (r) => r.tab + "/" + ((r.tab === "matches" ? r.matchId : r.item) || "");
+const VIS_CARDS = ["players", "keepers", "teams"];
+const routeKey = (r) => r.tab + "/" + ((r.tab === "matches" ? r.matchId : r.tab === "visualiser" && r.item ? r.card + "/" + r.item : r.item) || "");
 function routeOfHash(hash) {
   const parts = String(hash || "").replace(/^#/, "").split("/");
   const tab = parts[0];
   if (!TABS.some((x) => x[0] === tab)) return { tab: "matches", matchId: null, item: null, view: "tag" };
+  if (tab === "visualiser") {
+    let cid = null;
+    try { cid = parts[2] ? decodeURIComponent(parts[2]) : null; } catch (e) { cid = null; }
+    return VIS_CARDS.includes(parts[1]) && cid ? { tab, matchId: null, item: cid, card: parts[1], view: "tag" } : { tab, matchId: null, item: null, view: "tag" };
+  }
   let id = null;
   try { id = parts[1] ? decodeURIComponent(parts[1]) : null; } catch (e) { id = null; }
   if (tab === "matches") return { tab, matchId: id, item: null, view: "tag" };
@@ -5280,6 +5328,11 @@ function routeOfHash(hash) {
 function hashOfRoute(r, s, idx) {
   const id = r.tab === "matches" ? r.matchId : r.item;
   if (!id) return "#" + r.tab;
+  if (r.tab === "visualiser") {
+    if (!VIS_CARDS.includes(r.card)) return "#visualiser";
+    const named = r.card === "teams" ? (s.teams[id] ? slugOf(tname(s.teams, id)) : "") : (idx[id] ? slugOf(pname(idx, id)) : "");
+    return "#visualiser/" + r.card + "/" + encodeURIComponent(id) + (named ? "/" + named : "");
+  }
   const m = r.tab === "matches" ? s.matches[id] : null;
   const words = r.tab === "matches" ? (m ? slugOf(tshort(s.teams, m.home)) + "-v-" + slugOf(tshort(s.teams, m.away)) : "") :
     r.tab === "teams" ? (s.teams[id] ? slugOf(tname(s.teams, id)) : "") : (idx[id] ? slugOf(pname(idx, id)) : "");
@@ -5288,9 +5341,10 @@ function hashOfRoute(r, s, idx) {
 function titleOfRoute(r, s, idx) {
   const id = r.tab === "matches" ? r.matchId : r.item;
   const m = r.tab === "matches" && id ? s.matches[id] : null;
+  const kind = r.tab === "visualiser" ? r.card : r.tab;
   const what = m ? tname(s.teams, m.home) + " vs " + tname(s.teams, m.away) :
-    id && r.tab === "teams" && s.teams[id] ? tname(s.teams, id) :
-      id && (r.tab === "players" || r.tab === "keepers") && idx[id] ? pname(idx, id) :
+    id && kind === "teams" && s.teams[id] ? tname(s.teams, id) :
+      id && (kind === "players" || kind === "keepers") && idx[id] ? pname(idx, id) :
         (TABS.find((x) => x[0] === r.tab) || TABS[0])[1];
   return SITE_NAME + ": " + what;
 }
@@ -5348,7 +5402,7 @@ function App({ initial }) {
       /* each move is a step in the browser's history: where the reader had scrolled to is kept with the step they leave, and the
          new step remembers which screen it was opened from (from), so Close and All matches can step back to it. A new tab or
          match opens at its top; a card opens in a window over its tab, so its step keeps the tab's scroll */
-      r = Object.assign({ matchId: null, item: null, view: "tag" }, r);
+      r = Object.assign({ matchId: null, item: null, card: null, view: "tag" }, r);
       restore.current = null;
       const fresh = r.tab !== route.tab || r.matchId !== route.matchId;
       if (routeKey(r) !== routeKey(route)) {
